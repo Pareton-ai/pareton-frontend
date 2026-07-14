@@ -54,7 +54,7 @@ export default function Home() {
               Inference optimization infrastructure
             </p>
             <h1 className="text-[clamp(2.1rem,4.5vw,3.1rem)] font-medium leading-[1.12] tracking-[-0.03em] text-foreground">
-              The Intelligence Layer for AI Inference.
+              The Intelligence Layer for AI Inference
             </h1>
             <p className="mt-6 max-w-md text-[15px] leading-[1.7] text-secondary">
               AI models are converging in quality; cost and latency are the real
