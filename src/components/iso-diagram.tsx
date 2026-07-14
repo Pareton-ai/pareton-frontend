@@ -163,6 +163,19 @@ function ringLabel(index: number, total: number) {
   return { x, y, anchor };
 }
 
+const prefixPrompt = ringLabel(6, DIMENSIONS.length);
+const seqLengths = ringLabel(5, DIMENSIONS.length);
+const models = ringLabel(2, DIMENSIONS.length);
+const tensorParallel = ringLabel(3, DIMENSIONS.length);
+
+// Pathway annotations sit at mid-height between neighboring ring labels,
+// with short straight leaders from the path endpoints.
+const LEADER_LEN = 28;
+const workloadY = (prefixPrompt.y + seqLengths.y) / 2;
+const pathwayY = (models.y + tensorParallel.y) / 2;
+const workloadTipX = entryX - LEADER_LEN;
+const pathwayTipX = exitX + LEADER_LEN;
+
 export function IsoDiagram({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -223,20 +236,20 @@ export function IsoDiagram({ className = "" }: { className?: string }) {
         })}
       </g>
 
-      {/* entry annotation below the path so it clears PREFIX PROMPT above */}
+      {/* entry annotation — short straight leader, mid between PREFIX PROMPT / SEQ LENGTHS */}
       <g>
         <path
-          d={`M${entryX - 6} ${entryY} L${entryX - 34} ${entryY} L${entryX - 34} ${entryY + 26}`}
+          d={`M${entryX - 6} ${entryY} L${workloadTipX} ${workloadY}`}
           stroke="var(--muted)"
           strokeWidth="1"
           fill="none"
         />
         <text
-          x={entryX - 34}
-          y={entryY + 38}
-          textAnchor="middle"
+          x={workloadTipX - 8}
+          y={workloadY + 4}
+          textAnchor="end"
           fontFamily="var(--font-mono)"
-          fontSize="9.5"
+          fontSize="11"
           fill="var(--secondary)"
           letterSpacing="0.08em"
         >
@@ -244,31 +257,31 @@ export function IsoDiagram({ className = "" }: { className?: string }) {
         </text>
       </g>
 
-      {/* exit annotation */}
+      {/* exit annotation — short straight leader, mid between MODELS / TENSOR PARALLEL */}
       <g>
         <path
-          d={`M${exitX + 4} ${exitY + 6} L${exitX + 22} ${exitY + 6} L${exitX + 22} ${exitY + 24}`}
+          d={`M${exitX + 6} ${exitY} L${pathwayTipX} ${pathwayY}`}
           stroke="var(--muted)"
           strokeWidth="1"
           fill="none"
         />
         <text
-          x={exitX + 22}
-          y={exitY + 36}
-          textAnchor="middle"
+          x={pathwayTipX + 8}
+          y={pathwayY + 4}
+          textAnchor="start"
           fontFamily="var(--font-mono)"
-          fontSize="9.5"
+          fontSize="11"
           fill="var(--secondary)"
           letterSpacing="0.08em"
         >
-          OPTIMAL PATHWAY
+          OPTIMAL CONFIG
         </text>
       </g>
 
       {/* search-space dimension labels — equal angular spacing */}
       <g
         fontFamily="var(--font-mono)"
-        fontSize="9.5"
+        fontSize="11"
         fill="var(--muted)"
         letterSpacing="0.08em"
       >

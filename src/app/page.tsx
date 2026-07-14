@@ -62,6 +62,9 @@ export default function Home() {
               deploys the optimal serving configuration for{" "}
               <span className="italic">your</span> workload.
             </p>
+            <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+              Build in progress · Coming soon
+            </p>
           </div>
 
           <IsoDiagram className="mx-auto w-full max-w-xl" />
