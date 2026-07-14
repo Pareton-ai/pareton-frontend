@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #151515;
-  --foreground: #e8e6e3;
-  --secondary: #9a9690;
-  --muted: #5c5854;
-  --border: rgba(255, 255, 255, 0.07);
-  --surface: #1a1a1a;
-  --surface-raised: #1f1f1f;
-  --accent: #c4a574;
-  --accent-dim: rgba(196, 165, 116, 0.12);
+  /* Deep charcoal-black, not flat black */
+  --background: #0e0f11;
+  --foreground: #e7e8ea;
+  --secondary: #9ba0a6;
+  --muted: #61656c;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --accent: #0052ff;
+  --accent-dim: rgba(0, 82, 255, 0.14);
+  --rust: #99522c;
 }
 
 @theme inline {
@@ -18,23 +19,20 @@
   --color-secondary: var(--secondary);
   --color-muted: var(--muted);
   --color-border: var(--border);
-  --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
+  --color-border-strong: var(--border-strong);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
-  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
-  --font-display: "Newsreader", Georgia, serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-rust: var(--rust);
+  --font-sans: var(--font-inter), system-ui, "Helvetica Neue", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
 }
 
 html {
   height: 100%;
-  overflow: hidden;
 }
 
 body {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -45,4 +43,18 @@ body {
 ::selection {
   background: var(--accent-dim);
   color: var(--foreground);
+}
+
+/* Low-opacity architectural alignment grid */
+.bg-blueprint {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+  background-size:
+    96px 96px,
+    96px 96px,
+    24px 24px,
+    24px 24px;
 }

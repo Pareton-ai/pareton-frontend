@@ -5,7 +5,7 @@ type LogoProps = {
 export function Logo({ className = "" }: LogoProps) {
   return (
     <span
-      className={`font-display text-[17px] font-medium tracking-[-0.02em] text-foreground ${className}`}
+      className={`text-[16px] font-semibold tracking-[-0.02em] text-foreground ${className}`}
     >
       Pareton
     </span>
