@@ -378,7 +378,7 @@ export function HowItWorks() {
 
   /* Scroll-driven active step:
      desktop — progress through a tall sticky track;
-     mobile — whichever expanded step crosses the viewport middle. */
+     mobile — step whose center is closest to the viewport middle. */
   useEffect(() => {
     const mql = window.matchMedia(LG_QUERY);
     let teardown = () => {};
@@ -418,22 +418,42 @@ export function HowItWorks() {
     const setupMobile = () => {
       const root = mobileRef.current;
       if (!root) return () => {};
-      const blocks = Array.from(root.querySelectorAll("[data-step]"));
-      const io = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting) {
-              const idx = Number(
-                (entry.target as HTMLElement).dataset.step ?? 0
-              );
-              setActive((prev) => (prev === idx ? prev : idx));
-            }
-          }
-        },
-        { rootMargin: "-45% 0px -45% 0px" }
+      const blocks = Array.from(
+        root.querySelectorAll<HTMLElement>("[data-step]")
       );
-      blocks.forEach((block) => io.observe(block));
-      return () => io.disconnect();
+
+      const update = () => {
+        if (blocks.length === 0) return;
+        const mid = window.innerHeight / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        for (const block of blocks) {
+          const rect = block.getBoundingClientRect();
+          const dist = Math.abs(rect.top + rect.height / 2 - mid);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = Number(block.dataset.step ?? 0);
+          }
+        }
+        setActive((prev) => (prev === best ? prev : best));
+      };
+
+      const onScroll = () => {
+        if (frame.current != null) return;
+        frame.current = requestAnimationFrame(() => {
+          frame.current = null;
+          update();
+        });
+      };
+      update();
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+      return () => {
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+        if (frame.current != null) cancelAnimationFrame(frame.current);
+        frame.current = null;
+      };
     };
 
     const setup = () => {
