@@ -5,12 +5,13 @@
   --background: #0e0f11;
   --foreground: #e7e8ea;
   --secondary: #9ba0a6;
-  --muted: #61656c;
+  /* Muted/accent/rust sized for ≥3:1 on --background (prefer ~5:1+ for text) */
+  --muted: #8a8f96;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --accent: #0052ff;
-  --accent-dim: rgba(0, 82, 255, 0.14);
-  --rust: #99522c;
+  --accent: #4d8aff;
+  --accent-dim: rgba(77, 138, 255, 0.14);
+  --rust: #c47a4a;
 }
 
 @theme inline {
