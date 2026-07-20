@@ -16,7 +16,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pareton — The Intelligence Layer for AI Inference",
+  title: "Pareton: The Intelligence Layer for AI Inference",
   description:
     "Pareton continuously searches, validates, and deploys the optimal inference configuration for AI workloads — across models, hardware, and serving stacks.",
 };
