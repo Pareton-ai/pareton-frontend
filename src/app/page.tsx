@@ -1,5 +1,6 @@
 import { Logo } from "@/components/logo";
 import { IsoDiagram } from "@/components/iso-diagram";
+import { HowItWorks } from "@/components/how-it-works";
 
 const links = [
   { label: "X", href: "https://x.com/pareton_ai" },
@@ -69,6 +70,9 @@ export default function Home() {
 
           <IsoDiagram className="mx-auto w-full max-w-xl" />
         </section>
+
+        {/* How it works */}
+        <HowItWorks />
 
         {/* Three facts */}
         <section className="border-t border-border">

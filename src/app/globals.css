@@ -45,6 +45,24 @@ body {
   color: var(--foreground);
 }
 
+/* Step detail panel transition (how-it-works section) */
+@media (prefers-reduced-motion: no-preference) {
+  .step-panel-enter {
+    animation: step-panel-in 220ms ease-out both;
+  }
+}
+
+@keyframes step-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Low-opacity architectural alignment grid */
 .bg-blueprint {
   background-image:
