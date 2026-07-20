@@ -113,9 +113,9 @@ function RepeatIcon({ className = "" }: { className?: string }) {
 function ProfileVisual() {
   const specs: [IconName, string, string][] = [
     ["cube", "Model", "GLM-5 · FP8"],
+    ["chip", "Hardware", "H200 + secondary GPU env"],
     ["layers", "Serving", "vLLM · production flags"],
     ["activity", "Workload", "real traffic distribution"],
-    ["chip", "Hardware", "H200 + secondary GPU env"],
     ["shield", "SLA gates", "p99 TTFT · latency floor"],
     ["target", "Success metric", "GPU-hours saved at SLA"],
   ];
@@ -208,18 +208,7 @@ function PatchesVisual() {
 function ValidateVisual() {
   return (
     <div className="max-w-lg">
-      <div className="flex items-center justify-between border border-border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Icon name="shield" className="h-4 w-4 shrink-0 text-accent" />
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-secondary">
-            Automated tests
-          </span>
-        </div>
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
-          5 gates
-        </span>
-      </div>
-      <ul className="mt-5 space-y-3">
+      <ul className="space-y-3">
         <CheckItem>Builds and runs</CheckItem>
         <CheckItem>Output quality preserved</CheckItem>
         <CheckItem>API compatibility preserved</CheckItem>
@@ -341,28 +330,41 @@ function BenchmarkVisual() {
 
 function DecisionVisual() {
   return (
-    <div className="max-w-md">
-      <div className="flex justify-center">
-        <span className="border border-border px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
+    <div className="max-w-xl">
+      <div className="border border-border-strong px-5 py-4 text-center">
+        <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
           Priority metric · GPU-hours at SLA
-        </span>
-      </div>
-      <div className="mt-3 border border-border-strong px-5 py-4 text-center">
-        <p className="font-mono text-[10.5px] uppercase leading-[1.7] tracking-[0.12em] text-foreground">
-          Did it improve the priority metric without breaking SLA?
+        </p>
+        <p className="mt-2 font-mono text-[11px] uppercase leading-[1.7] tracking-[0.1em] text-foreground">
+          Did it improve the metric without breaking SLA?
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col items-center pt-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-accent">
             Yes
           </span>
           <ArrowDown className="mt-1 text-accent" />
-          <div className="mt-1 w-full border border-accent/40 bg-accent-dim px-3 py-2.5 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-accent">
-              Promote
+          <div className="mt-1 w-full border border-accent/40 bg-accent-dim p-4">
+            <div className="flex items-center gap-2.5">
+              <Icon name="merge" className="h-4 w-4 shrink-0 text-accent" />
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-accent">
+                Promote
+              </p>
+            </div>
+            <p className="mt-2.5 text-[12.5px] leading-[1.6] text-secondary">
+              Merge into the inference-engine repo. Becomes the new best
+              baseline.
             </p>
-            <p className="mt-1 text-[12px] text-secondary">New best baseline</p>
+            <div className="mt-3 flex items-center gap-2 border-t border-accent/30 pt-3">
+              <Icon name="server" className="h-3.5 w-3.5 shrink-0 text-accent" />
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-accent">
+                New baseline
+              </span>
+              <span className="ml-auto font-mono text-[10px] text-secondary">
+                −7% GPU-h
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex flex-col items-center pt-3">
@@ -370,55 +372,23 @@ function DecisionVisual() {
             No
           </span>
           <ArrowDown className="mt-1 text-rust" />
-          <div className="mt-1 w-full border border-rust/40 px-3 py-2.5 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-rust">
-              Reject
+          <div className="mt-1 w-full border border-rust/40 p-4">
+            <div className="flex items-center gap-2.5">
+              <Icon name="x" className="h-4 w-4 shrink-0 text-rust" />
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-rust">
+                Reject
+              </p>
+            </div>
+            <p className="mt-2.5 text-[12.5px] leading-[1.6] text-secondary">
+              Didn&apos;t beat the metric, or broke SLA. Discard and test the
+              next candidate.
             </p>
-            <p className="mt-1 text-[12px] text-secondary">Next candidate</p>
+            <div className="mt-3 border-t border-rust/30 pt-3">
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
+                Next candidate
+              </span>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OutcomeVisual() {
-  return (
-    <div className="grid max-w-xl gap-3 sm:grid-cols-2">
-      <div className="border border-accent/40 bg-accent-dim p-4">
-        <div className="flex items-center gap-2.5">
-          <Icon name="merge" className="h-4 w-4 shrink-0 text-accent" />
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-accent">
-            Accepted
-          </p>
-        </div>
-        <p className="mt-2.5 text-[12.5px] leading-[1.6] text-secondary">
-          Merged into the inference-engine repository.
-        </p>
-        <div className="mt-3 flex items-center gap-2.5 border-t border-accent/30 pt-3">
-          <Icon name="server" className="h-3.5 w-3.5 shrink-0 text-accent" />
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-accent">
-            New best baseline
-          </span>
-          <span className="ml-auto font-mono text-[10px] text-secondary">
-            −7% GPU-hours
-          </span>
-        </div>
-      </div>
-      <div className="border border-rust/40 p-4">
-        <div className="flex items-center gap-2.5">
-          <Icon name="x" className="h-4 w-4 shrink-0 text-rust" />
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-rust">
-            Rejected
-          </p>
-        </div>
-        <p className="mt-2.5 text-[12.5px] leading-[1.6] text-secondary">
-          Didn&apos;t improve the priority metric, or broke SLA.
-        </p>
-        <div className="mt-3 border-t border-rust/30 pt-3">
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
-            Test next candidate
-          </span>
         </div>
       </div>
     </div>
@@ -468,50 +438,43 @@ const steps: Step[] = [
   {
     index: "01",
     label: "Customer profile",
-    title: "You define what “better” means",
-    body: "Everything is measured against a customer-approved profile: the model and serving stack in production, the real workload distribution, the GPU environment, the SLA gates, and a single success metric — GPU-hours saved at SLA.",
+    title: "You bring the setup. You define better.",
+    body: "Tell Pareton what you run in production — model, serving stack, workload profile, hardware — and the SLA gates you won't break. One success metric locks the goal, usually GPU-hours saved at SLA. That customer-approved profile is the yardstick for every candidate that follows.",
     visual: <ProfileVisual />,
   },
   {
     index: "02",
     label: "Contributor patches",
     title: "Contributors propose, you don't rewrite",
-    body: "Contributors submit small, reviewable patches against the current baseline — prefix caching, batch sizing, KV-cache allocation, kernels. Every candidate targets the same frozen profile, so proposals stay comparable.",
+    body: "Contributors (miners) submit small, reviewable patches against the current baseline — prefix caching, batch sizing, KV-cache allocation, kernels. Every candidate targets the same frozen profile, so proposals stay comparable.",
     visual: <PatchesVisual />,
   },
   {
     index: "03",
     label: "Validate",
     title: "Automated validation gates everything",
-    body: "Before any benchmark runs, the candidate has to build and run, preserve output quality and API compatibility, satisfy the customer's constraints, and work across the required GPU environments. Invalid patches die here.",
+    body: "Before any benchmark runs, the candidate has to build and run, preserve output quality and API compatibility, satisfy the customer's constraints, and work across the required GPU environments. Invalid patches are rejected.",
     visual: <ValidateVisual />,
   },
   {
     index: "04",
     label: "Benchmark",
     title: "Baseline vs. patched, head to head",
-    body: "The patched engine and the current baseline run the exact same workload trace, on identical hardware, under the same SLA gates. The comparison is apples-to-apples by construction — no cherry-picked benchmarks.",
+    body: "The patched engine and the current baseline run the exact same workload trace, on identical hardware, under the same SLA gates. The comparison is apples-to-apples by construction.",
     visual: <BenchmarkVisual />,
   },
   {
     index: "05",
-    label: "Did it improve?",
-    title: "One question, answered with data",
-    body: "A candidate is accepted only if it improves the priority metric without breaking SLA. The call is binary and made from measurements — not opinions, not politics.",
+    label: "Promote or reject",
+    title: "Promote on evidence, or move on",
+    body: "One binary call from measurements: did it improve the priority metric without breaking SLA? Yes — merge it and promote the new best baseline. No — discard it and test the next candidate. The baseline only moves forward.",
     visual: <DecisionVisual />,
   },
   {
     index: "06",
-    label: "Promote or reject",
-    title: "Merge, or move on",
-    body: "Accepted patches merge into the inference-engine repository and become the new best baseline. Rejected ones are discarded and the next candidate is tested. The baseline only moves forward.",
-    visual: <OutcomeVisual />,
-  },
-  {
-    index: "07",
     label: "Repeat",
     title: "The loop compounds",
-    body: "Rounds repeat until the agreed success threshold is reached. Each accepted patch becomes the floor for the next, so gains compound instead of expiring — and the result ships with proof.",
+    body: "Rounds repeat until the agreed success threshold is reached. Each accepted patch becomes the floor for the next, so gains compound instead of expiring.",
     visual: <RepeatVisual />,
   },
 ];
@@ -520,7 +483,7 @@ function StepDetail({ step }: { step: Step }) {
   return (
     <div>
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
-        Step {step.index} / 07
+        Step {step.index} / {String(steps.length).padStart(2, "0")}
       </p>
       <h3 className="mt-3 text-[18px] font-medium tracking-[-0.01em] text-foreground">
         {step.title}
@@ -546,13 +509,8 @@ function SectionHeader() {
         How Pareton works
       </p>
       <h2 className="mt-4 max-w-xl text-[clamp(1.4rem,2.6vw,1.9rem)] font-medium leading-[1.2] tracking-[-0.02em] text-foreground">
-        An optimization loop, not a one-off audit.
+        An optimization loop: your profile in, better engine out.
       </h2>
-      <p className="mt-4 max-w-xl text-[14px] leading-[1.7] text-secondary">
-        Seven steps per round. Every improvement is validated, benchmarked
-        head-to-head against the current baseline, and promoted only on
-        evidence.
-      </p>
     </div>
   );
 }
@@ -756,7 +714,7 @@ export function HowItWorks() {
         <div className="sticky top-0 z-20 border-y border-border bg-background/85 backdrop-blur-sm">
           <div className="mx-auto flex w-full max-w-6xl items-baseline justify-between px-6 py-3 sm:px-12">
             <span className="font-mono text-[10px] tracking-[0.14em] text-accent">
-              {steps[active].index} / 07
+              {steps[active].index} / {String(steps.length).padStart(2, "0")}
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
               {steps[active].label}
