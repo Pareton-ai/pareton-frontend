@@ -39,7 +39,7 @@ export default function Home() {
               {...(link.href.startsWith("http")
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
+              className="font-mono text-[13px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
             >
               {link.label}
             </a>
@@ -51,7 +51,7 @@ export default function Home() {
         {/* Hero */}
         <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-16 px-6 py-20 sm:px-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-28">
           <div>
-            <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.18em] text-accent">
+            <p className="mb-6 font-mono text-[13px] uppercase tracking-[0.18em] text-accent">
               Inference optimization infrastructure
             </p>
             <h1 className="text-[clamp(2.1rem,4.5vw,3.1rem)] font-medium leading-[1.12] tracking-[-0.03em] text-foreground">
@@ -63,7 +63,7 @@ export default function Home() {
               deploys the optimal serving configuration for{" "}
               <span className="italic">your</span> workload.
             </p>
-            <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            <p className="mt-8 font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
               Build in progress · Coming soon
             </p>
           </div>
@@ -79,7 +79,7 @@ export default function Home() {
           <div className="mx-auto grid w-full max-w-6xl grid-cols-1 divide-y divide-border sm:px-12 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
             {facts.map((fact) => (
               <div key={fact.index} className="px-6 py-12 lg:px-10">
-                <p className="font-mono text-[10px] tracking-[0.14em] text-muted">
+                <p className="font-mono text-[13px] tracking-[0.14em] text-muted">
                   {fact.index}
                 </p>
                 <h2 className="mt-4 text-[16px] font-medium tracking-[-0.01em] text-foreground">
@@ -111,10 +111,10 @@ export default function Home() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-12">
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+          <p className="font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
             © {new Date().getFullYear()} Pareton
           </p>
-          <p className="hidden font-mono text-[10px] uppercase tracking-[0.12em] text-muted sm:block">
+          <p className="hidden font-mono text-[13px] uppercase tracking-[0.12em] text-muted sm:block">
             Pushing the Pareto frontier of inference
           </p>
         </div>

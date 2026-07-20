@@ -50,7 +50,7 @@ function Icon({
 function CheckItem({ children }: { children: ReactNode }) {
   return (
     <li className="flex items-center gap-3">
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center border border-accent/50 text-accent">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center border border-accent text-accent">
         <svg
           width="9"
           height="9"
@@ -126,11 +126,11 @@ function ProfileVisual() {
           key={label}
           className="flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0"
         >
-          <Icon name={icon} className="h-3.5 w-3.5 shrink-0 text-accent/60" />
-          <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted">
+          <Icon name={icon} className="h-3.5 w-3.5 shrink-0 text-accent" />
+          <span className="shrink-0 font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
             {label}
           </span>
-          <span className="ml-auto text-right font-mono text-[12px] text-secondary">
+          <span className="ml-auto text-right font-mono text-[13px] text-secondary">
             {value}
           </span>
         </div>
@@ -162,14 +162,14 @@ function PatchesVisual() {
       <div className="flex items-center gap-3 border border-border px-4 py-3">
         <Icon name="server" className="h-4 w-4 shrink-0 text-secondary" />
         <div>
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted">
+          <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
             Current baseline
           </p>
-          <p className="mt-0.5 font-mono text-[11.5px] text-secondary">
+          <p className="mt-0.5 font-mono text-[13px] text-secondary">
             vLLM + accepted patches
           </p>
         </div>
-        <span className="ml-auto font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
+        <span className="ml-auto font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
           the patch target
         </span>
       </div>
@@ -180,14 +180,14 @@ function PatchesVisual() {
         {patches.map((patch) => (
           <div key={patch.initial} className="border border-border p-4">
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center border border-border-strong font-mono text-[9px] text-secondary">
+              <span className="flex h-5 w-5 items-center justify-center border border-border-strong font-mono text-[13px] text-secondary">
                 {patch.initial}
               </span>
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted">
+              <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
                 Contributor {patch.initial}
               </p>
             </div>
-            <div className="mt-3 space-y-1.5 font-mono text-[11.5px] leading-[1.5]">
+            <div className="mt-3 space-y-1.5 font-mono text-[13px] leading-[1.5]">
               <p>
                 <span className="mr-1.5 text-accent">+</span>
                 <span className="text-foreground">{patch.add}</span>
@@ -215,7 +215,7 @@ function ValidateVisual() {
         <CheckItem>Customer constraints satisfied</CheckItem>
         <CheckItem>Works across required GPU environments</CheckItem>
       </ul>
-      <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+      <p className="mt-6 font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
         Invalid patches are rejected before benchmarking
       </p>
     </div>
@@ -259,28 +259,28 @@ function BenchmarkVisual() {
         <div className="flex flex-1 items-center gap-3 border border-border px-4 py-3">
           <Icon name="server" className="h-4 w-4 shrink-0 text-muted" />
           <div>
-            <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted">
+            <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
               Current baseline
             </p>
-            <p className="mt-0.5 font-mono text-[11.5px] text-secondary">
+            <p className="mt-0.5 font-mono text-[13px] text-secondary">
               vLLM + accepted patches
             </p>
           </div>
         </div>
         <div className="z-10 -my-3 flex justify-center sm:-mx-4 sm:my-0">
           <span className="flex h-9 w-9 rotate-45 items-center justify-center border border-border-strong bg-background">
-            <span className="-rotate-45 font-mono text-[9px] tracking-[0.08em] text-secondary">
+            <span className="-rotate-45 font-mono text-[13px] tracking-[0.08em] text-secondary">
               VS
             </span>
           </span>
         </div>
-        <div className="flex flex-1 items-center gap-3 border border-accent/40 bg-accent-dim px-4 py-3">
+        <div className="flex flex-1 items-center gap-3 border border-accent/70 bg-accent-dim px-4 py-3">
           <Icon name="server" className="h-4 w-4 shrink-0 text-accent" />
           <div>
-            <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-accent">
+            <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-accent">
               Patched engine
             </p>
-            <p className="mt-0.5 font-mono text-[11.5px] text-secondary">
+            <p className="mt-0.5 font-mono text-[13px] text-secondary">
               baseline + candidate diff
             </p>
           </div>
@@ -289,23 +289,23 @@ function BenchmarkVisual() {
       <table className="mt-6 w-full border border-border">
         <thead>
           <tr className="border-b border-border">
-            {["Metric", "Baseline", "Patched", "Δ"].map((head) => (
+            {["Metric", "Baseline", "Patched", "Delta"].map((head) => (
               <th
                 key={head}
-                className="px-3 py-2 text-left font-mono text-[9.5px] font-normal uppercase tracking-[0.14em] text-muted last:text-right"
+                className="px-3 py-2 text-left font-mono text-[13px] font-normal uppercase tracking-[0.14em] text-muted last:text-right"
               >
                 {head}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="font-mono text-[12px]">
+        <tbody className="font-mono text-[13px]">
           {rows.map((row) => (
             <tr
               key={row.metric}
               className="border-b border-border last:border-b-0"
             >
-              <td className="px-3 py-2.5 font-sans text-[12.5px] text-secondary">
+              <td className="px-3 py-2.5 font-sans text-[13px] text-secondary">
                 {row.metric}
               </td>
               <td className="px-3 py-2.5 text-muted">{row.baseline}</td>
@@ -321,7 +321,7 @@ function BenchmarkVisual() {
           ))}
         </tbody>
       </table>
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+      <p className="mt-4 font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
         Same workload trace · same hardware · same SLA gates
       </p>
     </div>
@@ -332,59 +332,59 @@ function DecisionVisual() {
   return (
     <div className="max-w-xl">
       <div className="border border-border-strong px-5 py-4 text-center">
-        <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
+        <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
           Priority metric · GPU-hours at SLA
         </p>
-        <p className="mt-2 font-mono text-[11px] uppercase leading-[1.7] tracking-[0.1em] text-foreground">
+        <p className="mt-2 font-mono text-[13px] uppercase leading-[1.7] tracking-[0.1em] text-foreground">
           Did it improve the metric without breaking SLA?
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col items-center pt-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-accent">
+          <span className="font-mono text-[13px] uppercase tracking-[0.16em] text-accent">
             Yes
           </span>
           <ArrowDown className="mt-1 text-accent" />
-          <div className="mt-1 w-full border border-accent/40 bg-accent-dim p-4">
+          <div className="mt-1 w-full border border-accent/70 bg-accent-dim p-4">
             <div className="flex items-center gap-2.5">
               <Icon name="merge" className="h-4 w-4 shrink-0 text-accent" />
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-accent">
+              <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-accent">
                 Promote
               </p>
             </div>
-            <p className="mt-2.5 text-[12.5px] leading-[1.6] text-secondary">
+            <p className="mt-2.5 text-[13px] leading-[1.6] text-secondary">
               Merge into the inference-engine repo. Becomes the new best
               baseline.
             </p>
-            <div className="mt-3 flex items-center gap-2 border-t border-accent/30 pt-3">
+            <div className="mt-3 flex items-center gap-2 border-t border-accent/50 pt-3">
               <Icon name="server" className="h-3.5 w-3.5 shrink-0 text-accent" />
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-accent">
+              <span className="font-mono text-[13px] uppercase tracking-[0.12em] text-accent">
                 New baseline
               </span>
-              <span className="ml-auto font-mono text-[10px] text-secondary">
+              <span className="ml-auto font-mono text-[13px] text-secondary">
                 −7% GPU-h
               </span>
             </div>
           </div>
         </div>
         <div className="flex flex-col items-center pt-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-rust">
+          <span className="font-mono text-[13px] uppercase tracking-[0.16em] text-rust">
             No
           </span>
           <ArrowDown className="mt-1 text-rust" />
-          <div className="mt-1 w-full border border-rust/40 p-4">
+          <div className="mt-1 w-full border border-rust/70 p-4">
             <div className="flex items-center gap-2.5">
               <Icon name="x" className="h-4 w-4 shrink-0 text-rust" />
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-rust">
+              <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-rust">
                 Reject
               </p>
             </div>
-            <p className="mt-2.5 text-[12.5px] leading-[1.6] text-secondary">
+            <p className="mt-2.5 text-[13px] leading-[1.6] text-secondary">
               Didn&apos;t beat the metric, or broke SLA. Discard and test the
               next candidate.
             </p>
-            <div className="mt-3 border-t border-rust/30 pt-3">
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
+            <div className="mt-3 border-t border-rust/50 pt-3">
+              <span className="font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
                 Next candidate
               </span>
             </div>
@@ -400,7 +400,7 @@ function RepeatVisual() {
     <div className="max-w-lg">
       <div className="flex items-center gap-4 border border-border px-5 py-4">
         <RepeatIcon className="h-4 w-4 shrink-0 text-accent" />
-        <p className="text-[12.5px] leading-[1.6] text-secondary">
+        <p className="text-[13px] leading-[1.6] text-secondary">
           The new baseline becomes the floor — the next round of patches targets
           it, until the agreed success threshold is reached.
         </p>
@@ -408,7 +408,7 @@ function RepeatVisual() {
       <div className="mt-4 border border-border px-5 py-4">
         <div className="flex items-center gap-2.5">
           <Icon name="trophy" className="h-4 w-4 shrink-0 text-accent" />
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-secondary">
+          <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-secondary">
             Success threshold reached
           </p>
         </div>
@@ -482,7 +482,7 @@ const steps: Step[] = [
 function StepDetail({ step }: { step: Step }) {
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+      <p className="font-mono text-[13px] uppercase tracking-[0.16em] text-muted">
         Step {step.index} / {String(steps.length).padStart(2, "0")}
       </p>
       <h3 className="mt-3 text-[18px] font-medium tracking-[-0.01em] text-foreground">
@@ -505,7 +505,7 @@ const LG_QUERY = "(min-width: 1024px)";
 function SectionHeader() {
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent">
+      <p className="font-mono text-[13px] uppercase tracking-[0.18em] text-accent">
         How Pareton works
       </p>
       <h2 className="mt-4 max-w-xl text-[clamp(1.4rem,2.6vw,1.9rem)] font-medium leading-[1.2] tracking-[-0.02em] text-foreground">
@@ -656,11 +656,11 @@ export function HowItWorks() {
                           }`}
                         />
                         <span
-                          className={`font-mono text-[10px] tracking-[0.14em] transition-colors ${
+                          className={`font-mono text-[13px] tracking-[0.14em] transition-colors ${
                             isActive
                               ? "text-accent"
                               : isPassed
-                                ? "text-accent/60"
+                                ? "text-accent"
                                 : "text-muted group-hover:text-secondary"
                           }`}
                         >
@@ -689,7 +689,7 @@ export function HowItWorks() {
                   }`}
                 />
                 <span
-                  className={`font-mono text-[9.5px] uppercase tracking-[0.14em] transition-colors ${
+                  className={`font-mono text-[13px] uppercase tracking-[0.14em] transition-colors ${
                     active === steps.length - 1
                       ? "text-secondary"
                       : "text-muted"
@@ -713,10 +713,10 @@ export function HowItWorks() {
       <div ref={mobileRef} className="mt-8 lg:hidden">
         <div className="sticky top-0 z-20 border-y border-border bg-background/85 backdrop-blur-sm">
           <div className="mx-auto flex w-full max-w-6xl items-baseline justify-between px-6 py-3 sm:px-12">
-            <span className="font-mono text-[10px] tracking-[0.14em] text-accent">
+            <span className="font-mono text-[13px] tracking-[0.14em] text-accent">
               {steps[active].index} / {String(steps.length).padStart(2, "0")}
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+            <span className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
               {steps[active].label}
             </span>
           </div>

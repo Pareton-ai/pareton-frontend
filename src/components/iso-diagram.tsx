@@ -249,8 +249,8 @@ export function IsoDiagram({ className = "" }: { className?: string }) {
           y={workloadY + 4}
           textAnchor="end"
           fontFamily="var(--font-mono)"
-          fontSize="11"
-          fill="var(--secondary)"
+          fontSize="13"
+          fill="#ffffff"
           letterSpacing="0.08em"
         >
           YOUR WORKLOAD
@@ -270,8 +270,8 @@ export function IsoDiagram({ className = "" }: { className?: string }) {
           y={pathwayY + 4}
           textAnchor="start"
           fontFamily="var(--font-mono)"
-          fontSize="11"
-          fill="var(--secondary)"
+          fontSize="13"
+          fill="#ffffff"
           letterSpacing="0.08em"
         >
           OPTIMAL CONFIG
@@ -281,7 +281,7 @@ export function IsoDiagram({ className = "" }: { className?: string }) {
       {/* search-space dimension labels — equal angular spacing */}
       <g
         fontFamily="var(--font-mono)"
-        fontSize="11"
+        fontSize="13"
         fill="var(--muted)"
         letterSpacing="0.08em"
       >
