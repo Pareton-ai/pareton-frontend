@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { siteContent } from "@/lib/site-content";
 
 /* ------------------------------------------------------------------ */
 /* Shared micro-visual primitives                                      */
@@ -426,58 +427,24 @@ function RepeatVisual() {
 /* Steps                                                               */
 /* ------------------------------------------------------------------ */
 
-type Step = {
-  index: string;
-  label: string;
-  title: string;
-  body: string;
+type Step = (typeof siteContent.howItWorks.steps)[number] & {
   visual: ReactNode;
 };
 
-const steps: Step[] = [
-  {
-    index: "01",
-    label: "Customer profile",
-    title: "You bring the setup. You define better.",
-    body: "Tell Pareton what you run in production — model, serving stack, workload profile, hardware — and the SLA gates you won't break. One success metric locks the goal, usually GPU-hours saved at SLA. That customer-approved profile is the yardstick for every candidate that follows.",
-    visual: <ProfileVisual />,
-  },
-  {
-    index: "02",
-    label: "Contributor patches",
-    title: "Contributors propose, you don't rewrite",
-    body: "Contributors (miners) submit small, reviewable patches against the current baseline — prefix caching, batch sizing, KV-cache allocation, kernels. Every candidate targets the same frozen profile, so proposals stay comparable.",
-    visual: <PatchesVisual />,
-  },
-  {
-    index: "03",
-    label: "Validate",
-    title: "Automated validation gates everything",
-    body: "Before any benchmark runs, the candidate has to build and run, preserve output quality and API compatibility, satisfy the customer's constraints, and work across the required GPU environments. Invalid patches are rejected.",
-    visual: <ValidateVisual />,
-  },
-  {
-    index: "04",
-    label: "Benchmark",
-    title: "Baseline vs. patched, head to head",
-    body: "The patched engine and the current baseline run the exact same workload trace, on identical hardware, under the same SLA gates. The comparison is apples-to-apples by construction.",
-    visual: <BenchmarkVisual />,
-  },
-  {
-    index: "05",
-    label: "Promote or reject",
-    title: "Promote on evidence, or move on",
-    body: "One binary call from measurements: did it improve the priority metric without breaking SLA? Yes — merge it and promote the new best baseline. No — discard it and test the next candidate. The baseline only moves forward.",
-    visual: <DecisionVisual />,
-  },
-  {
-    index: "06",
-    label: "Repeat",
-    title: "The loop compounds",
-    body: "Rounds repeat until the agreed success threshold is reached. Each accepted patch becomes the floor for the next, so gains compound instead of expiring.",
-    visual: <RepeatVisual />,
-  },
+/* Copy lives in `site-content.ts`; visuals are matched to it here by order. */
+const visuals: ReactNode[] = [
+  <ProfileVisual key="profile" />,
+  <PatchesVisual key="patches" />,
+  <ValidateVisual key="validate" />,
+  <BenchmarkVisual key="benchmark" />,
+  <DecisionVisual key="decision" />,
+  <RepeatVisual key="repeat" />,
 ];
+
+const steps: Step[] = siteContent.howItWorks.steps.map((step, i) => ({
+  ...step,
+  visual: visuals[i],
+}));
 
 function StepDetail({ step }: { step: Step }) {
   return (
@@ -506,10 +473,10 @@ function SectionHeader() {
   return (
     <div>
       <p className="font-mono text-[13px] uppercase tracking-[0.18em] text-accent">
-        How Pareton works
+        {siteContent.howItWorks.eyebrow}
       </p>
       <h2 className="mt-4 max-w-xl text-[clamp(1.4rem,2.6vw,1.9rem)] font-medium leading-[1.2] tracking-[-0.02em] text-foreground">
-        An optimization loop: your profile in, better engine out.
+        {siteContent.howItWorks.title}
       </h2>
     </div>
   );
