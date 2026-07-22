@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+# Pareton (Frontend)
 
-First, run the development server:
+**The Intelligence Layer for AI Inference**
+
+[![Discord](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor)
+[![Docs](https://img.shields.io/badge/docs-pareton.ai-blue)](https://pareton.ai)
+[![X](https://img.shields.io/badge/X-@pareton__ai-000000?logo=x&logoColor=white)](https://x.com/pareton_ai)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+[Website](https://pareton.ai) | [GitHub](https://github.com/pareton-ai) | [Discord](https://discord.gg/bittensor)
+
+---
+
+</div>
+
+Website for [Pareton](https://pareton.ai) (Bittensor SN10). Next.js app that serves the public landing page at pareton.ai.
+
+Landing copy lives in one place (`src/lib/site-content.ts`). Clients that send `Accept: text/markdown` get a Markdown version of the home page instead of HTML.
+
+## Setup
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optional: set `NEXT_PUBLIC_SITE_URL` for sitemap and robots (default `https://pareton.ai`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build    # production build
+npm run lint     # eslint
+npm run format   # prettier
+```
 
-## Learn More
+## Layout
 
-To learn more about Next.js, take a look at the following resources:
+| Path                        | Role                                      |
+| --------------------------- | ----------------------------------------- |
+| `src/app/`                  | App Router pages, layout, SEO metadata    |
+| `src/components/`           | Landing UI (logo, diagram, how-it-works)  |
+| `src/lib/site-content.ts`   | Landing copy (single source of truth)     |
+| `src/lib/home-markdown.ts`  | Markdown view for agent content negotiation |
+| `src/middleware.ts`         | Serves Markdown when `Accept: text/markdown` |
+| `public/`                   | Static assets                             |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Subnet backend and worker live in [pareton](https://github.com/Pareton-ai/pareton).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Apache License 2.0 — see [LICENSE](LICENSE).
