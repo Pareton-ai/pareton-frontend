@@ -665,12 +665,38 @@ export function HowItWorks() {
                   Feeds the next optimization round
                 </span>
               </div>
+              <div
+                aria-hidden="true"
+                className={`mt-8 flex items-center gap-3 pl-1 transition-opacity duration-300 ${
+                  active === 0 ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <span className="relative flex h-[22px] w-[14px] items-start justify-center rounded-full border border-border-strong pt-[3px]">
+                  <span className="scroll-cue-dot h-[4px] w-[1.5px] rounded-full bg-muted" />
+                </span>
+                <span className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
+                  Scroll to step through
+                </span>
+              </div>
             </div>
 
-            <div className="min-h-[520px] border border-border bg-background p-10">
-              <div key={steps[active].index} className="step-panel-enter">
-                <StepDetail step={steps[active]} />
-              </div>
+            {/* All panels are stacked in one grid cell so the box keeps the
+                height of the tallest step — otherwise the sticky scene
+                re-centers on every step change and the page jitters. */}
+            <div className="grid min-h-[520px] border border-border bg-background p-10">
+              {steps.map((step, i) => (
+                <div
+                  key={step.index}
+                  aria-hidden={i !== active}
+                  className={`col-start-1 row-start-1 transition-opacity duration-200 ease-out ${
+                    i === active
+                      ? "opacity-100"
+                      : "pointer-events-none invisible opacity-0"
+                  }`}
+                >
+                  <StepDetail step={step} />
+                </div>
+              ))}
             </div>
           </div>
         </div>

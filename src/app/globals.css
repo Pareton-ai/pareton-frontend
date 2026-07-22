@@ -46,21 +46,25 @@ body {
   color: var(--foreground);
 }
 
-/* Step detail panel transition (how-it-works section) */
+/* Scroll cue (how-it-works section) */
 @media (prefers-reduced-motion: no-preference) {
-  .step-panel-enter {
-    animation: step-panel-in 220ms ease-out both;
+  .scroll-cue-dot {
+    animation: scroll-cue 1.8s ease-in-out infinite;
   }
 }
 
-@keyframes step-panel-in {
-  from {
+@keyframes scroll-cue {
+  0%,
+  100% {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(0);
   }
-  to {
+  30% {
     opacity: 1;
-    transform: none;
+  }
+  70% {
+    opacity: 0;
+    transform: translateY(5px);
   }
 }
 
