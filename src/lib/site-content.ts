@@ -15,6 +15,7 @@ export const siteContent = {
   buildStatus: "Build in progress · Coming soon",
 
   links: [
+    { label: "Dashboard", href: "/dashboard" },
     { label: "X", href: "https://x.com/pareton_ai" },
     { label: "GitHub", href: "https://github.com/pareton-ai" },
     { label: "Contact", href: "mailto:xavier@pareton.ai" },

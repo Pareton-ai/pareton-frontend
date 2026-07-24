@@ -28,7 +28,7 @@ export function middleware(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
-        "Vary": "Accept",
+        Vary: "Accept",
         "x-markdown-tokens": String(homeMarkdownTokens),
         "Cache-Control": "public, max-age=0, must-revalidate",
       },
@@ -42,7 +42,11 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
-/** Only run on the home page — the one HTML content route. */
+/**
+ * Only the home page is Markdown-negotiated.
+ * Keep this matcher on `["/"]` so `/dashboard` (and future app routes) always
+ * serve HTML — do not broaden without an intentional Markdown view.
+ */
 export const config = {
   matcher: ["/"],
 };
