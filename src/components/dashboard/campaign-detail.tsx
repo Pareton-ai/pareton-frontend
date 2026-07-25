@@ -52,15 +52,21 @@ export function CampaignDetailHeader({ campaign }: { campaign: Campaign }) {
         </div>
 
         {campaign.status === "open" ? (
-          <div className="text-right">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-              Closes in
+          new Date(campaign.window.closes_at).getTime() > Date.now() ? (
+            <div className="text-right">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+                Closes in
+              </p>
+              <Countdown
+                closesAt={campaign.window.closes_at}
+                className="mt-2 text-[18px] text-accent"
+              />
+            </div>
+          ) : (
+            <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
+              Closing
             </p>
-            <Countdown
-              closesAt={campaign.window.closes_at}
-              className="mt-2 text-[18px] text-accent"
-            />
-          </div>
+          )
         ) : null}
       </div>
 

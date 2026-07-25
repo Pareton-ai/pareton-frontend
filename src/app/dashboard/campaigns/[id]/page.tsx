@@ -58,7 +58,7 @@ async function CampaignSubmissions({ id, page }: { id: string; page: number }) {
     if (result.kind === "not_found") notFound();
     if (result.kind === "unavailable") {
       return (
-        <SectionUnavailable message="Submissions are temporarily unavailable (API/DB)." />
+        <SectionUnavailable message="Campaign is temporarily unavailable (API/DB)." />
       );
     }
     throw new Error(`Failed to load campaign ${id}`);
@@ -68,7 +68,7 @@ async function CampaignSubmissions({ id, page }: { id: string; page: number }) {
     <SubmissionsTable
       campaignId={id}
       page={page}
-      campaignOpen={result.campaign.status === "open"}
+      campaignStatus={result.campaign.status}
     />
   );
 }

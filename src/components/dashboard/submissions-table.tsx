@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   BenchVerdictChip,
   PipelineChip,
@@ -7,26 +8,40 @@ import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import { getCampaignSubmissions } from "@/lib/api/endpoints";
 import { isUnavailable } from "@/lib/api/errors";
 import { formatUtc, truncateHash, truncateMiddle } from "@/lib/api/format";
-import type { SubmissionsPage } from "@/lib/api/types";
+import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
 
 const PAGE_SIZE = 25;
 
 type SubmissionsTableProps = {
   campaignId: string;
   page: number;
-  campaignOpen: boolean;
+  campaignStatus: CampaignStatus;
 };
 
-function EmptySubmissions({ campaignOpen }: { campaignOpen: boolean }) {
+function EmptySubmissions({ status }: { status: CampaignStatus }) {
+  const copy =
+    status === "open"
+      ? {
+          title: "Awaiting first submission",
+          body: "This campaign is open. Miner patches will appear here as they move through commit → verify → build → bench.",
+        }
+      : status === "draft"
+        ? {
+            title: "No submissions yet",
+            body: "This campaign has not opened. Submissions will appear here once the window starts.",
+          }
+        : {
+            title: "No submissions",
+            body: "This campaign closed without recorded submissions.",
+          };
+
   return (
     <section className="border border-border px-5 py-14 text-center sm:px-6">
       <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent">
-        {campaignOpen ? "Awaiting first submission" : "No submissions"}
+        {copy.title}
       </p>
       <p className="mx-auto mt-4 max-w-lg text-[14px] leading-[1.7] text-secondary">
-        {campaignOpen
-          ? "This campaign is open. Miner patches will appear here as they move through commit → verify → build → bench."
-          : "This campaign closed without recorded submissions."}
+        {copy.body}
       </p>
     </section>
   );
@@ -128,7 +143,7 @@ function SubmissionsTableView({
 export async function SubmissionsTable({
   campaignId,
   page,
-  campaignOpen,
+  campaignStatus,
 }: SubmissionsTableProps) {
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
   const offset = (safePage - 1) * PAGE_SIZE;
@@ -157,7 +172,12 @@ export async function SubmissionsTable({
   }
 
   if (data.total === 0) {
-    return <EmptySubmissions campaignOpen={campaignOpen} />;
+    return <EmptySubmissions status={campaignStatus} />;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+  if (safePage > totalPages) {
+    redirect(`/dashboard/campaigns/${campaignId}?page=${totalPages}`);
   }
 
   return (

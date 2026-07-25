@@ -49,15 +49,25 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
 
       <div className="flex items-center justify-between gap-6 sm:flex-col sm:items-end sm:justify-center">
         {campaign.status === "open" ? (
-          <div className="text-right">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-              Remaining
+          new Date(campaign.window.closes_at).getTime() > Date.now() ? (
+            <div className="text-right">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+                Remaining
+              </p>
+              <Countdown
+                closesAt={campaign.window.closes_at}
+                className="mt-1 text-accent"
+              />
+            </div>
+          ) : (
+            <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
+              Closing
             </p>
-            <Countdown
-              closesAt={campaign.window.closes_at}
-              className="mt-1 text-accent"
-            />
-          </div>
+          )
+        ) : campaign.status === "draft" ? (
+          <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
+            Not opened
+          </p>
         ) : (
           <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
             Window ended
