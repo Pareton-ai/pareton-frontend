@@ -12,7 +12,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="px-5 py-5 sm:px-6">
       <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
         {label}
       </p>
@@ -64,11 +64,12 @@ export function CampaignDetailHeader({ campaign }: { campaign: Campaign }) {
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-8 px-5 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
+      <div className="divide-y divide-border">
         <Field label="Window">
           <p className="font-mono text-[12px] text-secondary">
             {formatUtc(campaign.window.opens_at)}
-            <br />→ {formatUtc(campaign.window.closes_at)}
+            {" → "}
+            {formatUtc(campaign.window.closes_at)}
           </p>
         </Field>
 
@@ -111,7 +112,7 @@ export function CampaignDetailHeader({ campaign }: { campaign: Campaign }) {
         </Field>
 
         <Field label="Image digests">
-          <div className="space-y-2">
+          <div className="flex flex-col items-start gap-2">
             <CopyableMono
               value={campaign.base_image_digest}
               display={`base ${truncateHash(campaign.base_image_digest)}`}

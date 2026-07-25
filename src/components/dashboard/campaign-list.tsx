@@ -14,7 +14,7 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
   return (
     <Link
       href={`/dashboard/campaigns/${campaign.campaign_id}`}
-      className="group grid grid-cols-1 gap-4 border-t border-border px-5 py-6 transition-colors hover:bg-accent-dim/40 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_auto] sm:items-center sm:px-6"
+      className="group grid grid-cols-1 gap-4 px-5 py-6 transition-colors hover:bg-accent-dim/40 sm:col-span-full sm:grid-cols-subgrid sm:items-center sm:px-6"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-3">
@@ -89,20 +89,13 @@ function CampaignListView({ campaigns }: { campaigns: Campaign[] }) {
   if (campaigns.length === 0) return <EmptyCampaigns />;
 
   return (
-    <section aria-label="Campaigns" className="border border-border">
-      <div className="flex items-baseline justify-between px-5 py-4 sm:px-6">
-        <h2 className="font-mono text-[12px] uppercase tracking-[0.16em] text-muted">
-          Campaigns
-        </h2>
-        <p className="font-mono text-[12px] text-muted">
-          {campaigns.length} total
-        </p>
-      </div>
-      <div>
-        {campaigns.map((campaign) => (
-          <CampaignRow key={campaign.campaign_id} campaign={campaign} />
-        ))}
-      </div>
+    <section
+      aria-label="Campaigns"
+      className="divide-y divide-border border border-border sm:grid sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(8.5rem,8.5rem)] sm:gap-x-4"
+    >
+      {campaigns.map((campaign) => (
+        <CampaignRow key={campaign.campaign_id} campaign={campaign} />
+      ))}
     </section>
   );
 }
