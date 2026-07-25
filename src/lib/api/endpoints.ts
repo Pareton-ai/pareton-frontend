@@ -22,8 +22,6 @@ import { isSubmissionState } from "@/lib/api/types";
 
 /** Match Cloudflare cache on /v1/* for live-ish lists. */
 const SHORT_REVALIDATE = 30;
-/** Closed manifests are immutable once signed off. */
-const LONG_REVALIDATE = 3600;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object"
@@ -249,11 +247,6 @@ export async function getSubmission(
     bench_verdict: parseBenchVerdict(o.bench_verdict),
     events: events.map(parseSubmissionEvent),
   };
-}
-
-/** Prefer long cache for manifests that can no longer change. */
-export function campaignRevalidateSeconds(campaign: Campaign): number {
-  return campaign.status === "closed" ? LONG_REVALIDATE : SHORT_REVALIDATE;
 }
 
 export type { CampaignsResponse };
