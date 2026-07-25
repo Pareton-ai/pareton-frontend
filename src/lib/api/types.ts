@@ -138,17 +138,6 @@ export type SubmissionDetail = {
   events: SubmissionEvent[];
 };
 
-export type StatsResponse = {
-  campaigns: {
-    total: number;
-    by_status: Record<CampaignStatus, number>;
-  };
-  submissions: {
-    total: number;
-    by_latest_state: Record<SubmissionState, number>;
-  };
-};
-
 export type SubmissionStateMeta = {
   state: SubmissionState;
   label: string;

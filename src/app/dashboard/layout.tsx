@@ -24,7 +24,7 @@ export default function DashboardLayout({
             © {new Date().getFullYear()} Pareton
           </p>
           <p className="hidden font-mono text-[13px] uppercase tracking-[0.12em] text-muted sm:block">
-            Public campaign reads
+            Pushing the pareto frontier of inference
           </p>
         </div>
       </footer>

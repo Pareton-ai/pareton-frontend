@@ -12,14 +12,12 @@ import type {
   CampaignStatus,
   CampaignWindow,
   CustomerSignoff,
-  StatsResponse,
   SubmissionDetail,
   SubmissionEvent,
   SubmissionRow,
   SubmissionsPage,
-  SubmissionState,
 } from "@/lib/api/types";
-import { isSubmissionState, SUBMISSION_STATES } from "@/lib/api/types";
+import { isSubmissionState } from "@/lib/api/types";
 
 /** Match Cloudflare cache on /v1/* for live-ish lists. */
 const SHORT_REVALIDATE = 30;
@@ -180,39 +178,6 @@ function parseSubmissionEvent(value: unknown): SubmissionEvent {
   };
 }
 
-function emptyStateCounts(): Record<SubmissionState, number> {
-  return Object.fromEntries(SUBMISSION_STATES.map((s) => [s, 0])) as Record<
-    SubmissionState,
-    number
-  >;
-}
-
-function parseStats(value: unknown): StatsResponse {
-  const o = asRecord(value);
-  const campaigns = asRecord(o.campaigns);
-  const byStatus = asRecord(campaigns.by_status);
-  const submissions = asRecord(o.submissions);
-  const byState = asRecord(submissions.by_latest_state);
-  const stateCounts = emptyStateCounts();
-  for (const state of SUBMISSION_STATES) {
-    stateCounts[state] = asNumber(byState[state], 0);
-  }
-  return {
-    campaigns: {
-      total: asNumber(campaigns.total),
-      by_status: {
-        draft: asNumber(byStatus.draft, 0),
-        open: asNumber(byStatus.open, 0),
-        closed: asNumber(byStatus.closed, 0),
-      },
-    },
-    submissions: {
-      total: asNumber(submissions.total),
-      by_latest_state: stateCounts,
-    },
-  };
-}
-
 export async function getCampaigns(opts?: {
   status?: CampaignStatus | string;
 }): Promise<Campaign[]> {
@@ -260,14 +225,6 @@ export async function getCampaignSubmissions(
     offset: asNumber(o.offset, offset),
     submissions: rows.map(parseSubmissionRow),
   };
-}
-
-export async function getStats(): Promise<StatsResponse> {
-  const data = await apiFetch<unknown>("/v1/stats", {
-    revalidate: SHORT_REVALIDATE,
-    tags: ["stats"],
-  });
-  return parseStats(data);
 }
 
 export async function getSubmission(

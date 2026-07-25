@@ -48,7 +48,7 @@ Server-only — never prefix with `NEXT_PUBLIC_`.
 
 ## Caching
 
-Each endpoint sets its own `revalidate` (stats/submissions ~30s to match the
+Each endpoint sets its own `revalidate` (lists/submissions ~30s to match the
 API's `Cache-Control`; closed campaign manifests can stay longer). Prefer
 section-level `<Suspense>` + degraded empty/unavailable UI over a whole-page
 crash when the API returns 503.

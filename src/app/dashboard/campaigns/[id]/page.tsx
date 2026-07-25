@@ -38,16 +38,23 @@ async function loadCampaign(
   }
 }
 
+function campaignLoadUnavailable(kind: "unavailable" | "error") {
+  return (
+    <SectionUnavailable
+      message={
+        kind === "unavailable"
+          ? "Campaign is temporarily unavailable (API/DB)."
+          : "Could not load campaign."
+      }
+    />
+  );
+}
+
 async function CampaignHeader({ id }: { id: string }) {
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    if (result.kind === "unavailable") {
-      return (
-        <SectionUnavailable message="Campaign manifest is temporarily unavailable (API/DB)." />
-      );
-    }
-    throw new Error(`Failed to load campaign ${id}`);
+    return campaignLoadUnavailable(result.kind);
   }
   return <CampaignDetailHeader campaign={result.campaign} />;
 }
@@ -56,12 +63,7 @@ async function CampaignSubmissions({ id, page }: { id: string; page: number }) {
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    if (result.kind === "unavailable") {
-      return (
-        <SectionUnavailable message="Campaign is temporarily unavailable (API/DB)." />
-      );
-    }
-    throw new Error(`Failed to load campaign ${id}`);
+    return campaignLoadUnavailable(result.kind);
   }
 
   return (
