@@ -16,6 +16,7 @@ import type {
   SubmissionEvent,
   SubmissionRow,
   SubmissionsPage,
+  SubmissionState,
 } from "@/lib/api/types";
 import { isSubmissionState } from "@/lib/api/types";
 
