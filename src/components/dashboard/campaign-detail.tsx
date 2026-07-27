@@ -129,6 +129,28 @@ export function CampaignDetailHeader({ campaign }: { campaign: Campaign }) {
             />
           </div>
         </Field>
+
+        <Field label="Priority metric">
+          <p className="font-mono text-[12px] text-secondary">
+            {campaign.priority_metric.replaceAll("_", " ") || "—"}
+          </p>
+        </Field>
+
+        <Field label="Success threshold">
+          <p className="font-mono text-[12px] text-secondary">
+            {campaign.success_threshold || "—"}
+          </p>
+        </Field>
+
+        <Field label="Bench speedup floor">
+          <p className="font-mono text-[12px] text-secondary">
+            min_speedup_each ≥ {campaign.bench.cross_env.min_speedup_each}
+            <span className="text-muted">
+              {" "}
+              · {campaign.bench.cross_env.speedup_metric.replaceAll("_", " ")}
+            </span>
+          </p>
+        </Field>
       </div>
     </section>
   );
