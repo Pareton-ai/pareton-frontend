@@ -134,6 +134,8 @@ function parseCampaign(value: unknown): Campaign {
     window: parseWindow(o.window),
     manifest_hash: asString(o.manifest_hash),
     customer_signoff: parseSignoff(o.customer_signoff),
+    priority_metric: asString(o.priority_metric),
+    success_threshold: asString(o.success_threshold),
     bench: parseBench(o.bench),
   };
 }

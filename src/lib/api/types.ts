@@ -98,6 +98,10 @@ export type Campaign = {
   window: CampaignWindow;
   manifest_hash: string;
   customer_signoff: CustomerSignoff | null;
+  /** What the campaign optimizes for (throughput, gpu_hours, …). */
+  priority_metric: string;
+  /** Human-readable win condition for the pilot. */
+  success_threshold: string;
   bench: CampaignBench;
 };
 
