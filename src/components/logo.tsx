@@ -15,7 +15,7 @@ export function Logo({ className = "" }: LogoProps) {
         priority
         className="h-8 w-8 rounded-[5px]"
       />
-      <span className="text-[16px] font-semibold tracking-[-0.02em] text-foreground">
+      <span className="hidden text-[16px] font-semibold tracking-[-0.02em] text-foreground sm:inline">
         Pareton
       </span>
     </span>
