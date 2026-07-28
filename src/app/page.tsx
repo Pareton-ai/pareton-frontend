@@ -3,7 +3,9 @@ import { IsoDiagram } from "@/components/iso-diagram";
 import { HowItWorks } from "@/components/how-it-works";
 import { siteContent } from "@/lib/site-content";
 
-const { links, facts } = siteContent;
+const { facts } = siteContent;
+/** Topbar omits Contact; it stays in the agent Markdown link list. */
+const links = siteContent.links.filter((link) => link.label !== "Contact");
 
 /** Split `text` around `mark`, wrapping the matched part in `wrap`. */
 function withEmphasis(
@@ -27,7 +29,7 @@ export default function Home() {
     <div className="bg-blueprint flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b border-border px-6 py-5 sm:px-12">
         <Logo />
-        <nav className="flex items-center gap-8">
+        <nav className="flex items-center gap-4 sm:gap-8">
           {links.map((link) => (
             <a
               key={link.label}

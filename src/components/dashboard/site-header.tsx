@@ -17,7 +17,7 @@ export function SiteHeader({
       <Link href="/" className="transition-opacity hover:opacity-90">
         <Logo />
       </Link>
-      <nav className="flex items-center gap-8">
+      <nav className="flex items-center gap-4 sm:gap-8">
         {nav.map((link) => {
           const isActive =
             (active === "dashboard" && link.href === "/dashboard") ||
