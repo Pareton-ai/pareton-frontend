@@ -79,6 +79,9 @@ web_modules/
 out
 next-env.d.ts
 
+# Fumadocs MDX generated types
+.source
+
 # Nuxt.js build / generate output
 .nuxt
 dist

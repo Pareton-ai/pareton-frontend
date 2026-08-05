@@ -1,0 +1,35 @@
+---
+title: Overview
+description: Pareton continuously discovers, validates, and deploys better inference configurations.
+---
+
+## What is Pareton?
+
+Models are converging in quality; cost and latency are the real competitive edge. At the same time, inference is becoming the dominant share of AI compute (longer generations, agent loops, and training that depends on high-volume serving) while new model families and accelerators keep expanding the configurations worth evaluating. Kernels, batching, caching, quantization, and scheduling compound into a search space no small team can exhaust by hand. 
+
+Pareton continuously discovers, validates, and deploys the optimal serving configuration for a workload, across models, hardware, and serving stacks.
+
+It runs on Bittensor Subnet 10. Contributors submit small, reviewable git patches against a pinned baseline engine. Pareton gates those patches, benchmarks them against a frozen customer profile, and promotes only improvements that hold under the same SLA.
+
+## How it works
+
+1. **Customer profile** — You define the production setup (model, hardware, serving configs, workload) and the SLA gates you will not break. One success metric locks the goal.
+2. **Contributor patches** — Miners propose focused changes against the current baseline.
+3. **Validate** — Candidates must build, preserve output quality and API compatibility, and satisfy customer constraints before any timed benchmark runs.
+4. **Benchmark** — Patched engine and baseline run the same workload trace on identical hardware under the same SLA gates.
+5. **Promote or reject** — Promote on evidence; otherwise discard and try the next candidate. The baseline only moves forward.
+6. **Repeat** — Each accepted patch becomes the floor for the next round, so gains compound.
+
+## Links
+
+| Surface | URL | Role |
+| --- | --- | --- |
+| Landing | [pareton.ai](https://pareton.ai) | Product overview |
+| Dashboard | [pareton.ai/dashboard](/dashboard) | Read-only campaigns and submissions |
+| Docs | [pareton.ai/docs](/docs) | This documentation |
+| X | [x.com/pareton_ai](https://x.com/pareton_ai) | Updates |
+| GitHub | [github.com/pareton-ai](https://github.com/pareton-ai) | Source and org repos |
+
+## Status
+
+Build in progress.
