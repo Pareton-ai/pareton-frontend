@@ -27,7 +27,7 @@ cp .env.example .env.local   # optional; defaults already point at production
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Dashboard: [http://localhost:3000/dashboard](http://localhost:3000/dashboard).
+Open [http://localhost:3000](http://localhost:3000). Dashboard: [http://localhost:3000/dashboard](http://localhost:3000/dashboard). Docs: [http://localhost:3000/docs](http://localhost:3000/docs).
 
 | Variable               | Scope           | Default                  | Purpose             |
 | ---------------------- | --------------- | ------------------------ | ------------------- |
@@ -47,6 +47,8 @@ npm run api:types  # regenerate src/lib/api/schema.d.ts from OpenAPI
 | -------------------------- | -------------------------------------------------------------------- |
 | `src/app/`                 | App Router pages, layout, SEO metadata                               |
 | `src/app/dashboard/`       | Public campaigns list + campaign detail                              |
+| `src/app/docs/`            | Fumadocs site (`/docs`)                                              |
+| `content/docs/`            | Docs MDX source                                                      |
 | `src/components/`          | Landing + dashboard UI                                               |
 | `src/lib/site-content.ts`  | Landing copy (single source of truth)                                |
 | `src/lib/home-markdown.ts` | Markdown view for agent content negotiation                          |
