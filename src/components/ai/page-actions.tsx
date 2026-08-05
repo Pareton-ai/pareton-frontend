@@ -26,24 +26,21 @@ export function MarkdownCopyButton({
   const [isLoading, setLoading] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
     const cached = cache.get(markdownUrl);
-    if (cached) {
-      try {
-        return await navigator.clipboard.writeText(await cached);
-      } catch {
-        cache.delete(markdownUrl);
-      }
-    }
+    if (cached) return navigator.clipboard.writeText(await cached);
 
     setLoading(true);
 
     try {
-      const res = await fetch(withBasePath(markdownUrl));
-      if (!res.ok) {
-        throw new Error(`Failed to fetch markdown (${res.status})`);
-      }
-      const text = await res.text();
-      cache.set(markdownUrl, Promise.resolve(text));
-      await navigator.clipboard.writeText(text);
+      const promise = fetch(withBasePath(markdownUrl)).then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch markdown (${res.status})`);
+        return res.text();
+      });
+      cache.set(markdownUrl, promise);
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': promise,
+        }),
+      ]);
     } catch (error) {
       cache.delete(markdownUrl);
       throw error;
