@@ -7,6 +7,10 @@ import {
   DocsTitle,
 } from "fumadocs-ui/layouts/docs/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
+import {
+  MarkdownCopyButton,
+  ViewOptionsPopover,
+} from "@/components/ai/page-actions";
 import { getMDXComponents } from "@/components/mdx";
 import { source } from "@/lib/source";
 
@@ -20,9 +24,17 @@ export default async function Page(props: PageProps) {
   if (!page) notFound();
 
   const MDX = page.data.body;
+  const markdownUrl = `${page.url}.md`;
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
+      <div className="flex flex-row gap-2 items-center border-b pt-2 pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover
+          markdownUrl={markdownUrl}
+          githubUrl={`https://github.com/Pareton-ai/pareton-frontend/blob/main/content/docs/${page.path}`}
+        />
+      </div>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
