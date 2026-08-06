@@ -1,0 +1,47 @@
+---
+title: Overview
+description: What a Pareton miner does and how a submission moves through the pipeline.
+---
+
+<Callout type="warn">Submissions are not live yet. You cannot submit at this time.</Callout>
+
+## Role
+
+A miner proposes focused git patches against a pinned baseline engine. Each campaign freezes the target: model, hardware, workload trace, and the SLA gates the customer will not break. Your patch competes against that fixed target, not against other miners directly.
+
+## What you submit
+
+One submission is one unified git diff against the campaign's pinned baseline commit:
+
+```diff
+diff --git a/vllm/engine/arg_utils.py b/vllm/engine/arg_utils.py
+index 3f4a1b2c9..8d2e7f1a4 100644
+--- a/vllm/engine/arg_utils.py
++++ b/vllm/engine/arg_utils.py
+@@ -412,7 +412,7 @@ class EngineArgs:
+-        max_num_batched_tokens: int = 8192,
++        max_num_batched_tokens: int = 16384,
+```
+
+The diff is content-addressed: its SHA-256 hash is the dedupe key. The first valid commitment of a given patch hash wins the slot for that campaign. Later duplicates are skipped, including your own.
+
+## Pipeline
+
+Every submission walks the same sequence of states:
+
+1. **Committed** — your on-chain commitment is seen and recorded.
+2. **Fetched** — the worker retrieves the patch artifact and checks the hash matches your commitment.
+3. **Verified** — identity and eligibility checks pass: registered hotkey, open campaign window, correct baseline pin, hotkey-bound artifact URL.
+4. **Applied** — the diff applies cleanly onto the baseline checkout.
+5. **Surface OK** — path constraints hold: no denied paths, no absolute paths, no traversal, no symlink or binary payloads.
+6. **Building** — the hermetic container build is running. This step can take hours for a full engine compile.
+7. **Built** — the candidate engine image exists and is digest-pinned.
+8. **Correct** — output correctness against the baseline holds.
+9. **Screened** — the performance screen cleared; the full benchmark is queued.
+10. **Benched** — the full benchmark finished and the verdict is recorded.
+
+A submission that fails a gate ends in **Rejected**. The event log on the dashboard shows which gate rejected it and why.
+
+## Outcome
+
+Only patches that beat the baseline under the same SLA are promoted. An accepted patch becomes the new floor for the next round, so accepted work compounds. Rejected patches cost you the submission; they change nothing else.
