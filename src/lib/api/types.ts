@@ -13,6 +13,7 @@ export const SUBMISSION_STATES = [
   "verified",
   "applied",
   "surface_ok",
+  "building",
   "built",
   "correct",
   "screened",
@@ -29,6 +30,7 @@ export const SUBMISSION_STAGE_ORDER = [
   "verified",
   "applied",
   "surface_ok",
+  "building",
   "built",
   "correct",
   "screened",
@@ -188,6 +190,12 @@ export const SUBMISSION_STATE_META: Record<
     state: "surface_ok",
     label: "Surface OK",
     description: "Public API / surface compatibility held.",
+    tone: "progress",
+  },
+  building: {
+    state: "building",
+    label: "Building",
+    description: "Hermetic engine image build in progress.",
     tone: "progress",
   },
   built: {
