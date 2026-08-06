@@ -1,0 +1,70 @@
+---
+title: Submission
+description: Register, build a patch, and commit it on-chain with the miner CLI.
+---
+
+<Callout type="warn">Submissions are not live yet. You cannot submit at this time.</Callout>
+
+## Prerequisites
+
+- A Bittensor wallet whose hotkey is registered on subnet 10 (finney).
+- The Pareton repository and its Python environment, which pins `bittensor` 11.x.
+- An open campaign. Get its `campaign_id` and pinned `baseline_commit` from the [dashboard](/dashboard) or the API.
+
+## 1. Write the patch
+
+Create a unified git diff against the campaign's exact baseline commit:
+
+```bash
+git clone https://github.com/vllm-project/vllm.git
+cd vllm && git checkout <baseline_commit>
+# make your change
+git diff > /path/to/patch.diff
+```
+
+Constraints checked by the gates:
+
+- The diff must apply cleanly to the pinned baseline.
+- Touched paths must satisfy the campaign's allowed and denied path globs.
+- No absolute paths, no `..` traversal, no symlink or binary changes.
+- Keep the patch small and reviewable. One change per submission.
+
+## 2. Commit on-chain
+
+Run the miner CLI from the Pareton repo:
+
+```bash
+python -m miner.commit_patch \
+  --campaign-id <uuid> \
+  --patch /path/to/patch.diff \
+  --api-base https://api.pareton.ai \
+  --wallet-name <coldkey_name> \
+  --wallet-hotkey <hotkey_name>
+```
+
+The CLI does four things:
+
+1. Requests a Pareton-presigned S3 upload URL bound to your hotkey.
+2. PUTs the patch bytes to that URL.
+3. Writes a plaintext `Commitments.set_commitment` record on subnet 10 containing the campaign, baseline commit, patch hash, and artifact URL.
+4. Polls the chain until the commitment is visible and prints the block it landed at.
+
+### Dry-run first
+
+Add `--dry-run` to print the exact on-chain payload without submitting:
+
+```bash
+python -m miner.commit_patch ... --dry-run
+```
+
+The dry-run applies the same size guard as a live submit, so an oversized payload fails here instead of on-chain.
+
+## 3. Track the result
+
+Open the campaign page on the [dashboard](/dashboard). Your submission appears within one scan cycle and walks the states listed in the [overview](/docs/miner). If it rejects, the event log names the failed gate.
+
+## Rules that cost you a submission if ignored
+
+- **Use the presigned upload.** Self-hosted artifact URLs are rejected unless they are on the allowlist and carry your own hotkey in the path. A URL pointing at another hotkey's artifact is rejected at ingest and at the integrity gate.
+- **Do not resubmit identical bytes.** The patch hash is the dedupe key. Change the content to get a new slot.
+- **Do not use `--timelock`.** The flag exists for reproduction only; finney's timelock reveal path has produced no reveals, so sealed commitments never become visible.
