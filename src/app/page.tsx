@@ -1,6 +1,9 @@
+import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { IsoDiagram } from "@/components/iso-diagram";
 import { HowItWorks } from "@/components/how-it-works";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { monoLinkClassName } from "@/components/ui/mono-link";
 import { siteContent } from "@/lib/site-content";
 
 const { facts } = siteContent;
@@ -11,7 +14,7 @@ const links = siteContent.links.filter((link) => link.label !== "Contact");
 function withEmphasis(
   text: string,
   mark: string,
-  wrap: (part: string) => React.ReactNode
+  wrap: (part: string) => ReactNode
 ) {
   const at = text.indexOf(mark);
   if (at === -1) return text;
@@ -37,7 +40,7 @@ export default function Home() {
               {...(link.href.startsWith("http")
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className="font-mono text-[13px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
+              className={monoLinkClassName()}
             >
               {link.label}
             </a>
@@ -49,13 +52,13 @@ export default function Home() {
         {/* Hero */}
         <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-16 px-6 py-20 sm:px-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-28">
           <div>
-            <p className="mb-6 font-mono text-[13px] uppercase tracking-[0.18em] text-accent">
+            <Eyebrow className="mb-6" tone="accent">
               {siteContent.eyebrow}
-            </p>
-            <h1 className="text-[clamp(2.1rem,4.5vw,3.1rem)] font-medium leading-[1.12] tracking-[-0.03em] text-foreground">
+            </Eyebrow>
+            <h1 className="text-display-hero font-medium leading-display tracking-tight text-foreground">
               {siteContent.title}
             </h1>
-            <p className="mt-6 max-w-md text-[15px] leading-[1.7] text-secondary">
+            <p className="mt-6 max-w-md text-ui leading-relaxed text-secondary">
               {withEmphasis(
                 siteContent.heroDescription,
                 siteContent.heroEmphasis,
@@ -64,9 +67,9 @@ export default function Home() {
                 )
               )}
             </p>
-            <p className="mt-8 font-mono text-[13px] uppercase tracking-[0.14em] text-muted">
+            <Eyebrow className="mt-8" tone="muted">
               {siteContent.buildStatus}
-            </p>
+            </Eyebrow>
           </div>
 
           <IsoDiagram className="mx-auto w-full max-w-xl" />
@@ -80,13 +83,13 @@ export default function Home() {
           <div className="mx-auto grid w-full max-w-6xl grid-cols-1 divide-y divide-border sm:px-12 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
             {facts.map((fact) => (
               <div key={fact.index} className="px-6 py-12 lg:px-10">
-                <p className="font-mono text-[13px] tracking-[0.14em] text-muted">
+                <p className="font-mono text-body tracking-caps text-muted">
                   {fact.index}
                 </p>
-                <h2 className="mt-4 text-[16px] font-medium tracking-[-0.01em] text-foreground">
+                <h2 className="mt-4 text-ui font-medium tracking-tight text-foreground">
                   {fact.title}
                 </h2>
-                <p className="mt-3 text-[13.5px] leading-[1.7] text-secondary">
+                <p className="mt-3 text-body-lg leading-relaxed text-secondary">
                   {fact.body}
                 </p>
               </div>
@@ -97,7 +100,7 @@ export default function Home() {
         {/* Positioning statement */}
         <section className="border-t border-border">
           <div className="mx-auto w-full max-w-6xl px-6 py-20 sm:px-12">
-            <p className="max-w-2xl text-[clamp(1.15rem,2.2vw,1.5rem)] font-normal leading-[1.5] tracking-[-0.015em] text-foreground">
+            <p className="max-w-2xl text-display-lede font-normal leading-normal tracking-tight text-foreground">
               {withEmphasis(
                 siteContent.positioning,
                 siteContent.positioningEmphasis,
@@ -112,12 +115,12 @@ export default function Home() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-12">
-          <p className="font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
+          <Eyebrow tone="muted">
             © {new Date().getFullYear()} {siteContent.name}
-          </p>
-          <p className="hidden font-mono text-[13px] uppercase tracking-[0.12em] text-muted sm:block">
+          </Eyebrow>
+          <Eyebrow className="hidden sm:block" tone="muted">
             {siteContent.tagline}
-          </p>
+          </Eyebrow>
         </div>
       </footer>
     </div>

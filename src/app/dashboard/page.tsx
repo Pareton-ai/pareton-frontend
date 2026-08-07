@@ -14,7 +14,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-10">
       <header>
-        <h1 className="text-[clamp(1.6rem,3vw,2.1rem)] font-medium tracking-[-0.03em] text-foreground">
+        <h1 className="text-display-section font-medium tracking-tight text-foreground">
           Campaigns
         </h1>
       </header>

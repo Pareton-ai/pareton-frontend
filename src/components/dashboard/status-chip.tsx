@@ -19,7 +19,7 @@ export function CampaignStatusChip({ status }: { status: CampaignStatus }) {
     status === "open" ? "progress" : status === "closed" ? "neutral" : "warn";
   return (
     <span
-      className={`inline-flex border px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.14em] ${toneClass[tone]}`}
+      className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass[tone]}`}
     >
       {status}
     </span>
@@ -30,7 +30,7 @@ export function PipelineChip({ state }: { state: SubmissionState | string }) {
   const meta = getSubmissionStateMeta(state);
   return (
     <span
-      className={`inline-flex border px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] ${toneClass[meta.tone]}`}
+      className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass[meta.tone]}`}
       title={meta.description}
     >
       {meta.label}
@@ -41,11 +41,11 @@ export function PipelineChip({ state }: { state: SubmissionState | string }) {
 export function BenchVerdictChip({ verdict }: { verdict: BenchVerdict }) {
   const meta = getBenchVerdictMeta(verdict);
   if (!meta) {
-    return <span className="font-mono text-[12px] text-muted">—</span>;
+    return <span className="font-mono text-body-sm text-muted">—</span>;
   }
   return (
     <span
-      className={`inline-flex border px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] ${toneClass[meta.tone]}`}
+      className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass[meta.tone]}`}
     >
       {meta.label}
     </span>

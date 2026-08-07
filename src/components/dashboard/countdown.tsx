@@ -33,7 +33,7 @@ export function Countdown({ closesAt, className = "" }: CountdownProps) {
   }, [closesAt]);
 
   return (
-    <span className={`font-mono text-[13px] tracking-[0.04em] ${className}`}>
+    <span className={`font-mono text-body tracking-wider ${className}`}>
       {label}
     </span>
   );

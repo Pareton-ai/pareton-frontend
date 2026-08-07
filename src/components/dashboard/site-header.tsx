@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { monoLinkClassName } from "@/components/ui/mono-link";
 
 const nav = [
   { label: "Dashboard", href: "/dashboard" },
@@ -30,11 +31,9 @@ export function SiteHeader({
               {...(external
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className={`font-mono text-[13px] uppercase tracking-[0.12em] transition-colors ${
-                isActive
-                  ? "text-foreground"
-                  : "text-muted hover:text-foreground"
-              }`}
+              className={monoLinkClassName({
+                tone: isActive ? "foreground" : "muted",
+              })}
             >
               {link.label}
             </Link>

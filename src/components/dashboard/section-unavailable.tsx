@@ -1,3 +1,5 @@
+import { Eyebrow } from "@/components/ui/eyebrow";
+
 type SectionUnavailableProps = {
   title?: string;
   message?: string;
@@ -9,10 +11,10 @@ export function SectionUnavailable({
 }: SectionUnavailableProps) {
   return (
     <div className="border border-border px-5 py-8">
-      <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-rust">
+      <Eyebrow size="sm" tone="rust">
         {title}
-      </p>
-      <p className="mt-3 max-w-xl text-[13.5px] leading-[1.7] text-secondary">
+      </Eyebrow>
+      <p className="mt-3 max-w-xl text-body-lg leading-relaxed text-secondary">
         {message}
       </p>
     </div>

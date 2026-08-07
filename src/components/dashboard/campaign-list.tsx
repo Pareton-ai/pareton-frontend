@@ -19,20 +19,20 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-3">
           <CampaignStatusChip status={campaign.status} />
-          <span className="font-mono text-[12px] text-muted">
+          <span className="font-mono text-body-sm text-muted">
             {truncateMiddle(campaign.campaign_id, 8, 6)}
           </span>
         </div>
-        <p className="mt-3 truncate text-[15px] font-medium tracking-[-0.015em] text-foreground">
+        <p className="mt-3 truncate text-ui font-medium tracking-tight text-foreground">
           {model}
           <span className="text-muted"> @{revision}</span>
         </p>
-        <p className="mt-2 font-mono text-[12px] text-secondary">
+        <p className="mt-2 font-mono text-body-sm text-secondary">
           {campaign.gpu_skus.join(" · ") || "—"}
         </p>
       </div>
 
-      <div className="min-w-0 space-y-1.5 font-mono text-[12px] text-secondary">
+      <div className="min-w-0 space-y-1.5 font-mono text-body-sm text-secondary">
         <p>
           <span className="text-muted">Opens </span>
           {formatUtc(campaign.window.opens_at)}
@@ -49,9 +49,11 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
 
       <div className="flex items-center justify-between gap-6 sm:flex-col sm:items-end sm:justify-center">
         {campaign.status === "open" ? (
+          // Render-time window check for the public dashboard snapshot.
+          // eslint-disable-next-line react-hooks/purity -- Date.now is the open/closed boundary
           new Date(campaign.window.closes_at).getTime() > Date.now() ? (
             <div className="text-right">
-              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+              <p className="font-mono text-caption uppercase tracking-caps text-muted">
                 Remaining
               </p>
               <Countdown
@@ -60,20 +62,20 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
               />
             </div>
           ) : (
-            <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
+            <p className="font-mono text-body-sm uppercase tracking-caps text-muted">
               Closing
             </p>
           )
         ) : campaign.status === "draft" ? (
-          <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
+          <p className="font-mono text-body-sm uppercase tracking-caps text-muted">
             Not opened
           </p>
         ) : (
-          <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted">
+          <p className="font-mono text-body-sm uppercase tracking-caps text-muted">
             Window ended
           </p>
         )}
-        <span className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted transition-colors group-hover:text-foreground">
+        <span className="font-mono text-body-sm uppercase tracking-caps text-muted transition-colors group-hover:text-foreground">
           View →
         </span>
       </div>
@@ -84,10 +86,10 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
 function EmptyCampaigns() {
   return (
     <div className="border border-border px-5 py-14 text-center sm:px-6">
-      <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent">
+      <p className="font-mono text-body-sm uppercase tracking-caps text-accent">
         No campaigns
       </p>
-      <p className="mx-auto mt-4 max-w-md text-[14px] leading-[1.7] text-secondary">
+      <p className="mx-auto mt-4 max-w-md text-body-lg leading-relaxed text-secondary">
         There are no campaigns to list yet. When a campaign opens, it will
         appear here with its model, GPU SKUs, and window.
       </p>
