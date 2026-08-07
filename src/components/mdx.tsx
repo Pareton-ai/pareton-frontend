@@ -11,6 +11,5 @@ export function getMDXComponents(components?: MDXComponents) {
 export const useMDXComponents = getMDXComponents;
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- MDX ambient
   type MDXProvidedComponents = ReturnType<typeof getMDXComponents>;
 }

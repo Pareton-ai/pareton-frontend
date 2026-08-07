@@ -63,6 +63,39 @@ npm run api:types  # regenerate src/lib/api/schema.d.ts from OpenAPI
 - Types: generated OpenAPI in `schema.d.ts` + hand-narrowed domain models in `types.ts`.
 - When the backend schema changes, run `npm run api:types` and commit the diff.
 
+## Frontend standards (typography)
+
+Colors and spacing already use semantic tokens in `src/app/globals.css`. Prefer those over raw values.
+
+**Type scale.** The scale is deliberately small: six UI sizes, three fluid display sizes, one mono tracking, one display line height. Everything else uses stock Tailwind. Do not add arbitrary `text-[…]` / `tracking-[…]` / `leading-[…]` values in `src/`. ESLint enforces this.
+
+| Token | Value | Use |
+| ----- | ----- | --- |
+| `text-caption` | 11px | Dense table and chip labels |
+| `text-body-sm` | 12px | Secondary metadata |
+| `text-body` | 13px | Default UI text |
+| `text-body-lg` | 14px | Emphasized body copy |
+| `text-ui` | 16px | Card and row titles |
+| `text-title` | 18px | Subsection headings |
+| `text-display-lede` | `clamp(1.15rem, 2.2vw, 1.5rem)` | Lede paragraphs |
+| `text-display-section` | `clamp(1.5rem, 2.8vw, 2rem)` | Section and page headings |
+| `text-display-hero` | `clamp(2.1rem, 4.5vw, 3.1rem)` | Landing hero only |
+| `tracking-caps` | 0.14em | Mono uppercase labels |
+| `leading-display` | 1.12 | Hero heading only |
+
+Custom tokens exist only where stock Tailwind cannot express the design. Stock sizes are 12/14/16px and do not fit this 11/12/13px rhythm, and stock tracking stops at 0.1em. For everything else use stock utilities: `tracking-tight` for heading tightening, and `leading-tight` / `leading-normal` / `leading-relaxed` for line height.
+
+**Shared primitives.** Prefer these over copy-pasted class recipes:
+
+| Primitive | File | Use |
+| --------- | ---- | --- |
+| `Eyebrow` | `src/components/ui/eyebrow.tsx` | Mono uppercase labels |
+| `monoLinkClassName` | `src/components/ui/mono-link.tsx` | Nav and CTA mono links |
+| `SectionHeader` | `src/components/ui/section-header.tsx` | Accent eyebrow plus display title |
+| `EmptyState` | `src/components/ui/empty-state.tsx` | Dashboard empty / error shell |
+
+Before you add a token, try to reuse an existing step. Add a named token in `globals.css` only when no step fits, and never for a value that differs from a neighbour by less than 1px or 0.02em. Extract a primitive when the same class recipe appears in more than two places.
+
 Subnet backend and worker live in [pareton](https://github.com/Pareton-ai/pareton).
 
 ## License

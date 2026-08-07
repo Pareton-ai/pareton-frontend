@@ -30,10 +30,10 @@ export function CopyableMono({
       type="button"
       onClick={onCopy}
       title={copied ? "Copied" : `Copy ${value}`}
-      className={`group inline-flex max-w-full items-center gap-2 font-mono text-[12px] tracking-[-0.01em] text-secondary transition-colors hover:text-foreground ${className}`}
+      className={`group inline-flex max-w-full items-center gap-2 font-mono text-body-sm tracking-tight text-secondary transition-colors hover:text-foreground ${className}`}
     >
       <span className="truncate">{display ?? value}</span>
-      <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span className="shrink-0 text-caption uppercase tracking-caps text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
         {copied ? "copied" : "copy"}
       </span>
     </button>

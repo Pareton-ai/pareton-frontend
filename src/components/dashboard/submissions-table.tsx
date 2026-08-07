@@ -37,10 +37,10 @@ function EmptySubmissions({ status }: { status: CampaignStatus }) {
 
   return (
     <section className="border border-border px-5 py-14 text-center sm:px-6">
-      <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent">
+      <p className="font-mono text-body-sm uppercase tracking-caps text-accent">
         {copy.title}
       </p>
-      <p className="mx-auto mt-4 max-w-lg text-[14px] leading-[1.7] text-secondary">
+      <p className="mx-auto mt-4 max-w-lg text-body-lg leading-relaxed text-secondary">
         {copy.body}
       </p>
     </section>
@@ -63,10 +63,10 @@ function SubmissionsTableView({
   return (
     <section aria-label="Submissions" className="border border-border">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
-        <h2 className="font-mono text-[12px] uppercase tracking-[0.16em] text-muted">
+        <h2 className="font-mono text-body-sm uppercase tracking-caps text-muted">
           Submissions
         </h2>
-        <p className="font-mono text-[12px] text-muted">
+        <p className="font-mono text-body-sm text-muted">
           {showingFrom}–{showingTo} of {data.total}
         </p>
       </div>
@@ -74,7 +74,7 @@ function SubmissionsTableView({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left">
           <thead>
-            <tr className="border-b border-border font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+            <tr className="border-b border-border font-mono text-caption uppercase tracking-caps text-muted">
               <th className="px-5 py-3 font-normal sm:px-6">Hotkey</th>
               <th className="px-3 py-3 font-normal">Patch</th>
               <th className="px-3 py-3 font-normal">Submitted</th>
@@ -88,13 +88,13 @@ function SubmissionsTableView({
                 key={row.patch_hash}
                 className="border-t border-border/80 transition-colors hover:bg-accent-dim/30"
               >
-                <td className="px-5 py-3.5 font-mono text-[12px] text-secondary sm:px-6">
+                <td className="px-5 py-3.5 font-mono text-body-sm text-secondary sm:px-6">
                   {truncateMiddle(row.hotkey, 8, 6)}
                 </td>
-                <td className="px-3 py-3.5 font-mono text-[12px] text-secondary">
+                <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
                   {truncateHash(row.patch_hash)}
                 </td>
-                <td className="px-3 py-3.5 font-mono text-[12px] text-secondary">
+                <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
                   {formatUtc(row.submitted_at)}
                 </td>
                 <td className="px-3 py-3.5">
@@ -114,20 +114,20 @@ function SubmissionsTableView({
           {page > 1 ? (
             <Link
               href={`/dashboard/campaigns/${campaignId}?page=${page - 1}`}
-              className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
+              className="font-mono text-body-sm uppercase tracking-caps text-muted transition-colors hover:text-foreground"
             >
               ← Prev
             </Link>
           ) : (
             <span />
           )}
-          <p className="font-mono text-[12px] text-muted">
+          <p className="font-mono text-body-sm text-muted">
             Page {page} / {totalPages}
           </p>
           {page < totalPages ? (
             <Link
               href={`/dashboard/campaigns/${campaignId}?page=${page + 1}`}
-              className="font-mono text-[12px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
+              className="font-mono text-body-sm uppercase tracking-caps text-muted transition-colors hover:text-foreground"
             >
               Next →
             </Link>

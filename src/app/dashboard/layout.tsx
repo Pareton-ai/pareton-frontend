@@ -20,10 +20,10 @@ export default function DashboardLayout({
       </main>
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-12">
-          <p className="font-mono text-[13px] uppercase tracking-[0.12em] text-muted">
+          <p className="font-mono text-body uppercase tracking-caps text-muted">
             © {new Date().getFullYear()} Pareton
           </p>
-          <p className="hidden font-mono text-[13px] uppercase tracking-[0.12em] text-muted sm:block">
+          <p className="hidden font-mono text-body uppercase tracking-caps text-muted sm:block">
             Pushing the pareto frontier of inference
           </p>
         </div>

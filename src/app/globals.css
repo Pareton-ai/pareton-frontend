@@ -28,6 +28,25 @@
   --color-rust: var(--rust);
   --font-sans: var(--font-inter), system-ui, "Helvetica Neue", sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+
+  /* Product type scale: six UI steps plus three fluid display sizes.
+     Stock Tailwind sizes are 12/14/16px, which do not fit this 11/12/13 rhythm. */
+  --text-caption: 11px;
+  --text-body-sm: 12px;
+  --text-body: 13px;
+  --text-body-lg: 14px;
+  --text-ui: 16px;
+  --text-title: 18px;
+  --text-display-lede: clamp(1.15rem, 2.2vw, 1.5rem);
+  --text-display-section: clamp(1.5rem, 2.8vw, 2rem);
+  --text-display-hero: clamp(2.1rem, 4.5vw, 3.1rem);
+
+  /* Mono caps spread. Stock tracking stops at 0.1em, so this stays custom.
+     Tighten headings with stock `tracking-tight`. */
+  --tracking-caps: 0.14em;
+
+  /* Display headings only. Body copy uses stock `leading-normal` / `leading-relaxed`. */
+  --leading-display: 1.12;
 }
 
 html {

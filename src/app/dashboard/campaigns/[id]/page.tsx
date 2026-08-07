@@ -87,7 +87,7 @@ export default async function CampaignPage({
     <div className="space-y-8">
       <Link
         href="/dashboard"
-        className="inline-flex font-mono text-[12px] uppercase tracking-[0.14em] text-muted transition-colors hover:text-foreground"
+        className="inline-flex font-mono text-body-sm uppercase tracking-caps text-muted transition-colors hover:text-foreground"
       >
         ← All campaigns
       </Link>
