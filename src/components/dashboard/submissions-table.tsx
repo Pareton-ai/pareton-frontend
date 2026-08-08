@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import {
   BenchVerdictChip,
   PipelineChip,
@@ -92,7 +93,10 @@ function SubmissionsTableView({
                   {truncateMiddle(row.hotkey, 8, 6)}
                 </td>
                 <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
-                  {truncateHash(row.patch_hash)}
+                  <CopyableMono
+                    value={row.patch_hash}
+                    display={truncateHash(row.patch_hash)}
+                  />
                 </td>
                 <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
                   {formatUtc(row.submitted_at)}
