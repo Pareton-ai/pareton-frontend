@@ -7,21 +7,21 @@ Each submission moves through a fixed set of stages. The durable record lives in
 
 ## Happy path
 
-| Stage | State | Emitted when |
-| --- | --- | --- |
-| Submitted | `committed` | Watcher ingests the on-chain commitment |
-| Picked up | `picked_up` | Worker claims the gates job |
-| Fetched | `fetched` | Patch artifact pulled from object storage |
-| Verified | `verified` | Integrity gate passed (hash, allowlist, hotkey bind) |
-| Applied | `applied` | Patch applies onto the pinned baseline |
-| Surface OK | `surface_ok` | Public surface compatibility holds |
-| Building | `building` | Hermetic docker build started |
-| Image pushed | `image_pushed` | Engine image pushed to GHCR (ref + digest) |
-| Built | `built` | Build complete; digest-pinned ref recorded |
-| Bench queued | `bench_queued` | Bench job row inserted |
-| Correct | `correct` | Correctness gate passed vs baseline |
-| Screened | `screened` | Performance screen cleared |
-| Benched | `benched` | Full benchmark complete; verdict available |
+| Stage        | State          | Emitted when                                         |
+| ------------ | -------------- | ---------------------------------------------------- |
+| Submitted    | `committed`    | Watcher ingests the on-chain commitment              |
+| Picked up    | `picked_up`    | Worker claims the gates job                          |
+| Fetched      | `fetched`      | Patch artifact pulled from object storage            |
+| Verified     | `verified`     | Integrity gate passed (hash, allowlist, hotkey bind) |
+| Applied      | `applied`      | Patch applies onto the pinned baseline               |
+| Surface OK   | `surface_ok`   | Public surface compatibility holds                   |
+| Building     | `building`     | Hermetic docker build started                        |
+| Image pushed | `image_pushed` | Engine image pushed to GHCR (ref + digest)           |
+| Built        | `built`        | Build complete; digest-pinned ref recorded           |
+| Bench queued | `bench_queued` | Bench job row inserted                               |
+| Correct      | `correct`      | Correctness gate passed vs baseline                  |
+| Screened     | `screened`     | Performance screen cleared                           |
+| Benched      | `benched`      | Full benchmark complete; verdict available           |
 
 ## Terminal failure
 

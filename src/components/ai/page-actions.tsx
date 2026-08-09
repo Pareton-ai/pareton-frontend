@@ -1,12 +1,18 @@
-'use client';
-import { type ComponentProps, useMemo, useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLinkIcon, TextIcon } from 'lucide-react';
-import { cn } from '../../lib/cn';
-import { useCopyButton } from '@fumadocs/base-ui/utils/use-copy-button';
-import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
-import { buttonVariants } from '../ui/button';
-import { usePathname } from 'fumadocs-core/framework';
-import { useTranslations } from '@fuma-translate/react';
+"use client";
+import { type ComponentProps, useMemo, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  ExternalLinkIcon,
+  TextIcon,
+} from "lucide-react";
+import { cn } from "../../lib/cn";
+import { useCopyButton } from "@fumadocs/base-ui/utils/use-copy-button";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { buttonVariants } from "../ui/button";
+import { usePathname } from "fumadocs-core/framework";
+import { useTranslations } from "@fuma-translate/react";
 
 const cache = new Map<string, Promise<string>>();
 
@@ -16,13 +22,13 @@ const cache = new Map<string, Promise<string>>();
 export function MarkdownCopyButton({
   markdownUrl,
   ...props
-}: ComponentProps<'button'> & {
+}: ComponentProps<"button"> & {
   /**
    * A URL to fetch the raw Markdown/MDX content of page
    */
   markdownUrl: string;
 }) {
-  const t = useTranslations({ note: 'page actions' });
+  const t = useTranslations({ note: "page actions" });
   const [isLoading, setLoading] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
     const cached = cache.get(markdownUrl);
@@ -32,13 +38,14 @@ export function MarkdownCopyButton({
 
     try {
       const promise = fetch(withBasePath(markdownUrl)).then((res) => {
-        if (!res.ok) throw new Error(`Failed to fetch markdown (${res.status})`);
+        if (!res.ok)
+          throw new Error(`Failed to fetch markdown (${res.status})`);
         return res.text();
       });
       cache.set(markdownUrl, promise);
       await navigator.clipboard.write([
         new ClipboardItem({
-          'text/plain': promise,
+          "text/plain": promise,
         }),
       ]);
     } catch (error) {
@@ -56,15 +63,15 @@ export function MarkdownCopyButton({
       {...props}
       className={cn(
         buttonVariants({
-          color: 'secondary',
-          size: 'sm',
-          className: 'gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground',
+          color: "secondary",
+          size: "sm",
+          className: "gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground",
         }),
-        props.className,
+        props.className
       )}
     >
       {checked ? <Check /> : <Copy />}
-      {props.children ?? t('Copy Markdown')}
+      {props.children ?? t("Copy Markdown")}
     </button>
   );
 }
@@ -87,17 +94,19 @@ export function ViewOptionsPopover({
   githubUrl?: string;
 }) {
   const pathname = usePathname();
-  const t = useTranslations({ note: 'page actions' });
+  const t = useTranslations({ note: "page actions" });
   const items = useMemo(() => {
     const pageUrl =
-      typeof window === 'undefined' ? pathname : new URL(pathname, window.location.origin);
-    const q = t('Read {url}, I want to ask questions about it.', {
+      typeof window === "undefined"
+        ? pathname
+        : new URL(pathname, window.location.origin);
+    const q = t("Read {url}, I want to ask questions about it.", {
       variables: { url: String(pageUrl) },
     });
 
     return [
       githubUrl && {
-        title: t('Open in GitHub'),
+        title: t("Open in GitHub"),
         href: githubUrl,
         icon: (
           <svg fill="currentColor" role="img" viewBox="0 0 24 24">
@@ -107,12 +116,12 @@ export function ViewOptionsPopover({
         ),
       },
       markdownUrl && {
-        title: t('View as Markdown'),
+        title: t("View as Markdown"),
         href: withBasePath(markdownUrl),
         icon: <TextIcon />,
       },
       {
-        title: t('Open in Scira AI'),
+        title: t("Open in Scira AI"),
         href: `https://scira.ai/?${new URLSearchParams({
           q,
         })}`,
@@ -176,10 +185,10 @@ export function ViewOptionsPopover({
         ),
       },
       {
-        title: t('Open in ChatGPT'),
+        title: t("Open in ChatGPT"),
         href: `https://chatgpt.com/?${new URLSearchParams({
           prompt: q,
-          hints: 'search',
+          hints: "search",
         })}`,
         icon: (
           <svg
@@ -194,7 +203,7 @@ export function ViewOptionsPopover({
         ),
       },
       {
-        title: t('Open in Claude'),
+        title: t("Open in Claude"),
         href: `https://claude.ai/new?${new URLSearchParams({
           q,
         })}`,
@@ -211,7 +220,7 @@ export function ViewOptionsPopover({
         ),
       },
       {
-        title: t('Open in Cursor'),
+        title: t("Open in Cursor"),
         icon: (
           <svg
             fill="currentColor"
@@ -237,15 +246,17 @@ export function ViewOptionsPopover({
         className={(state) =>
           cn(
             buttonVariants({
-              color: 'secondary',
-              size: 'sm',
+              color: "secondary",
+              size: "sm",
             }),
-            'gap-2 data-[popup-open]:bg-fd-accent data-[popup-open]:text-fd-accent-foreground',
-            typeof props.className === 'function' ? props.className(state) : props.className,
+            "gap-2 data-[popup-open]:bg-fd-accent data-[popup-open]:text-fd-accent-foreground",
+            typeof props.className === "function"
+              ? props.className(state)
+              : props.className
           )
         }
       >
-        {props.children ?? t('Open')}
+        {props.children ?? t("Open")}
         <ChevronDown className="size-3.5 text-fd-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="flex flex-col">
@@ -269,13 +280,14 @@ export function ViewOptionsPopover({
 
 function withBasePath(href: string) {
   // ignore external
-  if (href.match(/^\w+:/) || href.startsWith('//')) return href;
+  if (href.match(/^\w+:/) || href.startsWith("//")) return href;
 
   const basePath =
     // @ts-expect-error -- vite env
-    typeof import.meta.env !== 'undefined' && typeof import.meta.env.BASE_URL === 'string'
+    typeof import.meta.env !== "undefined" &&
+    typeof import.meta.env.BASE_URL === "string"
       ? // @ts-expect-error -- vite env
-        import.meta.env.BASE_URL.replace(/\/$/, '')
-      : '';
+        import.meta.env.BASE_URL.replace(/\/$/, "")
+      : "";
   return basePath + href;
 }

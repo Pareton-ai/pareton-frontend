@@ -15,9 +15,7 @@ function buildHomeMarkdown(): string {
     })
     .join("\n");
 
-  const facts = c.facts
-    .map((f) => `- **${f.title}.** ${f.body}`)
-    .join("\n");
+  const facts = c.facts.map((f) => `- **${f.title}.** ${f.body}`).join("\n");
 
   const links = c.links
     .map((l) => `- ${l.label}: ${l.href.replace(/^mailto:/, "")}`)
