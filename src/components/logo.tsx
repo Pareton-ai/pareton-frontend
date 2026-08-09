@@ -8,12 +8,20 @@ export function Logo({ className = "" }: LogoProps) {
   return (
     <span className={`flex items-center ${className}`}>
       <Image
-        src="/logo-text.png"
+        src="/logo.png"
         alt="Pareton"
+        width={512}
+        height={512}
+        priority
+        className="h-8 w-8 rounded-[5px] sm:hidden"
+      />
+      <Image
+        src="/logo-text.png"
+        alt=""
         width={2784}
         height={750}
         priority
-        className="h-8 w-auto"
+        className="hidden h-8 w-auto sm:block"
       />
     </span>
   );
