@@ -17,7 +17,7 @@ export function Logo({ className = "" }: LogoProps) {
       />
       <Image
         src="/logo-text.png"
-        alt=""
+        alt="Pareton"
         width={2784}
         height={750}
         priority
