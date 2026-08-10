@@ -21,22 +21,6 @@ const BUILD_LOG_REVALIDATE = 10;
 /** Server-side cap from api/server.py. */
 export const BUILD_LOG_MAX_TAIL = 2000;
 
-/**
- * Scope a submission read to its campaign.
- *
- * `patch_hash` is only UNIQUE (campaign_id, patch_hash); the bare
- * `/v1/submissions/{patch_hash}` route returns 409 once the same patch lands
- * in two campaigns.
- */
-export type SubmissionScope = { campaignId?: string };
-
-function submissionPath(patchHash: string, scope?: SubmissionScope): string {
-  const hash = encodeURIComponent(patchHash);
-  return scope?.campaignId
-    ? `/v1/campaigns/${encodeURIComponent(scope.campaignId)}/submissions/${hash}`
-    : `/v1/submissions/${hash}`;
-}
-
 export async function getCampaigns(opts?: {
   status?: CampaignStatus | string;
 }): Promise<Campaign[]> {
@@ -80,28 +64,52 @@ export async function getCampaignSubmissions(
   });
 }
 
+/**
+ * Campaign-scoped submission detail.
+ *
+ * `patch_hash` is only unique with `campaign_id` (UNIQUE pair in the DB), so
+ * callers must pass both. Prefer this over the bare-hash API, which 409s when
+ * the same hash appears in more than one campaign.
+ */
 export async function getSubmission(
-  patchHash: string,
-  scope?: SubmissionScope
+  campaignId: string,
+  patchHash: string
 ): Promise<SubmissionDetail> {
-  const data = await apiFetch<unknown>(submissionPath(patchHash, scope), {
-    revalidate: SHORT_REVALIDATE,
-    tags: ["submissions", `submission:${patchHash}`],
-  });
+  const data = await apiFetch<unknown>(
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`,
+    {
+      revalidate: SHORT_REVALIDATE,
+      tags: [
+        "submissions",
+        `submission:${campaignId}:${patchHash}`,
+        `campaign-submissions:${campaignId}`,
+      ],
+    }
+  );
   return parseSubmissionDetail(data);
 }
 
-/** Tail of the durable build log. 404 means the build hasn't written one yet. */
+/**
+ * Tail of the durable build log, as plain text.
+ *
+ * The log lives on the worker host's disk, so a submission that has not
+ * reached the build phase (or a build whose log was never written) returns
+ * 404. Callers should treat that as "nothing yet" rather than an error.
+ */
 export async function getSubmissionBuildLog(
+  campaignId: string,
   patchHash: string,
-  opts?: { tail?: number } & SubmissionScope
+  opts?: { tail?: number }
 ): Promise<string> {
   const tail = Math.min(Math.max(opts?.tail ?? 200, 1), BUILD_LOG_MAX_TAIL);
-  return await apiFetchText(`${submissionPath(patchHash, opts)}/build-log`, {
-    revalidate: BUILD_LOG_REVALIDATE,
-    tags: [`submission-build-log:${patchHash}`],
-    searchParams: { tail },
-  });
+  return await apiFetchText(
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/build-log`,
+    {
+      revalidate: BUILD_LOG_REVALIDATE,
+      tags: [`submission-build-log:${campaignId}:${patchHash}`],
+      searchParams: { tail },
+    }
+  );
 }
 
 export type { CampaignsResponse };

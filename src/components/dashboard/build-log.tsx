@@ -15,6 +15,7 @@ type BuildLogResponse = {
   available?: boolean;
   text?: string;
   error?: string;
+  live?: boolean;
 };
 
 /**
@@ -22,16 +23,20 @@ type BuildLogResponse = {
  *
  * Builds run for over an hour, so this polls while the submission is still
  * moving. Terminal submissions fetch once. The request goes to our own route
- * handler, which proxies the API host server-side.
+ * handler, which proxies the API host server-side and reports whether the
+ * submission is still live so polling can stop without a reload.
  */
 export function BuildLog({
+  campaignId,
   patchHash,
-  live,
+  live: initialLive,
 }: {
+  campaignId: string;
   patchHash: string;
   live: boolean;
 }) {
   const [state, setState] = useState<LogState>({ kind: "loading" });
+  const [live, setLive] = useState(initialLive);
   const [paused, setPaused] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const preRef = useRef<HTMLPreElement>(null);
@@ -43,10 +48,14 @@ export function BuildLog({
     async function load() {
       try {
         const response = await fetch(
-          `/api/submissions/${encodeURIComponent(patchHash)}/build-log?tail=${TAIL_LINES}`,
+          `/api/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/build-log?tail=${TAIL_LINES}`,
           { signal: controller.signal, cache: "no-store" }
         );
         const body = (await response.json()) as BuildLogResponse;
+
+        if (typeof body.live === "boolean") {
+          setLive(body.live);
+        }
 
         if (!response.ok) {
           setState({
@@ -75,7 +84,7 @@ export function BuildLog({
       controller.abort();
       if (intervalId !== undefined) window.clearInterval(intervalId);
     };
-  }, [patchHash, live, paused, refreshNonce]);
+  }, [campaignId, patchHash, live, paused, refreshNonce]);
 
   // Follow the tail only while the reader has not scrolled up to read history.
   useEffect(() => {
@@ -131,7 +140,7 @@ export function BuildLog({
           <button
             type="button"
             onClick={() => setRefreshNonce((value) => value + 1)}
-            className="font-mono text-caption uppercase tracking-caps text-accent transition-colors hover:text-foreground"
+            className="cursor-pointer font-mono text-caption uppercase tracking-caps text-accent transition-colors hover:text-foreground"
           >
             Refresh
           </button>

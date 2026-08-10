@@ -90,11 +90,15 @@ export function SubmissionDetailHeader({
   const active = !isTerminalState(latestState) && !stalled;
 
   const reached = Math.max(
+    stageIndex(latestState),
     ...events.map((event) => stageIndex(event.state)),
     0
   );
   const lastEventAt = events.at(-1)?.created_at ?? submission.committed_at;
   const settledMs = elapsedBetween(submission.committed_at, lastEventAt) ?? 0;
+  // "Running for" must measure to now; settledMs only spans to the last event.
+  const runningMs =
+    elapsedBetween(submission.committed_at, new Date().toISOString()) ?? 0;
 
   return (
     <section className="border border-border">
@@ -121,7 +125,7 @@ export function SubmissionDetailHeader({
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
           <CopyableMono
             value={submission.patch_hash}
-            display="Copy full patch hash"
+            display="Full patch hash"
           />
           <p className="font-mono text-body-sm text-muted">
             {stateMeta.description}
@@ -152,7 +156,7 @@ export function SubmissionDetailHeader({
               {active ? (
                 <LiveElapsed
                   since={submission.committed_at}
-                  initialMs={settledMs}
+                  initialMs={runningMs}
                 />
               ) : (
                 formatDuration(settledMs)

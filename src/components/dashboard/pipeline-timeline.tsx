@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/format";
 import {
   getSubmissionStateMeta,
+  isTerminalState,
   stageIndex,
   SUBMISSION_PHASES,
   type SubmissionEvent,
@@ -162,9 +163,12 @@ function RejectionRow({ event }: { event: SubmissionEvent }) {
 
 export function PipelineTimeline({
   events,
+  latestState,
   stalled = false,
 }: {
   events: SubmissionEvent[];
+  /** API `latest_state`; may run ahead of the event trail. */
+  latestState: string;
   /** Job backing the current stage failed; no further events are coming. */
   stalled?: boolean;
 }) {
@@ -174,9 +178,10 @@ export function PipelineTimeline({
   }
 
   const rejection = firstByState.get("rejected") ?? null;
-  const lastEvent = events.at(-1) ?? null;
-  const currentState =
-    lastEvent && lastEvent.state !== "rejected" ? lastEvent.state : null;
+  // Prefer API latest_state over the last event (it can run ahead).
+  // Terminal states (benched / rejected) are done, not "in progress".
+  const currentState = !isTerminalState(latestState) ? latestState : null;
+  const currentIndex = currentState ? stageIndex(currentState) : -1;
 
   // Deltas use wall-clock order so a skipped state does not inflate them.
   const previousOf = new Map<SubmissionEvent, SubmissionEvent | null>();
@@ -187,15 +192,19 @@ export function PipelineTimeline({
   function toStep(state: string): Step {
     const event = firstByState.get(state) ?? null;
     const previous = event ? (previousOf.get(event) ?? null) : null;
-    const status: StepStatus = event
-      ? state === currentState
+    const index = stageIndex(state);
+    const reachedViaLatest =
+      currentIndex !== -1 && index !== -1 && index < currentIndex;
+    const status: StepStatus =
+      state === currentState
         ? stalled
           ? "stalled"
           : "current"
-        : "done"
-      : rejection || stalled
-        ? "halted"
-        : "pending";
+        : event || reachedViaLatest
+          ? "done"
+          : rejection || stalled
+            ? "halted"
+            : "pending";
     return {
       state,
       status,
