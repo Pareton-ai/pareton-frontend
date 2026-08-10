@@ -112,6 +112,8 @@ export type CampaignsResponse = {
 };
 
 export type SubmissionRow = {
+  /** Submission UUID — secondary support identifier (build logs, Axiom). */
+  id: string;
   patch_hash: string;
   campaign_id: string;
   hotkey: string;
@@ -135,6 +137,8 @@ export type SubmissionEvent = {
 };
 
 export type SubmissionDetail = {
+  /** Submission UUID — secondary support identifier (build logs, Axiom). */
+  id: string;
   patch_hash: string;
   campaign_id: string;
   hotkey: string;
