@@ -1,0 +1,24 @@
+---
+title: Evidence and artifacts
+description: What is saved for each submission, where it is stored, and how to inspect it after the run.
+---
+
+Every submission produces artifacts you can inspect after the run. Nothing is thrown away when the run ends.
+
+## What is saved and where
+
+- **Patch:** uploaded to S3. This is the exact diff bytes the gates and build used.
+- **Engine image:** the built vLLM image, pushed to GHCR and pinned by digest. This is the artifact the benchmark actually ran.
+- **Build log:** the durable output of the hermetic build. Fetched with the build log endpoint (see below).
+- **Bench evidence bundle:** the harness output, saved to S3. It holds the per-stage results and logs for correctness, perf screen, and SLA bench.
+
+## Inspect a run
+
+Use the campaign-scoped path (preferred). The short path returns **409** when the hash is in more than one campaign.
+
+- Timeline, verdict, evidence links:
+  `GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}`
+- Build log, last `N` lines (default 200, max 2000, plain text):
+  `GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}/build-log?tail=N`
+
+Both return **404** when the submission or its log does not exist.
