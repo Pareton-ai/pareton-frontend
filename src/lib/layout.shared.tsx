@@ -1,9 +1,19 @@
+import Image from "next/image";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: "Pareton",
+      title: (
+        <Image
+          src="/logo-text.png"
+          alt="Pareton"
+          width={2784}
+          height={750}
+          priority
+          className="h-6 w-auto"
+        />
+      ),
       url: "/",
     },
     links: [

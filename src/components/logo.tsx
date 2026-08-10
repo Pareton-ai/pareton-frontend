@@ -6,18 +6,23 @@ type LogoProps = {
 
 export function Logo({ className = "" }: LogoProps) {
   return (
-    <span className={`flex items-center gap-2.5 ${className}`}>
+    <span className={`flex items-center ${className}`}>
       <Image
         src="/logo.png"
-        alt=""
-        width={32}
-        height={32}
+        alt="Pareton"
+        width={512}
+        height={512}
         priority
-        className="h-8 w-8 rounded-[5px]"
+        className="h-8 w-8 rounded-[5px] sm:hidden"
       />
-      <span className="hidden text-ui font-semibold tracking-tight text-foreground sm:inline">
-        Pareton
-      </span>
+      <Image
+        src="/logo-text.png"
+        alt="Pareton"
+        width={2784}
+        height={750}
+        priority
+        className="hidden h-8 w-auto sm:block"
+      />
     </span>
   );
 }
