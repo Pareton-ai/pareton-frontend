@@ -1,11 +1,17 @@
 ---
 title: Pipeline stages
-description: The submission state machine, event timeline, and build log drill-down.
+description: How a submission moves from on-chain commit through gates, build, and benchmark to a verdict.
 ---
 
-Each submission moves through a fixed set of stages. The durable record lives in `submission_events` and is served by `GET /v1/submissions/{patch_hash}`. The dashboard pipeline view renders these states in order.
+Each submission moves through a fixed set of stages. Track a submission with
+[`GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}`](https://api.pareton.ai/docs#/default/campaign_submission_detail_v1_campaigns__campaign_id__submissions__patch_hash__get)
+or
+[`GET /v1/submissions/{patch_hash}`](https://api.pareton.ai/docs#/default/submission_detail_v1_submissions__patch_hash__get).
+Prefer the campaign-scoped path. The short path returns **409** when the same
+`patch_hash` exists in more than one campaign. Both return **404** when the
+submission is missing. The dashboard pipeline view renders these stages in order.
 
-## Happy path
+## Stages
 
 | Stage        | State          | Emitted when                                         |
 | ------------ | -------------- | ---------------------------------------------------- |
@@ -23,16 +29,35 @@ Each submission moves through a fixed set of stages. The durable record lives in
 | Screened     | `screened`     | Performance screen cleared                           |
 | Benched      | `benched`      | Full benchmark complete; verdict available           |
 
+- **Miner submit:** Hash goes on-chain (Bittensor). Patch goes to S3. Worker finds it by scanning the chain.
+- **Gates:** Worker picks it up, checks the hash, applies the patch, and confirms it only touches allowed files. That is the provenance check.
+- **Building:** Builds a full vLLM Docker image with the patch applied. Hermetic build: pinned baseline commit, fixed base image, no network during compile. If the patch changes CUDA/kernel code, that compiles inside the image too.
+- **Publish and queue:** Image lands in GHCR, build is marked done, bench job is created.
+- **Rent GPU + SSH:** Worker rents a GPU pod and connects over SSH. If the first provider has no capacity, it tries the next one.
+- **Pull 2 images:** Pod downloads baseline (plain vLLM) and candidate (patched image).
+- **Download the model:** Pod downloads one shared model copy used by both engines.
+- **Compare baseline vs candidate:**
+  1. Correctness: same prompts; outputs must match closely.
+  2. Perf screen: quick check the candidate is not clearly slower.
+  3. SLA bench: full latency run against campaign targets.
+- **Results and score:** Verdict and evidence are saved. On-chain weights and rewards are not wired yet.
+- **Cleanup:** Evidence is pulled back. GPU pod is destroyed.
+
 ## Terminal failure
 
-`rejected` can follow any stage. The `detail` of the rejection event carries `reason` plus a sanitized, size-capped `build_log_tail` for build failures.
+A submission can be rejected after any stage. The rejection detail carries a `reason`. Build failures may also include a sanitized, size-capped build log tail.
 
-## Build log drill-down
+## Build log
 
-`GET /v1/submissions/{patch_hash}/build-log?tail=N` returns the last `N` lines (default 200, max 2000) of the durable build log at `$PARETON_BUILD_LOG_DIR/<submission_id>/build.log`. The response is ANSI/control-stripped `text/plain`. It returns 404 when the submission or its log does not exist (mock builds, or logs written before the durable log dir).
+Fetch the last `N` lines of the durable build log (default 200, max 2000) with
+either endpoint:
 
-## Notes
+- [`GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}/build-log?tail=N`](https://api.pareton.ai/docs#/default/campaign_submission_build_log_v1_campaigns__campaign_id__submissions__patch_hash__build_log_get)
+  — campaign-scoped; prefer this.
+- [`GET /v1/submissions/{patch_hash}/build-log?tail=N`](https://api.pareton.ai/docs#/default/submission_build_log_v1_submissions__patch_hash__build_log_get)
+  — short path; returns **409** when the same `patch_hash` exists in more than
+  one campaign.
 
-- The event log is append-only. A retried job appends a fresh run of states.
-- `bench_queued` only appears for campaigns with a bench spec.
-- `image_pushed` only appears for real (non-mock, pushed) builds.
+The response is ANSI/control-stripped `text/plain`. Both return **404** when
+the submission or its log does not exist (for example mock builds, or a build
+that has not written a log yet).

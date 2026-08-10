@@ -1,0 +1,31 @@
+---
+title: Campaigns
+description: What a campaign pins, how submissions are identified, and the rules for duplicates and windows.
+---
+
+A campaign is one fixed target. Everything about it is frozen before submissions open, so every patch competes on the same terms.
+
+## What a campaign pins
+
+- **Baseline:** the exact git commit and base image the patch must apply to.
+- **Model:** the HF repo, exact revision, dtype, quantization, and max context length.
+- **Hardware:** GPU count and SKU.
+- **Workload:** the fixed set of prompts both engines run.
+- **SLA gates:** the latency limits the customer will not break.
+
+## One submission is one diff
+
+A submission is a single unified git diff against the campaign's pinned baseline commit. One change per submission.
+
+## How a submission is identified
+
+A submission is identified by **campaign + patch hash** together, not by the hash alone.
+
+- `campaign_id`: which campaign the patch targets.
+- `patch_hash`: the SHA-256 of the diff bytes.
+
+The same patch bytes can be submitted to two different campaigns. They are two separate submissions with separate results. This is why the API prefers the campaign-scoped path: the short path `GET /v1/submissions/{patch_hash}` returns **409** when the hash exists in more than one campaign.
+
+## Dedupe rule
+
+The patch hash is the dedupe key. The first valid commitment of a given patch hash in a campaign wins that slot. Later submissions of the same bytes to the same campaign are skipped, including your own.

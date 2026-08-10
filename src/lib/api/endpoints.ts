@@ -161,6 +161,7 @@ function parseSubmissionState(value: unknown): SubmissionState {
 function parseSubmissionRow(value: unknown): SubmissionRow {
   const o = asRecord(value);
   return {
+    id: asString(o.id),
     patch_hash: asString(o.patch_hash),
     campaign_id: asString(o.campaign_id),
     hotkey: asString(o.hotkey),
@@ -239,8 +240,10 @@ export async function getSubmission(
     }
   );
   const o = asRecord(data);
+  const submission = asRecord(o.submission);
   const events = Array.isArray(o.events) ? o.events : [];
   return {
+    id: asString(submission.id),
     patch_hash: asString(o.patch_hash, patchHash),
     campaign_id: asString(o.campaign_id),
     hotkey: asString(o.hotkey),
