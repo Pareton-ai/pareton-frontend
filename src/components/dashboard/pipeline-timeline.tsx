@@ -1,5 +1,9 @@
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { elapsedBetween, formatDuration, formatUtcTime } from "@/lib/api/format";
+import {
+  elapsedBetween,
+  formatDuration,
+  formatUtcTime,
+} from "@/lib/api/format";
 import {
   getSubmissionStateMeta,
   stageIndex,

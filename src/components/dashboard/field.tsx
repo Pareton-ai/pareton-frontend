@@ -28,9 +28,7 @@ export function Field({ label, children, className }: FieldProps) {
  * 1px grid gap, so cells stay flush without per-cell border bookkeeping.
  */
 export function FieldGrid({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid gap-px bg-border sm:grid-cols-2">{children}</div>
-  );
+  return <div className="grid gap-px bg-border sm:grid-cols-2">{children}</div>;
 }
 
 /** Cell wrapper for `FieldGrid`, restoring the page background over the grid. */

@@ -107,12 +107,20 @@ const SLA_ROWS = [
   { label: "p99 TTFT", path: ["ttft_ms", "p99"], suffix: " ms", digits: 1 },
   { label: "p99 ITL", path: ["itl_ms", "p99"], suffix: " ms", digits: 1 },
   { label: "p99 E2E", path: ["e2e_ms", "p99"], suffix: " ms", digits: 1 },
-  { label: "Output", path: ["output_tokens_per_s"], suffix: " tok/s", digits: 1 },
+  {
+    label: "Output",
+    path: ["output_tokens_per_s"],
+    suffix: " tok/s",
+    digits: 1,
+  },
   { label: "Requests", path: ["requests_per_s"], suffix: " req/s", digits: 2 },
   { label: "SLA goodput", path: ["sla_goodput_ratio"], suffix: "", digits: 2 },
 ] as const;
 
-function dig(source: Record<string, unknown>, path: readonly string[]): unknown {
+function dig(
+  source: Record<string, unknown>,
+  path: readonly string[]
+): unknown {
   let cursor: unknown = source;
   for (const key of path) {
     cursor = record(cursor)[key];

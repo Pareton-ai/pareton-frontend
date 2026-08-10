@@ -48,7 +48,10 @@ export function BenchVerdictChip({ verdict }: { verdict: BenchVerdict }) {
     return <span className="font-mono text-body-sm text-muted">—</span>;
   }
   return (
-    <span className={`${chipClassName} ${toneClass[meta.tone]}`} title={meta.description}>
+    <span
+      className={`${chipClassName} ${toneClass[meta.tone]}`}
+      title={meta.description}
+    >
       {meta.label}
     </span>
   );

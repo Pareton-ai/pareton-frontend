@@ -181,9 +181,7 @@ export function SubmissionMetadata({
               display={truncateHash(submission.engine_image_ref, 16, 10)}
             />
           ) : (
-            <p className="font-mono text-body-sm text-muted">
-              Not built yet
-            </p>
+            <p className="font-mono text-body-sm text-muted">Not built yet</p>
           )}
         </FieldGridItem>
 
