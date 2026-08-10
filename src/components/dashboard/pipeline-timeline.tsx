@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/format";
 import {
   getSubmissionStateMeta,
+  isTerminalState,
   stageIndex,
   SUBMISSION_PHASES,
   type SubmissionEvent,
@@ -158,8 +159,9 @@ export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
 
   const rejection = firstByState.get("rejected") ?? null;
   const lastEvent = events.at(-1) ?? null;
+  // Terminal states (benched / rejected) are done, not "in progress".
   const currentState =
-    lastEvent && lastEvent.state !== "rejected" ? lastEvent.state : null;
+    lastEvent && !isTerminalState(lastEvent.state) ? lastEvent.state : null;
 
   // Deltas are measured against the previous event in wall-clock order, not
   // the previous step in the phase, so a skipped state does not inflate them.
