@@ -231,7 +231,12 @@ export function PipelineTimeline({
       <div className="divide-y divide-border">
         {SUBMISSION_PHASES.map((phase) => {
           const steps = phase.states.map(toStep);
-          const done = steps.filter((s) => s.event).length;
+          const done = steps.filter(
+            (s) =>
+              s.status === "done" ||
+              s.status === "current" ||
+              s.status === "stalled"
+          ).length;
           const active = steps.some((s) => s.status === "current");
 
           return (

@@ -93,7 +93,10 @@ async function SubmissionSections({
   if (detail.submission.campaign_id !== campaignId) notFound();
 
   const campaign = await loadCampaignOrNull(campaignId);
-  const states = detail.events.map((event) => event.state);
+  const states = [
+    detail.latest_state,
+    ...detail.events.map((event) => event.state),
+  ];
   const stalled = isStalled(detail.latest_state, detail.jobs);
 
   return (
