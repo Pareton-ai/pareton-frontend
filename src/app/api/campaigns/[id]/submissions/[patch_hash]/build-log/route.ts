@@ -15,8 +15,9 @@ import { isTerminalState } from "@/lib/api/types";
  * output for well over an hour, so the log viewer polls. This keeps
  * `PARETON_API_URL` on the server per `src/lib/api/README.md`.
  *
- * Each response includes `live` from the current submission state so a tab left
- * open through completion can stop polling without a full reload.
+ * Successful status lookups include `live` so a tab left open through
+ * completion can stop polling without a full reload. Transient upstream
+ * failures omit `live` so the client keeps its last known poll state.
  */
 export async function GET(
   request: Request,
@@ -38,7 +39,9 @@ export async function GET(
     ? Math.min(Math.max(requested, 1), BUILD_LOG_MAX_TAIL)
     : 400;
 
-  let live = false;
+  // Only set `live` when status is known. Transient failures omit it so the
+  // client keeps polling instead of treating a blip as "submission finished".
+  let live: boolean | undefined;
   try {
     const detail = await getSubmission(campaignId, patchHash);
     live = !isTerminalState(detail.latest_state);
@@ -53,7 +56,6 @@ export async function GET(
       {
         available: false,
         text: "",
-        live: false,
         error: isUnavailable(error)
           ? "The API is temporarily unavailable."
           : "Could not reach the build log.",
