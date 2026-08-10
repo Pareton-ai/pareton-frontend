@@ -13,6 +13,22 @@ submission is missing. The dashboard pipeline view renders these stages in order
 
 ## Stages
 
+| Stage        | State          | Emitted when                                         |
+| ------------ | -------------- | ---------------------------------------------------- |
+| Submitted    | `committed`    | Watcher ingests the on-chain commitment              |
+| Picked up    | `picked_up`    | Worker claims the gates job                          |
+| Fetched      | `fetched`      | Patch artifact pulled from object storage            |
+| Verified     | `verified`     | Integrity gate passed (hash, allowlist, hotkey bind) |
+| Applied      | `applied`      | Patch applies onto the pinned baseline               |
+| Surface OK   | `surface_ok`   | Public surface compatibility holds                   |
+| Building     | `building`     | Hermetic docker build started                        |
+| Image pushed | `image_pushed` | Engine image pushed to GHCR (ref + digest)           |
+| Built        | `built`        | Build complete; digest-pinned ref recorded           |
+| Bench queued | `bench_queued` | Bench job row inserted                               |
+| Correct      | `correct`      | Correctness gate passed vs baseline                  |
+| Screened     | `screened`     | Performance screen cleared                           |
+| Benched      | `benched`      | Full benchmark complete; verdict available           |
+
 - **Miner submit:** Hash goes on-chain (Bittensor). Patch goes to S3. Worker finds it by scanning the chain.
 - **Gates:** Worker picks it up, checks the hash, applies the patch, and confirms it only touches allowed files. That is the provenance check.
 - **Building:** Builds a full vLLM Docker image with the patch applied. Hermetic build: pinned baseline commit, fixed base image, no network during compile. If the patch changes CUDA/kernel code, that compiles inside the image too.
@@ -45,4 +61,3 @@ either endpoint:
 The response is ANSI/control-stripped `text/plain`. Both return **404** when
 the submission or its log does not exist (for example mock builds, or a build
 that has not written a log yet).
-

@@ -4,7 +4,7 @@ import { homeMarkdown, homeMarkdownTokens } from "@/lib/home-markdown";
 
 const { rewrite: rewriteLLM } = rewritePath(
   "/docs{/*path}",
-  "/llms.mdx/docs{/*path}",
+  "/llms.mdx/docs{/*path}"
 );
 
 export function proxy(request: NextRequest) {
