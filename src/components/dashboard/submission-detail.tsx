@@ -71,6 +71,9 @@ export function SubmissionDetailHeader({
   );
   const lastEventAt = events.at(-1)?.created_at ?? submission.committed_at;
   const settledMs = elapsedBetween(submission.committed_at, lastEventAt) ?? 0;
+  // "Running for" must measure to now; settledMs only spans to the last event.
+  const runningMs =
+    elapsedBetween(submission.committed_at, new Date().toISOString()) ?? 0;
 
   return (
     <section className="border border-border">
@@ -122,7 +125,7 @@ export function SubmissionDetailHeader({
               {active ? (
                 <LiveElapsed
                   since={submission.committed_at}
-                  initialMs={settledMs}
+                  initialMs={runningMs}
                 />
               ) : (
                 formatDuration(settledMs)
