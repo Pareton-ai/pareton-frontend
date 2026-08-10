@@ -16,12 +16,15 @@ import {
 } from "@/lib/api/format";
 import { campaignHref } from "@/lib/routes";
 import {
+  getFailedSubmissionJob,
   getSubmissionStateMeta,
+  isStalled,
   isTerminalState,
   stageIndex,
   SUBMISSION_STAGE_ORDER,
   type Campaign,
   type SubmissionDetail,
+  type SubmissionJob,
 } from "@/lib/api/types";
 
 function ProgressTrack({
@@ -53,6 +56,25 @@ function ProgressTrack({
   );
 }
 
+/** Infra job failure with no matching rejection event (PAR-42). */
+function FailedJobNotice({ job }: { job: SubmissionJob }) {
+  return (
+    <div className="border-b border-rust/30 bg-rust/5 px-5 py-4 sm:px-6">
+      <p className="font-mono text-caption uppercase tracking-caps text-rust">
+        {job.kind} job failed
+      </p>
+      <p className="mt-2 break-words font-mono text-body text-rust">
+        {job.last_error ?? "No error recorded."}
+      </p>
+      <p className="mt-2 max-w-2xl text-body leading-relaxed text-secondary">
+        The pipeline stopped without recording a rejection, so the timeline
+        below ends at the last stage that succeeded. This is an infrastructure
+        failure, not a verdict on the patch.
+      </p>
+    </div>
+  );
+}
+
 export function SubmissionDetailHeader({
   detail,
   campaign,
@@ -62,8 +84,10 @@ export function SubmissionDetailHeader({
 }) {
   const { submission, events, latest_state: latestState } = detail;
   const stateMeta = getSubmissionStateMeta(latestState);
-  const halted = latestState === "rejected";
-  const active = !isTerminalState(latestState);
+  const failedJob = getFailedSubmissionJob(detail.jobs);
+  const stalled = isStalled(latestState, detail.jobs);
+  const halted = latestState === "rejected" || failedJob !== null;
+  const active = !isTerminalState(latestState) && !stalled;
 
   const reached = Math.max(
     ...events.map((event) => stageIndex(event.state)),
@@ -105,6 +129,8 @@ export function SubmissionDetailHeader({
         </div>
       </div>
 
+      {failedJob ? <FailedJobNotice job={failedJob} /> : null}
+
       <div className="px-5 py-5 sm:px-6">
         <ProgressTrack reached={reached} halted={halted} />
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
@@ -117,8 +143,12 @@ export function SubmissionDetailHeader({
             </span>
           </p>
           <p className="font-mono text-caption uppercase tracking-caps text-muted">
-            {active ? "Running for " : "Settled in "}
-            <span className="text-secondary">
+            {active
+              ? "Running for "
+              : stalled
+                ? "Stalled after "
+                : "Settled in "}
+            <span className={stalled ? "text-rust" : "text-secondary"}>
               {active ? (
                 <LiveElapsed
                   since={submission.committed_at}

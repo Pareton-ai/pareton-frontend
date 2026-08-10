@@ -11,12 +11,13 @@ host directly.
    `PARETON_API_URL`) from a page, component, or route handler unless that handler
    is intentionally proxying and still uses `apiFetch` underneath.
 2. **Server-only.** `client.ts` and `endpoints.ts` import `server-only`. A stray
-   client import fails the build.
+   client import fails the build. `parse.ts` and `types.ts` do not, so the wire
+   contract stays unit-testable.
 3. **Generated OpenAPI types + hand-narrowed domain types.**
    - `schema.d.ts` — regenerated from `/openapi.json` (path/param contracts).
-   - `types.ts` — the ~6 shapes we render (`Campaign`, `SubmissionRow`, …).
-     Narrowing happens in `endpoints.ts` so weak FastAPI response schemas cannot
-     silently drift into the UI as `object`.
+   - `types.ts` — the shapes we render (`Campaign`, `SubmissionRow`, …).
+   - `parse.ts` — narrows `unknown` bodies into those shapes. Never spread a
+     response into a domain type; read named fields.
 4. **Regenerate when the backend changes:**
 
    ```bash
@@ -34,8 +35,19 @@ host directly.
 | `client.ts`    | `apiFetch` — URL join, timeout, Next cache, errors |
 | `errors.ts`    | `ApiError`, `isNotFound`, `isUnavailable`          |
 | `types.ts`     | Domain models + submission/bench display metadata  |
+| `parse.ts`     | `unknown` → domain narrowing (pure, testable)      |
 | `endpoints.ts` | One named function per read endpoint               |
 | `schema.d.ts`  | Generated OpenAPI types (do not edit by hand)      |
+
+## Tests
+
+```bash
+npm run test       # parser contract tests against captured live fixtures
+npm run test:live  # opt-in: same assertions against the deployed API
+```
+
+`__tests__/fixtures/` holds verbatim API responses. Re-capture them when the
+backend changes a response shape.
 
 ## Env
 

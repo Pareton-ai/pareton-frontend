@@ -11,7 +11,7 @@ import {
   type SubmissionEvent,
 } from "@/lib/api/types";
 
-type StepStatus = "done" | "current" | "pending" | "halted";
+type StepStatus = "done" | "current" | "stalled" | "pending" | "halted";
 
 type Step = {
   state: string;
@@ -27,6 +27,9 @@ function markerClassName(status: StepStatus, rejected: boolean): string {
   }
   if (status === "current") {
     return "bg-accent ring-2 ring-accent/30 motion-safe:animate-pulse";
+  }
+  if (status === "stalled") {
+    return "bg-rust ring-2 ring-rust/30";
   }
   return "border border-border-strong bg-background";
 }
@@ -89,13 +92,20 @@ function TimelineRow({
                 ? "text-muted"
                 : step.status === "current"
                   ? "text-accent"
-                  : "text-foreground"
+                  : step.status === "stalled"
+                    ? "text-rust"
+                    : "text-foreground"
             }`}
           >
             {meta.label}
             {step.status === "current" ? (
               <span className="ml-2 font-mono text-caption uppercase tracking-caps text-accent">
                 in progress
+              </span>
+            ) : null}
+            {step.status === "stalled" ? (
+              <span className="ml-2 font-mono text-caption uppercase tracking-caps text-rust">
+                stopped
               </span>
             ) : null}
           </p>
@@ -150,7 +160,14 @@ function RejectionRow({ event }: { event: SubmissionEvent }) {
   );
 }
 
-export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
+export function PipelineTimeline({
+  events,
+  stalled = false,
+}: {
+  events: SubmissionEvent[];
+  /** Job backing the current stage failed; no further events are coming. */
+  stalled?: boolean;
+}) {
   const firstByState = new Map<string, SubmissionEvent>();
   for (const event of events) {
     if (!firstByState.has(event.state)) firstByState.set(event.state, event);
@@ -161,8 +178,7 @@ export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
   const currentState =
     lastEvent && lastEvent.state !== "rejected" ? lastEvent.state : null;
 
-  // Deltas are measured against the previous event in wall-clock order, not
-  // the previous step in the phase, so a skipped state does not inflate them.
+  // Deltas use wall-clock order so a skipped state does not inflate them.
   const previousOf = new Map<SubmissionEvent, SubmissionEvent | null>();
   events.forEach((event, index) => {
     previousOf.set(event, index > 0 ? events[index - 1] : null);
@@ -173,9 +189,11 @@ export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
     const previous = event ? (previousOf.get(event) ?? null) : null;
     const status: StepStatus = event
       ? state === currentState
-        ? "current"
+        ? stalled
+          ? "stalled"
+          : "current"
         : "done"
-      : rejection
+      : rejection || stalled
         ? "halted"
         : "pending";
     return {

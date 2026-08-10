@@ -209,6 +209,29 @@ export type SubmissionEvent = {
   evidence_ref: string | null;
 };
 
+/** Work units the worker claims per submission, in pipeline order. */
+export const SUBMISSION_JOB_KINDS = ["gates", "bench"] as const;
+
+export type SubmissionJobKind = (typeof SUBMISSION_JOB_KINDS)[number];
+
+export const SUBMISSION_JOB_STATUSES = [
+  "pending",
+  "running",
+  "done",
+  "failed",
+] as const;
+
+export type SubmissionJobStatus = (typeof SUBMISSION_JOB_STATUSES)[number];
+
+/** A `submission_jobs` row from the detail response. Kind/status are widened
+ *  to `string` so new DB CHECK values still render. */
+export type SubmissionJob = {
+  kind: SubmissionJobKind | string;
+  status: SubmissionJobStatus | string;
+  /** Machine-readable failure code, e.g. `bench_exit_bad_request`. */
+  last_error: string | null;
+};
+
 export const BENCH_STAGES = [
   "correctness",
   "perf_screen",
@@ -231,14 +254,16 @@ export type BenchReport = {
 export type SubmissionDetail = {
   submission: Submission;
   events: SubmissionEvent[];
+  /** Per-kind worker job status; the only signal for infra-level failures. */
+  jobs: SubmissionJob[];
   bench_reports: BenchReport[];
   bench_verdict: BenchVerdict;
-  /** Convenience: state of the most recent event. */
+  /** API-reported furthest state, falling back to the last event. */
   latest_state: SubmissionStateName;
 };
 
 export type SubmissionStateMeta = {
-  state: SubmissionState;
+  state: SubmissionStateName;
   label: string;
   /** Short description for tooltips / empty copy. */
   description: string;
@@ -394,7 +419,7 @@ export function isSubmissionState(value: unknown): value is SubmissionState {
 export function getSubmissionStateMeta(state: string): SubmissionStateMeta {
   if (isSubmissionState(state)) return SUBMISSION_STATE_META[state];
   return {
-    state: "committed",
+    state,
     label: state.replaceAll("_", " ") || "unknown",
     description: "Pipeline state not yet known to the dashboard.",
     tone: "neutral",
@@ -443,4 +468,27 @@ export function isTerminalState(state: string): boolean {
 export function reachedBuild(states: readonly string[]): boolean {
   const buildIndex = stageIndex("building");
   return states.some((state) => stageIndex(state) >= buildIndex);
+}
+
+export function getSubmissionJob(
+  jobs: readonly SubmissionJob[],
+  kind: SubmissionJobKind | string
+): SubmissionJob | null {
+  return jobs.find((job) => job.kind === kind) ?? null;
+}
+
+/** First job with `status=failed`, if any. Infra failures append no event, so
+ *  the trail can stop at `bench_queued` while only the job row records it. */
+export function getFailedSubmissionJob(
+  jobs: readonly SubmissionJob[]
+): SubmissionJob | null {
+  return jobs.find((job) => job.status === "failed") ?? null;
+}
+
+/** Non-terminal state, but the job backing the current stage already failed. */
+export function isStalled(
+  latestState: string,
+  jobs: readonly SubmissionJob[]
+): boolean {
+  return !isTerminalState(latestState) && getFailedSubmissionJob(jobs) !== null;
 }
