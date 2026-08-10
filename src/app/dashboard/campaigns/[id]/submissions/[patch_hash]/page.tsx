@@ -14,7 +14,7 @@ import { monoLinkClassName } from "@/components/ui/mono-link";
 import { getCampaign, getSubmission } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
 import { truncateHash } from "@/lib/api/format";
-import { campaignHref, decodePatchHash } from "@/lib/routes";
+import { campaignHref, decodePatchHash, isPatchHash } from "@/lib/routes";
 import {
   isTerminalState,
   reachedBuild,
@@ -122,6 +122,7 @@ async function SubmissionSections({
 export default async function SubmissionPage({ params }: PageProps) {
   const { id: campaignId, patch_hash: rawPatchHash } = await params;
   const patchHash = decodePatchHash(rawPatchHash);
+  if (!isPatchHash(patchHash)) notFound();
 
   return (
     <div className="space-y-8">

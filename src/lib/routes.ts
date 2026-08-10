@@ -1,11 +1,18 @@
 /** Dashboard URL builders. Patch hashes contain a colon, so they are encoded. */
 
+const PATCH_HASH_RE = /^sha256:[0-9a-f]{64}$/;
+
 export function campaignHref(campaignId: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}`;
 }
 
 export function submissionHref(campaignId: string, patchHash: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`;
+}
+
+/** True for a canonical on-chain patch digest (`sha256:` + 64 lowercase hex). */
+export function isPatchHash(value: string): boolean {
+  return PATCH_HASH_RE.test(value);
 }
 
 /**

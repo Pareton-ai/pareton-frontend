@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { BUILD_LOG_MAX_TAIL, getSubmissionBuildLog } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
-import { decodePatchHash } from "@/lib/routes";
+import { decodePatchHash, isPatchHash } from "@/lib/routes";
 
 /**
  * Browser-facing proxy for the build log tail.
@@ -16,6 +16,12 @@ export async function GET(
 ) {
   const { id: campaignId, patch_hash: rawPatchHash } = await params;
   const patchHash = decodePatchHash(rawPatchHash);
+  if (!isPatchHash(patchHash)) {
+    return NextResponse.json(
+      { available: false, text: "", error: "Invalid patch hash." },
+      { status: 404, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   const requested = Number.parseInt(
     new URL(request.url).searchParams.get("tail") ?? "",
     10
