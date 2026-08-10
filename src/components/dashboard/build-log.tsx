@@ -140,7 +140,7 @@ export function BuildLog({
           <button
             type="button"
             onClick={() => setRefreshNonce((value) => value + 1)}
-            className="font-mono text-caption uppercase tracking-caps text-accent transition-colors hover:text-foreground"
+            className="cursor-pointer font-mono text-caption uppercase tracking-caps text-accent transition-colors hover:text-foreground"
           >
             Refresh
           </button>

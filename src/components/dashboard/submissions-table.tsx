@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CopyableMono } from "@/components/dashboard/copyable-mono";
-import {
-  BenchVerdictChip,
-  PipelineChip,
-} from "@/components/dashboard/status-chip";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
+import { SubmissionRow } from "@/components/dashboard/submission-row";
 import { getCampaignSubmissions } from "@/lib/api/endpoints";
 import { isUnavailable } from "@/lib/api/errors";
-import { formatUtc, truncateHash, truncateMiddle } from "@/lib/api/format";
 import { submissionHref } from "@/lib/routes";
 import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
 
@@ -89,44 +84,11 @@ function SubmissionsTableView({
           </thead>
           <tbody>
             {data.submissions.map((row) => (
-              <tr
+              <SubmissionRow
                 key={row.patch_hash}
-                className="group border-t border-border/80 transition-colors hover:bg-accent-dim/30"
-              >
-                <td className="px-5 py-3.5 font-mono text-body-sm text-secondary sm:px-6">
-                  {truncateMiddle(row.hotkey, 8, 6)}
-                </td>
-                <td className="px-3 py-3.5">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <Link
-                      href={submissionHref(campaignId, row.patch_hash)}
-                      className="font-mono text-body-sm text-secondary underline-offset-4 transition-colors hover:underline group-hover:text-foreground"
-                    >
-                      {truncateHash(row.patch_hash)}
-                      <span className="sr-only"> view submission detail</span>
-                    </Link>
-                    <CopyableMono value={row.patch_hash} display="copy" />
-                  </div>
-                </td>
-                <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
-                  {formatUtc(row.committed_at)}
-                </td>
-                <td className="px-3 py-3.5">
-                  <PipelineChip state={row.latest_state} />
-                </td>
-                <td className="px-3 py-3.5">
-                  <BenchVerdictChip verdict={row.bench_verdict} />
-                </td>
-                <td className="px-5 py-3.5 text-right font-mono text-body-sm text-muted opacity-0 transition-opacity group-hover:opacity-100 sm:px-6">
-                  <Link
-                    href={submissionHref(campaignId, row.patch_hash)}
-                    aria-label="View submission detail"
-                    className="transition-colors hover:text-foreground"
-                  >
-                    →
-                  </Link>
-                </td>
-              </tr>
+                href={submissionHref(campaignId, row.patch_hash)}
+                row={row}
+              />
             ))}
           </tbody>
         </table>

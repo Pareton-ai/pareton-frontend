@@ -100,7 +100,7 @@ export function SubmissionDetailHeader({
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
           <CopyableMono
             value={submission.patch_hash}
-            display="Copy full patch hash"
+            display="Full patch hash"
           />
           <p className="font-mono text-body-sm text-muted">
             {stateMeta.description}
