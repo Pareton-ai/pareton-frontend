@@ -24,10 +24,10 @@ export function SubmissionRow({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      open();
-    }
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.target !== event.currentTarget) return;
+    event.preventDefault();
+    open();
   }
 
   return (
