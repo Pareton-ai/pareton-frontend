@@ -9,6 +9,7 @@ import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import { getCampaignSubmissions } from "@/lib/api/endpoints";
 import { isUnavailable } from "@/lib/api/errors";
 import { formatUtc, truncateHash, truncateMiddle } from "@/lib/api/format";
+import { submissionHref } from "@/lib/routes";
 import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
 
 const PAGE_SIZE = 25;
@@ -73,39 +74,57 @@ function SubmissionsTableView({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left">
+        <table className="w-full min-w-[800px] text-left">
           <thead>
             <tr className="border-b border-border font-mono text-caption uppercase tracking-caps text-muted">
               <th className="px-5 py-3 font-normal sm:px-6">Hotkey</th>
               <th className="px-3 py-3 font-normal">Patch</th>
               <th className="px-3 py-3 font-normal">Submitted</th>
               <th className="px-3 py-3 font-normal">State</th>
-              <th className="px-5 py-3 font-normal sm:px-6">Verdict</th>
+              <th className="px-3 py-3 font-normal">Verdict</th>
+              <th className="w-10 px-5 py-3 font-normal sm:px-6">
+                <span className="sr-only">Open</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {data.submissions.map((row) => (
               <tr
                 key={row.patch_hash}
-                className="border-t border-border/80 transition-colors hover:bg-accent-dim/30"
+                className="group border-t border-border/80 transition-colors hover:bg-accent-dim/30"
               >
                 <td className="px-5 py-3.5 font-mono text-body-sm text-secondary sm:px-6">
                   {truncateMiddle(row.hotkey, 8, 6)}
                 </td>
-                <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
-                  <CopyableMono
-                    value={row.patch_hash}
-                    display={truncateHash(row.patch_hash)}
-                  />
+                <td className="px-3 py-3.5">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <Link
+                      href={submissionHref(row.patch_hash)}
+                      className="font-mono text-body-sm text-secondary underline-offset-4 transition-colors hover:underline group-hover:text-foreground"
+                    >
+                      {truncateHash(row.patch_hash)}
+                      <span className="sr-only"> view submission detail</span>
+                    </Link>
+                    <CopyableMono value={row.patch_hash} display="copy" />
+                  </div>
                 </td>
                 <td className="px-3 py-3.5 font-mono text-body-sm text-secondary">
-                  {formatUtc(row.submitted_at)}
+                  {formatUtc(row.committed_at)}
                 </td>
                 <td className="px-3 py-3.5">
                   <PipelineChip state={row.latest_state} />
                 </td>
-                <td className="px-5 py-3.5 sm:px-6">
+                <td className="px-3 py-3.5">
                   <BenchVerdictChip verdict={row.bench_verdict} />
+                </td>
+                <td className="px-5 py-3.5 text-right font-mono text-body-sm text-muted opacity-0 transition-opacity group-hover:opacity-100 sm:px-6">
+                  <Link
+                    href={submissionHref(row.patch_hash)}
+                    aria-label="View submission detail"
+                    className="transition-colors hover:text-foreground"
+                  >
+                    →
+                  </Link>
                 </td>
               </tr>
             ))}

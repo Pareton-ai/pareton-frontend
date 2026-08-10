@@ -1,6 +1,7 @@
 import type { CampaignStatus } from "@/lib/api/types";
 import {
   getBenchVerdictMeta,
+  getStageVerdictTone,
   getSubmissionStateMeta,
   type BenchVerdict,
   type SubmissionState,
@@ -13,6 +14,9 @@ const toneClass = {
   danger: "border-rust/50 text-rust",
   warn: "border-rust/40 text-rust",
 } as const;
+
+const chipClassName =
+  "inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps";
 
 export function CampaignStatusChip({ status }: { status: CampaignStatus }) {
   const tone =
@@ -44,10 +48,22 @@ export function BenchVerdictChip({ verdict }: { verdict: BenchVerdict }) {
     return <span className="font-mono text-body-sm text-muted">—</span>;
   }
   return (
-    <span
-      className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass[meta.tone]}`}
-    >
+    <span className={`${chipClassName} ${toneClass[meta.tone]}`} title={meta.description}>
       {meta.label}
+    </span>
+  );
+}
+
+/** Per-stage verdict from `bench_reports[]`, which can carry harness errors. */
+export function StageVerdictChip({ verdict }: { verdict: string }) {
+  if (!verdict) {
+    return <span className="font-mono text-body-sm text-muted">—</span>;
+  }
+  return (
+    <span
+      className={`${chipClassName} ${toneClass[getStageVerdictTone(verdict)]}`}
+    >
+      {verdict.replaceAll("_", " ")}
     </span>
   );
 }

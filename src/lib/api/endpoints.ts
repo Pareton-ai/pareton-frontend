@@ -1,7 +1,8 @@
 import "server-only";
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchText } from "@/lib/api/client";
 import type {
+  BenchReport,
   BenchVerdict,
   Campaign,
   CampaignBench,
@@ -12,16 +13,23 @@ import type {
   CampaignStatus,
   CampaignWindow,
   CustomerSignoff,
+  Submission,
   SubmissionDetail,
   SubmissionEvent,
   SubmissionRow,
   SubmissionsPage,
-  SubmissionState,
+  SubmissionStateName,
 } from "@/lib/api/types";
-import { isSubmissionState } from "@/lib/api/types";
+import { isBenchVerdict, isSubmissionState } from "@/lib/api/types";
 
 /** Match Cloudflare cache on /v1/* for live-ish lists. */
 const SHORT_REVALIDATE = 30;
+
+/** Build logs move while a build runs, so they refresh faster than lists. */
+const BUILD_LOG_REVALIDATE = 10;
+
+/** Server-side cap from api/server.py. */
+export const BUILD_LOG_MAX_TAIL = 2000;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object"
@@ -141,21 +149,16 @@ function parseCampaign(value: unknown): Campaign {
 }
 
 function parseBenchVerdict(value: unknown): BenchVerdict {
-  if (value == null) return null;
-  if (
-    value === "pass" ||
-    value === "fail" ||
-    value === "error" ||
-    value === "pending"
-  ) {
-    return value;
-  }
-  return null;
+  return isBenchVerdict(value) ? value : null;
 }
 
-function parseSubmissionState(value: unknown): SubmissionState {
+/**
+ * Keep unrecognised states verbatim. Coercing them to `committed` would render
+ * a submission as earlier in the pipeline than it actually is.
+ */
+function parseSubmissionState(value: unknown): SubmissionStateName {
   if (isSubmissionState(value)) return value;
-  return "committed";
+  return typeof value === "string" && value ? value : "committed";
 }
 
 function parseSubmissionRow(value: unknown): SubmissionRow {
@@ -165,7 +168,7 @@ function parseSubmissionRow(value: unknown): SubmissionRow {
     patch_hash: asString(o.patch_hash),
     campaign_id: asString(o.campaign_id),
     hotkey: asString(o.hotkey),
-    submitted_at: asString(o.submitted_at),
+    committed_at: asString(o.committed_at),
     latest_state: parseSubmissionState(o.latest_state),
     bench_verdict: parseBenchVerdict(o.bench_verdict),
   };
@@ -175,8 +178,42 @@ function parseSubmissionEvent(value: unknown): SubmissionEvent {
   const o = asRecord(value);
   return {
     state: parseSubmissionState(o.state),
-    at: asString(o.at ?? o.timestamp),
-    detail: o.detail,
+    created_at: asString(o.created_at),
+    detail: asRecord(o.detail),
+    evidence_ref: asNullableString(o.evidence_ref),
+  };
+}
+
+function parseSubmission(value: unknown): Submission {
+  const o = asRecord(value);
+  return {
+    id: asString(o.id),
+    campaign_id: asString(o.campaign_id),
+    patch_hash: asString(o.patch_hash),
+    hotkey: asString(o.hotkey),
+    baseline_commit: asString(o.baseline_commit),
+    retrieval_url: asString(o.retrieval_url),
+    commit_block:
+      typeof o.commit_block === "number" && Number.isFinite(o.commit_block)
+        ? o.commit_block
+        : null,
+    committed_at: asString(o.committed_at),
+    engine_image_ref: asNullableString(o.engine_image_ref),
+    created_at: asString(o.created_at),
+  };
+}
+
+function parseBenchReport(value: unknown): BenchReport {
+  const o = asRecord(value);
+  return {
+    task_id: asString(o.task_id),
+    stage: asString(o.stage),
+    verdict: asString(o.verdict),
+    report: asRecord(o.report),
+    evidence_s3_url: asNullableString(o.evidence_s3_url),
+    gpu_sku: asNullableString(o.gpu_sku),
+    mock: o.mock === true,
+    created_at: asString(o.created_at),
   };
 }
 
@@ -240,18 +277,42 @@ export async function getSubmission(
     }
   );
   const o = asRecord(data);
-  const submission = asRecord(o.submission);
-  const events = Array.isArray(o.events) ? o.events : [];
+  const rawEvents = Array.isArray(o.events) ? o.events : [];
+  const rawReports = Array.isArray(o.bench_reports) ? o.bench_reports : [];
+
+  const events = rawEvents
+    .map(parseSubmissionEvent)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
   return {
-    id: asString(submission.id),
-    patch_hash: asString(o.patch_hash, patchHash),
-    campaign_id: asString(o.campaign_id),
-    hotkey: asString(o.hotkey),
-    submitted_at: asString(o.submitted_at),
-    latest_state: parseSubmissionState(o.latest_state),
+    submission: parseSubmission(o.submission),
+    events,
+    bench_reports: rawReports.map(parseBenchReport),
     bench_verdict: parseBenchVerdict(o.bench_verdict),
-    events: events.map(parseSubmissionEvent),
+    latest_state: events.at(-1)?.state ?? "committed",
   };
+}
+
+/**
+ * Tail of the durable build log, as plain text.
+ *
+ * The log lives on the worker host's disk, so a submission that has not
+ * reached the build phase (or a build whose log was never written) returns
+ * 404. Callers should treat that as "nothing yet" rather than an error.
+ */
+export async function getSubmissionBuildLog(
+  patchHash: string,
+  opts?: { tail?: number }
+): Promise<string> {
+  const tail = Math.min(Math.max(opts?.tail ?? 200, 1), BUILD_LOG_MAX_TAIL);
+  return await apiFetchText(
+    `/v1/submissions/${encodeURIComponent(patchHash)}/build-log`,
+    {
+      revalidate: BUILD_LOG_REVALIDATE,
+      tags: [`submission-build-log:${patchHash}`],
+      searchParams: { tail },
+    }
+  );
 }
 
 export type { CampaignsResponse };
