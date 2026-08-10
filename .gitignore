@@ -153,3 +153,5 @@ vite.config.ts.timestamp-*
 # Claude / MCP configuration
 .claude/
 /.cursor
+.vercel
+.env*
