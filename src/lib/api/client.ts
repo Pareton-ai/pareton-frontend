@@ -74,16 +74,11 @@ async function readDetail(response: Response): Promise<unknown> {
   }
 }
 
-/**
- * Single outbound HTTP helper for Pareton API reads.
- *
- * Every server fetch in the app must go through this. Do not call `fetch`
- * against `PARETON_API_URL` from pages or components.
- */
-export async function apiFetch<T>(
+async function request(
   path: string,
-  options: ApiFetchOptions = {}
-): Promise<T> {
+  accept: string,
+  options: ApiFetchOptions
+): Promise<Response> {
   const base = getApiBaseUrl();
   const url = withSearchParams(joinUrl(base, path), options.searchParams);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -93,7 +88,7 @@ export async function apiFetch<T>(
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        Accept: "application/json",
+        Accept: accept,
       },
       signal,
       next: {
@@ -111,7 +106,7 @@ export async function apiFetch<T>(
       });
     }
 
-    return (await response.json()) as T;
+    return response;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
@@ -131,4 +126,27 @@ export async function apiFetch<T>(
   } finally {
     cleanup();
   }
+}
+
+/**
+ * Single outbound HTTP helper for Pareton API reads.
+ *
+ * Every server fetch in the app must go through this. Do not call `fetch`
+ * against `PARETON_API_URL` from pages or components.
+ */
+export async function apiFetch<T>(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<T> {
+  const response = await request(path, "application/json", options);
+  return (await response.json()) as T;
+}
+
+/** Same contract as `apiFetch`, for endpoints that serve `text/plain`. */
+export async function apiFetchText(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<string> {
+  const response = await request(path, "text/plain", options);
+  return await response.text();
 }

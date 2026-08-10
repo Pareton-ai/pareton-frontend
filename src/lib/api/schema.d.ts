@@ -106,6 +106,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/submissions/{patch_hash}/build-log": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Submission Build Log
+     * @description Last `tail` lines of the durable build log (PAR-37 path), sanitized.
+     *
+     *     Content is miner-influenced build output: ANSI/control chars stripped,
+     *     served as text/plain, never cached beyond the shared 30s v1 policy.
+     */
+    get: operations["submission_build_log_v1_submissions__patch_hash__build_log_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/uploads/patch": {
     parameters: {
       query?: never;
@@ -315,6 +338,39 @@ export interface operations {
         };
         content: {
           "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  submission_build_log_v1_submissions__patch_hash__build_log_get: {
+    parameters: {
+      query?: {
+        tail?: number;
+      };
+      header?: never;
+      path: {
+        patch_hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
         };
       };
       /** @description Validation Error */

@@ -67,6 +67,35 @@ body {
   color: var(--foreground);
 }
 
+/* Square hairline scrollbars. Applied to every scroll container, not just the
+   page, so inner panes (build log, wide tables) match. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  /* Transparent border plus padding-box clip keeps the visible bar at 4px. */
+  background: var(--border-strong);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
+}
+
 /* Scroll cue (how-it-works section) */
 @media (prefers-reduced-motion: no-preference) {
   .scroll-cue-dot {

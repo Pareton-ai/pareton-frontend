@@ -1,45 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { useState, type MouseEvent } from "react";
 
 type CopyableMonoProps = {
   value: string;
   display?: string;
   className?: string;
+  iconOnly?: boolean;
 };
 
 export function CopyableMono({
   value,
   display,
   className = "",
+  iconOnly = false,
 }: CopyableMonoProps) {
   const [copied, setCopied] = useState(false);
 
-  async function onCopy() {
+  async function onCopy(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // Clipboard can fail in insecure contexts; leave the visible value alone.
-    }
+    } catch {}
   }
+
+  const label = copied ? "Copied" : `Copy ${value}`;
 
   return (
     <button
       type="button"
       onClick={onCopy}
-      title={copied ? "Copied" : `Copy ${value}`}
-      className={`group inline-flex max-w-full items-center gap-2 font-mono text-body-sm tracking-tight text-secondary transition-colors hover:text-foreground ${className}`}
+      title={label}
+      aria-label={label}
+      className={`${iconOnly ? "inline-flex" : "group inline-flex"} max-w-full cursor-pointer items-center gap-2 font-mono text-body-sm tracking-tight text-secondary transition-colors hover:text-foreground ${className}`}
     >
-      <span className="truncate">{display ?? value}</span>
-      <span className="relative grid shrink-0 text-left text-caption uppercase tracking-caps text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-        <span aria-hidden className="invisible col-start-1 row-start-1">
-          copied
-        </span>
-        <span className="col-start-1 row-start-1">
-          {copied ? "copied" : "copy"}
-        </span>
+      {iconOnly ? null : <span className="truncate">{display ?? value}</span>}
+      <span
+        className={`cursor-pointer inline-flex shrink-0 text-muted transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 ${
+          copied ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {copied ? (
+          <Check className="size-3.5" aria-hidden />
+        ) : (
+          <Copy className="size-3.5" aria-hidden />
+        )}
       </span>
     </button>
   );

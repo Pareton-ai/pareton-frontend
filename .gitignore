@@ -153,4 +153,7 @@ vite.config.ts.timestamp-*
 # Claude / MCP configuration
 .claude/
 /.cursor
+
+# Local browser automation artifacts
+.playwright-cli/
 .vercel

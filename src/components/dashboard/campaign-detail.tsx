@@ -1,27 +1,9 @@
 import { Countdown } from "@/components/dashboard/countdown";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
+import { Field } from "@/components/dashboard/field";
 import { CampaignStatusChip } from "@/components/dashboard/status-chip";
 import { formatUtc, truncateHash, truncateMiddle } from "@/lib/api/format";
 import type { Campaign } from "@/lib/api/types";
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="px-5 py-5 sm:px-6">
-      <p className="font-mono text-caption uppercase tracking-caps text-muted">
-        {label}
-      </p>
-      <div className="mt-2 text-body-lg leading-relaxed text-foreground">
-        {children}
-      </div>
-    </div>
-  );
-}
 
 export function CampaignDetailHeader({ campaign }: { campaign: Campaign }) {
   const { model } = campaign.bench;

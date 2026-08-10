@@ -28,6 +28,42 @@ export function formatUtc(iso: string): string {
   );
 }
 
+/** Clock time only, for dense timelines where the date is already in context. */
+export function formatUtcTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+/** Compact elapsed span, e.g. `2.8s`, `4m 12s`, `1h 31m`. */
+export function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) {
+    return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
+  }
+  const totalSeconds = Math.round(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  return `${minutes}m ${String(totalSeconds % 60).padStart(2, "0")}s`;
+}
+
+/** Elapsed time between two ISO timestamps, or `null` if either is unusable. */
+export function elapsedBetween(from: string, to: string): number | null {
+  const start = new Date(from).getTime();
+  const end = new Date(to).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  return end - start;
+}
+
 export function formatDurationRemaining(
   closesAt: string,
   now = Date.now()
