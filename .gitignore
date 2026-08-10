@@ -154,4 +154,3 @@ vite.config.ts.timestamp-*
 .claude/
 /.cursor
 .vercel
-.env*
