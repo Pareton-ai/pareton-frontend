@@ -25,9 +25,11 @@ type BuildLogResponse = {
  * handler, which proxies the API host server-side.
  */
 export function BuildLog({
+  campaignId,
   patchHash,
   live,
 }: {
+  campaignId: string;
   patchHash: string;
   live: boolean;
 }) {
@@ -43,7 +45,7 @@ export function BuildLog({
     async function load() {
       try {
         const response = await fetch(
-          `/api/submissions/${encodeURIComponent(patchHash)}/build-log?tail=${TAIL_LINES}`,
+          `/api/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/build-log?tail=${TAIL_LINES}`,
           { signal: controller.signal, cache: "no-store" }
         );
         const body = (await response.json()) as BuildLogResponse;
@@ -75,7 +77,7 @@ export function BuildLog({
       controller.abort();
       if (intervalId !== undefined) window.clearInterval(intervalId);
     };
-  }, [patchHash, live, paused, refreshNonce]);
+  }, [campaignId, patchHash, live, paused, refreshNonce]);
 
   // Follow the tail only while the reader has not scrolled up to read history.
   useEffect(() => {

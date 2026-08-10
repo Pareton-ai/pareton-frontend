@@ -12,9 +12,9 @@ import { decodePatchHash } from "@/lib/routes";
  */
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ patch_hash: string }> }
+  { params }: { params: Promise<{ id: string; patch_hash: string }> }
 ) {
-  const { patch_hash: rawPatchHash } = await params;
+  const { id: campaignId, patch_hash: rawPatchHash } = await params;
   const patchHash = decodePatchHash(rawPatchHash);
   const requested = Number.parseInt(
     new URL(request.url).searchParams.get("tail") ?? "",
@@ -25,7 +25,7 @@ export async function GET(
     : 400;
 
   try {
-    const text = await getSubmissionBuildLog(patchHash, { tail });
+    const text = await getSubmissionBuildLog(campaignId, patchHash, { tail });
     return NextResponse.json(
       { available: true, text },
       { headers: { "Cache-Control": "no-store" } }

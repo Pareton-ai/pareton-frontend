@@ -99,7 +99,7 @@ function SubmissionsTableView({
                 <td className="px-3 py-3.5">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <Link
-                      href={submissionHref(row.patch_hash)}
+                      href={submissionHref(campaignId, row.patch_hash)}
                       className="font-mono text-body-sm text-secondary underline-offset-4 transition-colors hover:underline group-hover:text-foreground"
                     >
                       {truncateHash(row.patch_hash)}
@@ -119,7 +119,7 @@ function SubmissionsTableView({
                 </td>
                 <td className="px-5 py-3.5 text-right font-mono text-body-sm text-muted opacity-0 transition-opacity group-hover:opacity-100 sm:px-6">
                   <Link
-                    href={submissionHref(row.patch_hash)}
+                    href={submissionHref(campaignId, row.patch_hash)}
                     aria-label="View submission detail"
                     className="transition-colors hover:text-foreground"
                   >

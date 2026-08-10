@@ -4,8 +4,8 @@ export function campaignHref(campaignId: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}`;
 }
 
-export function submissionHref(patchHash: string): string {
-  return `/dashboard/submissions/${encodeURIComponent(patchHash)}`;
+export function submissionHref(campaignId: string, patchHash: string): string {
+  return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`;
 }
 
 /**

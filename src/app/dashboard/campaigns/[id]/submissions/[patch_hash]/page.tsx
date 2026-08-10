@@ -23,7 +23,7 @@ import {
 } from "@/lib/api/types";
 
 type PageProps = {
-  params: Promise<{ patch_hash: string }>;
+  params: Promise<{ id: string; patch_hash: string }>;
 };
 
 export async function generateMetadata({
@@ -38,13 +38,14 @@ export async function generateMetadata({
 }
 
 async function loadSubmission(
+  campaignId: string,
   patchHash: string
 ): Promise<
   | { ok: true; detail: SubmissionDetail }
   | { ok: false; kind: "not_found" | "unavailable" | "error" }
 > {
   try {
-    const detail = await getSubmission(patchHash);
+    const detail = await getSubmission(campaignId, patchHash);
     return { ok: true, detail };
   } catch (error) {
     if (isNotFound(error)) return { ok: false, kind: "not_found" };
@@ -65,8 +66,14 @@ async function loadCampaignOrNull(
   }
 }
 
-async function SubmissionSections({ patchHash }: { patchHash: string }) {
-  const result = await loadSubmission(patchHash);
+async function SubmissionSections({
+  campaignId,
+  patchHash,
+}: {
+  campaignId: string;
+  patchHash: string;
+}) {
+  const result = await loadSubmission(campaignId, patchHash);
 
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
@@ -82,19 +89,19 @@ async function SubmissionSections({ patchHash }: { patchHash: string }) {
   }
 
   const { detail } = result;
-  const campaign = await loadCampaignOrNull(detail.submission.campaign_id);
+  if (detail.submission.campaign_id !== campaignId) notFound();
+
+  const campaign = await loadCampaignOrNull(campaignId);
   const states = detail.events.map((event) => event.state);
 
   return (
     <>
-      {detail.submission.campaign_id ? (
-        <Link
-          href={campaignHref(detail.submission.campaign_id)}
-          className={monoLinkClassName({ size: "sm" }, "inline-flex")}
-        >
-          ← Campaign
-        </Link>
-      ) : null}
+      <Link
+        href={campaignHref(campaignId)}
+        className={monoLinkClassName({ size: "sm" }, "inline-flex")}
+      >
+        ← Campaign
+      </Link>
 
       <SubmissionDetailHeader detail={detail} campaign={campaign} />
       <SubmissionMetadata submission={detail.submission} />
@@ -103,6 +110,7 @@ async function SubmissionSections({ patchHash }: { patchHash: string }) {
 
       {reachedBuild(states) ? (
         <BuildLog
+          campaignId={campaignId}
           patchHash={detail.submission.patch_hash || patchHash}
           live={!isTerminalState(detail.latest_state)}
         />
@@ -112,7 +120,7 @@ async function SubmissionSections({ patchHash }: { patchHash: string }) {
 }
 
 export default async function SubmissionPage({ params }: PageProps) {
-  const { patch_hash: rawPatchHash } = await params;
+  const { id: campaignId, patch_hash: rawPatchHash } = await params;
   const patchHash = decodePatchHash(rawPatchHash);
 
   return (
@@ -126,7 +134,7 @@ export default async function SubmissionPage({ params }: PageProps) {
           </>
         }
       >
-        <SubmissionSections patchHash={patchHash} />
+        <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
       </Suspense>
     </div>
   );

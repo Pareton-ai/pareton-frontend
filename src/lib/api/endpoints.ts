@@ -266,16 +266,7 @@ export async function getCampaignSubmissions(
   };
 }
 
-export async function getSubmission(
-  patchHash: string
-): Promise<SubmissionDetail> {
-  const data = await apiFetch<unknown>(
-    `/v1/submissions/${encodeURIComponent(patchHash)}`,
-    {
-      revalidate: SHORT_REVALIDATE,
-      tags: ["submissions", `submission:${patchHash}`],
-    }
-  );
+function parseSubmissionDetail(data: unknown): SubmissionDetail {
   const o = asRecord(data);
   const rawEvents = Array.isArray(o.events) ? o.events : [];
   const rawReports = Array.isArray(o.bench_reports) ? o.bench_reports : [];
@@ -294,6 +285,31 @@ export async function getSubmission(
 }
 
 /**
+ * Campaign-scoped submission detail.
+ *
+ * `patch_hash` is only unique with `campaign_id` (UNIQUE pair in the DB), so
+ * callers must pass both. Prefer this over the bare-hash API, which 409s when
+ * the same hash appears in more than one campaign.
+ */
+export async function getSubmission(
+  campaignId: string,
+  patchHash: string
+): Promise<SubmissionDetail> {
+  const data = await apiFetch<unknown>(
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`,
+    {
+      revalidate: SHORT_REVALIDATE,
+      tags: [
+        "submissions",
+        `submission:${campaignId}:${patchHash}`,
+        `campaign-submissions:${campaignId}`,
+      ],
+    }
+  );
+  return parseSubmissionDetail(data);
+}
+
+/**
  * Tail of the durable build log, as plain text.
  *
  * The log lives on the worker host's disk, so a submission that has not
@@ -301,15 +317,16 @@ export async function getSubmission(
  * 404. Callers should treat that as "nothing yet" rather than an error.
  */
 export async function getSubmissionBuildLog(
+  campaignId: string,
   patchHash: string,
   opts?: { tail?: number }
 ): Promise<string> {
   const tail = Math.min(Math.max(opts?.tail ?? 200, 1), BUILD_LOG_MAX_TAIL);
   return await apiFetchText(
-    `/v1/submissions/${encodeURIComponent(patchHash)}/build-log`,
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/build-log`,
     {
       revalidate: BUILD_LOG_REVALIDATE,
-      tags: [`submission-build-log:${patchHash}`],
+      tags: [`submission-build-log:${campaignId}:${patchHash}`],
       searchParams: { tail },
     }
   );
