@@ -15,6 +15,7 @@ type BuildLogResponse = {
   available?: boolean;
   text?: string;
   error?: string;
+  live?: boolean;
 };
 
 /**
@@ -22,18 +23,20 @@ type BuildLogResponse = {
  *
  * Builds run for over an hour, so this polls while the submission is still
  * moving. Terminal submissions fetch once. The request goes to our own route
- * handler, which proxies the API host server-side.
+ * handler, which proxies the API host server-side and reports whether the
+ * submission is still live so polling can stop without a reload.
  */
 export function BuildLog({
   campaignId,
   patchHash,
-  live,
+  live: initialLive,
 }: {
   campaignId: string;
   patchHash: string;
   live: boolean;
 }) {
   const [state, setState] = useState<LogState>({ kind: "loading" });
+  const [live, setLive] = useState(initialLive);
   const [paused, setPaused] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const preRef = useRef<HTMLPreElement>(null);
@@ -49,6 +52,10 @@ export function BuildLog({
           { signal: controller.signal, cache: "no-store" }
         );
         const body = (await response.json()) as BuildLogResponse;
+
+        if (typeof body.live === "boolean") {
+          setLive(body.live);
+        }
 
         if (!response.ok) {
           setState({
