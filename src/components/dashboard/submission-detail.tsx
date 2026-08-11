@@ -7,6 +7,7 @@ import {
   PipelineChip,
 } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
+import { isSafeArtifactUrl } from "@/lib/api/artifacts";
 import {
   elapsedBetween,
   formatDuration,
@@ -138,6 +139,35 @@ export function SubmissionDetailHeader({
   );
 }
 
+function PatchArtifact({ url }: { url: string }) {
+  if (!url) {
+    return <p className="font-mono text-body-sm text-muted">—</p>;
+  }
+
+  // Miner-supplied URL that failed validation: show it, never link it.
+  if (!isSafeArtifactUrl(url)) {
+    return (
+      <p className="break-all font-mono text-body-sm text-muted" title={url}>
+        {truncateMiddle(url, 20, 12)}
+      </p>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      rel="noreferrer nofollow"
+      target="_blank"
+      className={monoLinkClassName(
+        { size: "sm", tone: "accent" },
+        "inline-flex normal-case tracking-normal underline-offset-4 hover:underline"
+      )}
+    >
+      Download diff ↗
+    </a>
+  );
+}
+
 export function SubmissionMetadata({
   submission,
 }: {
@@ -196,21 +226,7 @@ export function SubmissionMetadata({
         </FieldGridItem>
 
         <FieldGridItem label="Patch artifact">
-          {submission.retrieval_url ? (
-            <a
-              href={submission.retrieval_url}
-              rel="noreferrer nofollow"
-              target="_blank"
-              className={monoLinkClassName(
-                { size: "sm", tone: "accent" },
-                "inline-flex normal-case tracking-normal underline-offset-4 hover:underline"
-              )}
-            >
-              Download diff ↗
-            </a>
-          ) : (
-            <p className="font-mono text-body-sm text-muted">—</p>
-          )}
+          <PatchArtifact url={submission.retrieval_url} />
         </FieldGridItem>
       </FieldGrid>
     </section>

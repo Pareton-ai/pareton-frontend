@@ -32,6 +32,7 @@ host directly.
 | -------------- | -------------------------------------------------- |
 | `config.ts`    | `PARETON_API_URL`, timeout defaults                |
 | `client.ts`    | `apiFetch` — URL join, timeout, Next cache, errors |
+| `artifacts.ts` | Allowlist for miner-supplied `retrieval_url`       |
 | `errors.ts`    | `ApiError`, `isNotFound`, `isUnavailable`          |
 | `types.ts`     | Domain models + submission/bench display metadata  |
 | `endpoints.ts` | One named function per read endpoint               |
@@ -42,9 +43,14 @@ host directly.
 ```bash
 # .env.local (or Vercel project env)
 PARETON_API_URL=https://api.pareton.ai
+PARETON_ARTIFACT_BASE_URL=
 ```
 
 Server-only — never prefix with `NEXT_PUBLIC_`.
+
+`PARETON_ARTIFACT_BASE_URL` mirrors the backend's `PARETON_S3_PUBLIC_BASE_URL`.
+A `retrieval_url` outside that host renders as plain text instead of a link,
+so keep the two in step when artifact hosting moves.
 
 ## Caching
 
