@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BenchReports } from "@/components/dashboard/bench-reports";
 import { BuildLog } from "@/components/dashboard/build-log";
-import { LiveSubmissionPoll } from "@/components/dashboard/live-submission-poll";
+import {
+  LiveSubmissionPoll,
+  LiveSubmissionPollHost,
+} from "@/components/dashboard/live-submission-poll";
 import { PipelineTimeline } from "@/components/dashboard/pipeline-timeline";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
@@ -79,13 +82,16 @@ async function SubmissionSections({
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
     return (
-      <SectionUnavailable
-        message={
-          result.kind === "unavailable"
-            ? "This submission is temporarily unavailable (API/DB)."
-            : "Could not load this submission."
-        }
-      />
+      <>
+        <LiveSubmissionPoll enabled />
+        <SectionUnavailable
+          message={
+            result.kind === "unavailable"
+              ? "This submission is temporarily unavailable (API/DB)."
+              : "Could not load this submission."
+          }
+        />
+      </>
     );
   }
 
@@ -130,17 +136,19 @@ export default async function SubmissionPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      <Suspense
-        fallback={
-          <>
-            <div className="h-3 w-24 animate-pulse bg-border/50" />
-            <div className="h-64 animate-pulse border border-border bg-border/10" />
-            <div className="h-80 animate-pulse border border-border bg-border/10" />
-          </>
-        }
-      >
-        <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
-      </Suspense>
+      <LiveSubmissionPollHost>
+        <Suspense
+          fallback={
+            <>
+              <div className="h-3 w-24 animate-pulse bg-border/50" />
+              <div className="h-64 animate-pulse border border-border bg-border/10" />
+              <div className="h-80 animate-pulse border border-border bg-border/10" />
+            </>
+          }
+        >
+          <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
+        </Suspense>
+      </LiveSubmissionPollHost>
     </div>
   );
 }
