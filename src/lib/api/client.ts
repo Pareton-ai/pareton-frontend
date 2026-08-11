@@ -74,11 +74,16 @@ async function readDetail(response: Response): Promise<unknown> {
   }
 }
 
-async function request(
+/**
+ * The body is read here, inside the try, so the abort timer still covers a
+ * download that stalls mid-stream. Reading it after `cleanup()` would leave
+ * the timeout guarding only the response headers.
+ */
+async function request<T>(
   path: string,
-  accept: string,
+  accept: "json" | "text",
   options: ApiFetchOptions
-): Promise<Response> {
+): Promise<T> {
   const base = getApiBaseUrl();
   const url = withSearchParams(joinUrl(base, path), options.searchParams);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -88,7 +93,7 @@ async function request(
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        Accept: accept,
+        Accept: accept === "json" ? "application/json" : "text/plain",
       },
       signal,
       next: {
@@ -106,7 +111,9 @@ async function request(
       });
     }
 
-    return response;
+    return (
+      accept === "json" ? await response.json() : await response.text()
+    ) as T;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
@@ -138,8 +145,7 @@ export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
-  const response = await request(path, "application/json", options);
-  return (await response.json()) as T;
+  return await request<T>(path, "json", options);
 }
 
 /** Same contract as `apiFetch`, for endpoints that serve `text/plain`. */
@@ -147,6 +153,5 @@ export async function apiFetchText(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<string> {
-  const response = await request(path, "text/plain", options);
-  return await response.text();
+  return await request<string>(path, "text", options);
 }
