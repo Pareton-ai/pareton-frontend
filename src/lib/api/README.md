@@ -48,6 +48,9 @@ Server-only — never prefix with `NEXT_PUBLIC_`.
 
 ## Caching
 
-Each endpoint sets its own `revalidate` (lists/submissions ~30s to match the
-API's `Cache-Control`). Prefer section-level `<Suspense>` + degraded
-empty/unavailable UI over a whole-page crash when the API returns 503.
+Lists and campaign pages use `revalidate: 30` to match the API's shared
+`Cache-Control`. Submission detail and build-log use `revalidate: 0` so the
+detail page can poll while `latest_state` is non-terminal (PAR-44); the API
+returns `no-store` for those responses until the submission is terminal.
+Prefer section-level `<Suspense>` + degraded empty/unavailable UI over a
+whole-page crash when the API returns 503.

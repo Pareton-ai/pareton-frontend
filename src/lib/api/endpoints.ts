@@ -25,8 +25,12 @@ import { isBenchVerdict, isSubmissionState } from "@/lib/api/types";
 /** Match Cloudflare cache on /v1/* for live-ish lists. */
 const SHORT_REVALIDATE = 30;
 
-/** Build logs move while a build runs, so they refresh faster than lists. */
-const BUILD_LOG_REVALIDATE = 10;
+/**
+ * Detail + build-log must not sit in the Next data cache: the page polls while
+ * the submission is non-terminal (PAR-44), and the API returns no-store for
+ * those responses.
+ */
+const LIVE_REVALIDATE = 0;
 
 /** Server-side cap from api/server.py. */
 export const BUILD_LOG_MAX_TAIL = 2000;
@@ -298,7 +302,7 @@ export async function getSubmission(
   const data = await apiFetch<unknown>(
     `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`,
     {
-      revalidate: SHORT_REVALIDATE,
+      revalidate: LIVE_REVALIDATE,
       tags: [
         "submissions",
         `submission:${campaignId}:${patchHash}`,
@@ -325,7 +329,7 @@ export async function getSubmissionBuildLog(
   return await apiFetchText(
     `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/build-log`,
     {
-      revalidate: BUILD_LOG_REVALIDATE,
+      revalidate: LIVE_REVALIDATE,
       tags: [`submission-build-log:${campaignId}:${patchHash}`],
       searchParams: { tail },
     }

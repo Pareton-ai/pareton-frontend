@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BenchReports } from "@/components/dashboard/bench-reports";
 import { BuildLog } from "@/components/dashboard/build-log";
+import { LiveSubmissionPoll } from "@/components/dashboard/live-submission-poll";
 import { PipelineTimeline } from "@/components/dashboard/pipeline-timeline";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
@@ -93,9 +94,12 @@ async function SubmissionSections({
 
   const campaign = await loadCampaignOrNull(campaignId);
   const states = detail.events.map((event) => event.state);
+  const live = !isTerminalState(detail.latest_state);
 
   return (
     <>
+      <LiveSubmissionPoll enabled={live} />
+
       <Link
         href={campaignHref(campaignId)}
         className={monoLinkClassName({ size: "sm" }, "inline-flex")}
@@ -112,7 +116,7 @@ async function SubmissionSections({
         <BuildLog
           campaignId={campaignId}
           patchHash={detail.submission.patch_hash || patchHash}
-          live={!isTerminalState(detail.latest_state)}
+          live={live}
         />
       ) : null}
     </>
