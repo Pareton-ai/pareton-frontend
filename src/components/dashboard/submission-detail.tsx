@@ -133,7 +133,7 @@ export function SubmissionDetailHeader({
         </div>
       </div>
 
-      {failedJob ? <FailedJobNotice job={failedJob} /> : null}
+      {stalled && failedJob ? <FailedJobNotice job={failedJob} /> : null}
 
       <div className="px-5 py-5 sm:px-6">
         <ProgressTrack reached={reached} halted={halted} />
