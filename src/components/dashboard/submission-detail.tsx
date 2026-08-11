@@ -86,7 +86,7 @@ export function SubmissionDetailHeader({
   const stateMeta = getSubmissionStateMeta(latestState);
   const failedJob = getFailedSubmissionJob(detail.jobs);
   const stalled = isStalled(latestState, detail.jobs);
-  const halted = latestState === "rejected" || failedJob !== null;
+  const halted = latestState === "rejected" || stalled;
   const active = !isTerminalState(latestState) && !stalled;
 
   const reached = Math.max(
