@@ -75,9 +75,6 @@ export function SubmissionsTable({
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const showingFrom = data.offset + 1;
   const showingTo = Math.min(data.offset + data.submissions.length, data.total);
-  // One timestamp for every row, so the column is internally consistent.
-  // eslint-disable-next-line react-hooks/purity -- Date.now anchors the age column
-  const now = Date.now();
 
   return (
     <section aria-label="Submissions" className="border border-border">
@@ -96,13 +93,15 @@ export function SubmissionsTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-left">
           <thead>
-            <tr className="border-b border-border font-mono text-caption uppercase tracking-caps text-muted">
+            <tr className="whitespace-nowrap border-b border-border font-mono text-caption uppercase tracking-caps text-muted">
               <th className="px-4 py-2.5 font-normal sm:px-5">Miner</th>
               <th className="px-3 py-2.5 font-normal">Patch</th>
-              <th className="px-3 py-2.5 font-normal">Age</th>
+              {/* Zone omitted to keep the column narrow; each cell carries the
+                  full UTC timestamp as a tooltip. */}
+              <th className="px-3 py-2.5 font-normal">Submitted</th>
               <th className="px-3 py-2.5 font-normal">Pipeline</th>
               <th className="px-3 py-2.5 font-normal">Verdict</th>
-              <th className="w-10 px-4 py-2.5 font-normal sm:px-5">
+              <th className="w-8 px-2 py-2.5 font-normal">
                 <span className="sr-only">Open</span>
               </th>
             </tr>
@@ -113,7 +112,6 @@ export function SubmissionsTable({
                 key={row.patch_hash}
                 href={submissionHref(campaignId, row.patch_hash)}
                 row={row}
-                now={now}
               />
             ))}
           </tbody>

@@ -6,9 +6,9 @@ import {
   PipelineChip,
 } from "@/components/dashboard/status-chip";
 import {
-  formatAgo,
   formatUtc,
-  truncateHash,
+  formatUtcShort,
+  truncateDigest,
   truncateMiddle,
 } from "@/lib/api/format";
 import {
@@ -61,11 +61,9 @@ function PhaseMeter({
 export function SubmissionRow({
   href,
   row,
-  now,
 }: {
   href: string;
   row: SubmissionRowData;
-  now: number;
 }) {
   return (
     // Safari ignores `position: relative` on a <tr> (WebKit 240961, fixed only
@@ -87,7 +85,7 @@ export function SubmissionRow({
       <td className="px-3 py-3.5">
         <CopyableMono
           value={row.patch_hash}
-          display={truncateHash(row.patch_hash, 6, 4)}
+          display={truncateDigest(row.patch_hash, 7, 5)}
           className="relative z-10 group-hover:text-foreground"
         />
       </td>
@@ -95,7 +93,7 @@ export function SubmissionRow({
         className="whitespace-nowrap px-3 py-3.5 font-mono text-body-sm text-secondary"
         title={formatUtc(row.committed_at)}
       >
-        {formatAgo(row.committed_at, now)}
+        {formatUtcShort(row.committed_at)}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5">
         <span className="flex items-center gap-2.5">
@@ -108,7 +106,7 @@ export function SubmissionRow({
       </td>
       <td
         aria-hidden
-        className="px-4 py-3.5 text-right text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 sm:px-5"
+        className="px-2 py-3.5 text-right text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
       >
         <ChevronRight className="ml-auto size-4" />
       </td>

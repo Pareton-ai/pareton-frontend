@@ -12,6 +12,11 @@ export function truncateMiddle(value: string, head = 8, tail = 6): string {
   return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
+/** Digest without its algorithm prefix, for columns where every row is sha256. */
+export function truncateDigest(value: string, head = 8, tail = 6): string {
+  return truncateMiddle(value.replace(/^sha256:/, ""), head, tail);
+}
+
 export function formatUtc(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -26,6 +31,20 @@ export function formatUtc(iso: string): string {
       hour12: false,
     }).format(date) + " UTC"
   );
+}
+
+/** Date and clock without the year, for dense columns headed with the zone. */
+export function formatUtcShort(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 /** Clock time only, for dense timelines where the date is already in context. */
@@ -62,20 +81,6 @@ export function elapsedBetween(from: string, to: string): number | null {
   const end = new Date(to).getTime();
   if (Number.isNaN(start) || Number.isNaN(end)) return null;
   return end - start;
-}
-
-/** Compact age like `6h ago`, for dense activity columns. */
-export function formatAgo(iso: string, now = Date.now()): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return iso;
-  const minutes = Math.floor((now - then) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 365) return `${days}d ago`;
-  return `${Math.floor(days / 365)}y ago`;
 }
 
 export function formatDurationRemaining(

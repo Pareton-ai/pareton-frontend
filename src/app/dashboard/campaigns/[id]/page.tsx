@@ -96,7 +96,7 @@ async function CampaignBody({ id, page }: { id: string; page: number }) {
     <div className="space-y-8">
       <CampaignStats campaign={campaign} submissions={data} />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
         <div className="min-w-0">
           {data === null ? (
             <SectionUnavailable
@@ -156,7 +156,7 @@ export default async function CampaignPage({
         fallback={
           <div className="space-y-8">
             <div className="h-28 animate-pulse border border-border bg-border/10" />
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem]">
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
               <div className="h-72 animate-pulse border border-border bg-border/10" />
               <div className="h-72 animate-pulse border border-border bg-border/10" />
             </div>
