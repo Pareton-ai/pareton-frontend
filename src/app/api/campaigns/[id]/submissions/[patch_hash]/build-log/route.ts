@@ -6,7 +6,7 @@ import {
 } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
 import { decodePatchHash, isPatchHash } from "@/lib/routes";
-import { isTerminalState } from "@/lib/api/types";
+import { isStalled, isTerminalState } from "@/lib/api/types";
 
 /**
  * Browser-facing proxy for the build log tail.
@@ -44,7 +44,9 @@ export async function GET(
   let live: boolean | undefined;
   try {
     const detail = await getSubmission(campaignId, patchHash);
-    live = !isTerminalState(detail.latest_state);
+    live =
+      !isTerminalState(detail.latest_state) &&
+      !isStalled(detail.latest_state, detail.jobs);
   } catch (error) {
     if (isNotFound(error)) {
       return NextResponse.json(
