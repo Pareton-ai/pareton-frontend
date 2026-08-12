@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BenchReports } from "@/components/dashboard/bench-reports";
 import { BuildLog } from "@/components/dashboard/build-log";
+import {
+  LiveSubmissionPoll,
+  LiveSubmissionPollHost,
+} from "@/components/dashboard/live-submission-poll";
 import { PipelineTimeline } from "@/components/dashboard/pipeline-timeline";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
@@ -79,13 +83,16 @@ async function SubmissionSections({
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
     return (
-      <SectionUnavailable
-        message={
-          result.kind === "unavailable"
-            ? "This submission is temporarily unavailable (API/DB)."
-            : "Could not load this submission."
-        }
-      />
+      <>
+        <LiveSubmissionPoll enabled />
+        <SectionUnavailable
+          message={
+            result.kind === "unavailable"
+              ? "This submission is temporarily unavailable (API/DB)."
+              : "Could not load this submission."
+          }
+        />
+      </>
     );
   }
 
@@ -98,9 +105,12 @@ async function SubmissionSections({
     ...detail.events.map((event) => event.state),
   ];
   const stalled = isStalled(detail.latest_state, detail.jobs);
+  const live = !isTerminalState(detail.latest_state) && !stalled;
 
   return (
     <>
+      <LiveSubmissionPoll enabled={live} />
+
       <Link
         href={campaignHref(campaignId)}
         className={monoLinkClassName({ size: "sm" }, "inline-flex")}
@@ -121,7 +131,7 @@ async function SubmissionSections({
         <BuildLog
           campaignId={campaignId}
           patchHash={detail.submission.patch_hash || patchHash}
-          live={!isTerminalState(detail.latest_state) && !stalled}
+          live={live}
         />
       ) : null}
     </>
@@ -135,17 +145,19 @@ export default async function SubmissionPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      <Suspense
-        fallback={
-          <>
-            <div className="h-3 w-24 animate-pulse bg-border/50" />
-            <div className="h-64 animate-pulse border border-border bg-border/10" />
-            <div className="h-80 animate-pulse border border-border bg-border/10" />
-          </>
-        }
-      >
-        <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
-      </Suspense>
+      <LiveSubmissionPollHost>
+        <Suspense
+          fallback={
+            <>
+              <div className="h-3 w-24 animate-pulse bg-border/50" />
+              <div className="h-64 animate-pulse border border-border bg-border/10" />
+              <div className="h-80 animate-pulse border border-border bg-border/10" />
+            </>
+          }
+        >
+          <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
+        </Suspense>
+      </LiveSubmissionPollHost>
     </div>
   );
 }
