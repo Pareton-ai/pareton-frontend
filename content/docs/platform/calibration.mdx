@@ -17,11 +17,11 @@ Calibration answers one question: how far do two identical baseline engines alre
 
 Three numbers, stored on the campaign under `bench.correctness.thresholds`:
 
-| Threshold | Meaning |
-| --------- | ------- |
+| Threshold               | Meaning                                                      |
+| ----------------------- | ------------------------------------------------------------ |
 | `mean_abs_logprob_diff` | Average absolute logprob gap across compared token positions |
-| `max_abs_logprob_diff` | Worst single-position gap |
-| `argmax_mismatch_rate` | Fraction of positions where the top predicted token differs |
+| `max_abs_logprob_diff`  | Worst single-position gap                                    |
+| `argmax_mismatch_rate`  | Fraction of positions where the top predicted token differs  |
 
 A real GPU bench refuses to start until those thresholds are present and still match the campaign's current fingerprint (model, revision, engine image, trace, serve args, dtype, quantization, context length, GPU count). Change any of those and calibration must run again.
 
