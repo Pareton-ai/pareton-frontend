@@ -1,0 +1,55 @@
+---
+title: Dynamic workloads
+description: Public workload pools, chain-seeded sampling, and z-score promotion so miners cannot overfit a fixed prompt set.
+---
+
+Complements [Calibration](/docs/platform/calibration). This page covers what is new: a public workload pool, per-submission sampling from the chain, and z-score promotion against a noise distribution.
+
+## Problem
+
+If every miner sees the same fixed public workload traces, they can overfit those prompts. We also cannot keep a private holdout set.
+
+We need a workload that is:
+
+1. Unpredictable and unknown to the miner at commit time.
+2. Public and auditable (no secret holdout).
+
+
+## Idea
+
+1. Pre-bake a **public pool** of many pinned workload traces (same JSON shape as today's traces).
+2. For each submission, pick **one** pool entry using a seed the miner could not know when they committed (a later finalized block hash, plus patch and campaign ids).
+3. Run baseline and candidate on that same sampled set.
+4. Decide **promotion** with a **z-score** against a campaign noise distribution learned from many baseline-vs-baseline samples.
+
+A z-score answers: how many standard deviations is this run's baseline–candidate gap from the usual noise we already measured? Promotion means "not anomalously worse than baseline noise." Ranking and speedup stay separate.
+
+## Campaign setup
+
+1. **Build `workload_pool`** — many pinned traces (`sha256` + `url`), same shape as current workload traces. Publish the pool with the campaign.
+2. **Calibrate a noise distribution** — run baseline-vs-baseline many times (50+) on different samples from the pool. Store mean and std per correctness metric. Keep the older max×safety caps as a hard fail *alongside* z (see [Calibration](/docs/platform/calibration)). What is new is the mean/std distribution used for z-scores.
+3. **Store sampling and gate knobs** on the campaign:
+   - `sampling_rule`: uniform index into the pool; default `seed_block_offset=10` (blocks after commit before the seed block is read).
+   - `z_threshold`: max allowed aggregate z for promotion (default `2.0`).
+
+## Per submission
+
+1. Wait until `commit_block + seed_block_offset` is finalized.
+2. Build seed = hash of that block's `block_hash`, plus `patch_hash` and `campaign_id`.
+3. Map seed → pool index (uniform). Download **only that one** trace.
+4. Score baseline and candidate on the same prompts.
+5. For each of the three correctness metrics (`mean_abs_logprob_diff`, `max_abs_logprob_diff`, `argmax_mismatch_rate`): `z = (observed_difference - mean) / std`. Positive z means worse than the noise mean.
+6. `aggregate_z = max(z)` across those metrics.
+7. Promote if hard max×safety caps pass, there is no hard engine/infra error, and `aggregate_z < z_threshold`.
+
+## What promotion means
+
+A z-pass means the candidate is not anomalously worse than the noise floor on that sampled workload. It is **not** a claim of speedup. Leaderboard / performance ranking uses other stages.
+
+## Operator checklist
+
+1. Build and publish the `workload_pool`.
+2. Calibrate the noise distribution (50+ baseline-vs-baseline samples; store mean/std).
+3. Set `sampling_rule` (`seed_block_offset`) and `z_threshold` on the campaign.
+4. Open the campaign.
+5. Submissions sample automatically from the pool using the commit-relative seed.

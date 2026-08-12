@@ -23,7 +23,9 @@ Three numbers, stored on the campaign under `bench.correctness.thresholds`:
 | `max_abs_logprob_diff`  | Worst single-position gap                                    |
 | `argmax_mismatch_rate`  | Fraction of positions where the top predicted token differs  |
 
-A real GPU bench refuses to start until those thresholds are present and still match the campaign's current fingerprint (model, revision, engine image, trace, serve args, dtype, quantization, context length, GPU count). Change any of those and calibration must run again.
+A real GPU bench refuses to start until those thresholds are present and still match the campaign's current fingerprint (model, revision, engine image, trace or workload pool / sampling rule when used, serve args, dtype, quantization, context length, GPU count). Change any of those and calibration must run again.
+
+When a campaign uses a **workload pool** (many pinned traces sampled per submission), calibration also records mean and std for each of those three metrics. That distribution feeds z-score promotion. The max×safety caps above stay as a hard fail. See [Dynamic workloads](/docs/platform/dynamic-workloads).
 
 ## How we keep the measurement honest
 
@@ -41,9 +43,9 @@ Those rules apply to every correctness run, including miner benches. Calibration
 Calibration is an operator flow, not a miner step. It uses the same bench machinery that will later judge submissions.
 
 1. **Prepare** — build a bench request where baseline and candidate are the same image digest. Thresholds are set wide so the run records noise instead of failing early.
-2. **Run** — execute several correctness repetitions on real GPUs for that campaign's model and SKU (typically three).
-3. **Analyze** — read the reports, take the observed maxima across reps, multiply by a safety factor (default `2.0`), and write a summary.
-4. **Apply** — write the suggested thresholds into `campaigns.bench.correctness`, store the calibration fingerprint and metadata, then refresh `manifest_hash` and customer sign-off.
+2. **Run** — execute correctness repetitions on real GPUs for that campaign's model and SKU. Fixed-trace campaigns typically use a few reps (often three). Pool campaigns need many more samples (50+) across different pool entries so the mean/std distribution is meaningful.
+3. **Analyze** — read the reports, take the observed maxima across reps, multiply by a safety factor (default `2.0`), and write a summary. For pool campaigns, also compute mean and std per metric.
+4. **Apply** — write the suggested thresholds into `campaigns.bench.correctness`, store the calibration fingerprint and metadata (including mean/std when a pool is used), then refresh `manifest_hash` and customer sign-off.
 
 After apply, a non-mock bench request for that campaign builds with the calibrated limits. An uncalibrated open campaign is blocked: the worker raises `campaign_correctness_calibration_missing` (or `_stale` if the fingerprint no longer matches).
 
