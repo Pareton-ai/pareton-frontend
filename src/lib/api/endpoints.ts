@@ -16,7 +16,6 @@ import type {
 } from "@/lib/api/types";
 
 const SHORT_REVALIDATE = 30;
-const BUILD_LOG_REVALIDATE = 10;
 
 /** Server-side cap from api/server.py. */
 export const BUILD_LOG_MAX_TAIL = 2000;
