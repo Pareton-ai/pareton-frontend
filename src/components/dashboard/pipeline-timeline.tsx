@@ -12,7 +12,7 @@ import {
   type SubmissionEvent,
 } from "@/lib/api/types";
 
-type StepStatus = "done" | "current" | "pending" | "halted";
+type StepStatus = "done" | "current" | "stalled" | "pending" | "halted";
 
 type Step = {
   state: string;
@@ -28,6 +28,9 @@ function markerClassName(status: StepStatus, rejected: boolean): string {
   }
   if (status === "current") {
     return "bg-accent ring-2 ring-accent/30 motion-safe:animate-pulse";
+  }
+  if (status === "stalled") {
+    return "bg-rust ring-2 ring-rust/30";
   }
   return "border border-border-strong bg-background";
 }
@@ -90,13 +93,20 @@ function TimelineRow({
                 ? "text-muted"
                 : step.status === "current"
                   ? "text-accent"
-                  : "text-foreground"
+                  : step.status === "stalled"
+                    ? "text-rust"
+                    : "text-foreground"
             }`}
           >
             {meta.label}
             {step.status === "current" ? (
               <span className="ml-2 font-mono text-caption uppercase tracking-caps text-accent">
                 in progress
+              </span>
+            ) : null}
+            {step.status === "stalled" ? (
+              <span className="ml-2 font-mono text-caption uppercase tracking-caps text-rust">
+                stopped
               </span>
             ) : null}
           </p>
@@ -151,20 +161,29 @@ function RejectionRow({ event }: { event: SubmissionEvent }) {
   );
 }
 
-export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
+export function PipelineTimeline({
+  events,
+  latestState,
+  stalled = false,
+}: {
+  events: SubmissionEvent[];
+  /** API `latest_state`; may run ahead of the event trail. */
+  latestState: string;
+  /** Job backing the current stage failed; no further events are coming. */
+  stalled?: boolean;
+}) {
   const firstByState = new Map<string, SubmissionEvent>();
   for (const event of events) {
     if (!firstByState.has(event.state)) firstByState.set(event.state, event);
   }
 
   const rejection = firstByState.get("rejected") ?? null;
-  const lastEvent = events.at(-1) ?? null;
+  // Prefer API latest_state over the last event (it can run ahead).
   // Terminal states (benched / rejected) are done, not "in progress".
-  const currentState =
-    lastEvent && !isTerminalState(lastEvent.state) ? lastEvent.state : null;
+  const currentState = !isTerminalState(latestState) ? latestState : null;
+  const currentIndex = currentState ? stageIndex(currentState) : -1;
 
-  // Deltas are measured against the previous event in wall-clock order, not
-  // the previous step in the phase, so a skipped state does not inflate them.
+  // Deltas use wall-clock order so a skipped state does not inflate them.
   const previousOf = new Map<SubmissionEvent, SubmissionEvent | null>();
   events.forEach((event, index) => {
     previousOf.set(event, index > 0 ? events[index - 1] : null);
@@ -173,13 +192,19 @@ export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
   function toStep(state: string): Step {
     const event = firstByState.get(state) ?? null;
     const previous = event ? (previousOf.get(event) ?? null) : null;
-    const status: StepStatus = event
-      ? state === currentState
-        ? "current"
-        : "done"
-      : rejection
-        ? "halted"
-        : "pending";
+    const index = stageIndex(state);
+    const reachedViaLatest =
+      currentIndex !== -1 && index !== -1 && index < currentIndex;
+    const status: StepStatus =
+      state === currentState
+        ? stalled
+          ? "stalled"
+          : "current"
+        : event || reachedViaLatest
+          ? "done"
+          : rejection || stalled
+            ? "halted"
+            : "pending";
     return {
       state,
       status,
@@ -206,7 +231,12 @@ export function PipelineTimeline({ events }: { events: SubmissionEvent[] }) {
       <div className="divide-y divide-border">
         {SUBMISSION_PHASES.map((phase) => {
           const steps = phase.states.map(toStep);
-          const done = steps.filter((s) => s.event).length;
+          const done = steps.filter(
+            (s) =>
+              s.status === "done" ||
+              s.status === "current" ||
+              s.status === "stalled"
+          ).length;
           const active = steps.some((s) => s.status === "current");
 
           return (

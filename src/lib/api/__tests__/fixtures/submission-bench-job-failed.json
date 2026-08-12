@@ -1,0 +1,114 @@
+{
+  "submission": {
+    "id": "f0fad817-7069-4b9a-8031-edc9cdf5ab1f",
+    "campaign_id": "c02a40b0-6eb3-4853-827e-22d4794b814e",
+    "patch_hash": "sha256:aa5e3435d33816abcaa748a807d54a6e4fcfe52996ae2ff9643470dab687e32e",
+    "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
+    "baseline_commit": "ee0da84ab9e04ac7610e28580af62c365e898389",
+    "retrieval_url": "https://pareton-s3.s3.us-east-2.amazonaws.com/stage0/campaigns/c02a40b0-6eb3-4853-827e-22d4794b814e/patches/5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy/9c09c08d-2b47-4e5f-9847-d10db2cab34f.diff",
+    "commit_block": 8808115,
+    "committed_at": "2026-08-09T16:47:29.754855+00:00",
+    "engine_image_ref": "ghcr.io/pareton-ai/pareton-engine@sha256:2f8d58d60a25af6e423ea69a369d79440d8196952f4abd24722f0d2877fe3273",
+    "created_at": "2026-08-09T16:47:29.754855+00:00"
+  },
+  "latest_state": "bench_queued",
+  "jobs": [
+    {
+      "kind": "bench",
+      "status": "failed",
+      "last_error": "bench_engine_baseline_or_unknown"
+    },
+    {
+      "kind": "gates",
+      "status": "done",
+      "last_error": null
+    }
+  ],
+  "events": [
+    {
+      "state": "committed",
+      "evidence_ref": null,
+      "detail": {
+        "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
+        "commit_block": 8808115
+      },
+      "created_at": "2026-08-09T16:47:29.754855+00:00"
+    },
+    {
+      "state": "picked_up",
+      "evidence_ref": null,
+      "detail": {
+        "job_id": 40
+      },
+      "created_at": "2026-08-09T16:47:32.339701+00:00"
+    },
+    {
+      "state": "fetched",
+      "evidence_ref": null,
+      "detail": {
+        "size": 274,
+        "patch_hash": "sha256:aa5e3435d33816abcaa748a807d54a6e4fcfe52996ae2ff9643470dab687e32e"
+      },
+      "created_at": "2026-08-09T16:47:33.258625+00:00"
+    },
+    {
+      "state": "verified",
+      "evidence_ref": null,
+      "detail": {
+        "identity": "ok",
+        "patch_hash": "sha256:aa5e3435d33816abcaa748a807d54a6e4fcfe52996ae2ff9643470dab687e32e"
+      },
+      "created_at": "2026-08-09T16:47:34.054169+00:00"
+    },
+    {
+      "state": "applied",
+      "evidence_ref": null,
+      "detail": {
+        "ok": true
+      },
+      "created_at": "2026-08-09T16:47:46.677327+00:00"
+    },
+    {
+      "state": "surface_ok",
+      "evidence_ref": null,
+      "detail": {
+        "files": ["vllm/pareton_warmcache_probe3.py"]
+      },
+      "created_at": "2026-08-09T16:47:47.465661+00:00"
+    },
+    {
+      "state": "building",
+      "evidence_ref": null,
+      "detail": {},
+      "created_at": "2026-08-09T16:47:48.209195+00:00"
+    },
+    {
+      "state": "image_pushed",
+      "evidence_ref": null,
+      "detail": {
+        "image_ref": "ghcr.io/pareton-ai/pareton-engine@sha256:2f8d58d60a25af6e423ea69a369d79440d8196952f4abd24722f0d2877fe3273",
+        "image_digest": "sha256:2f8d58d60a25af6e423ea69a369d79440d8196952f4abd24722f0d2877fe3273"
+      },
+      "created_at": "2026-08-09T16:53:21.766350+00:00"
+    },
+    {
+      "state": "built",
+      "evidence_ref": null,
+      "detail": {
+        "mock": false,
+        "build_log": "/var/log/pareton/builds/f0fad817-7069-4b9a-8031-edc9cdf5ab1f/build.log",
+        "image_ref": "ghcr.io/pareton-ai/pareton-engine@sha256:2f8d58d60a25af6e423ea69a369d79440d8196952f4abd24722f0d2877fe3273",
+        "image_tag": "ghcr.io/pareton-ai/pareton-engine:aa5e3435d33816abcaa748a807d54a6e4fcfe52996ae2ff9643470dab687e32e"
+      },
+      "created_at": "2026-08-09T16:53:22.487993+00:00"
+    },
+    {
+      "state": "bench_queued",
+      "evidence_ref": null,
+      "detail": {},
+      "created_at": "2026-08-09T16:53:24.089462+00:00"
+    }
+  ],
+  "bench_reports": [],
+  "bench_verdict": null
+}

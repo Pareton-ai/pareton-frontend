@@ -89,6 +89,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/campaigns/{campaign_id}/submissions/{patch_hash}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Campaign Submission Detail */
+    get: operations["campaign_submission_detail_v1_campaigns__campaign_id__submissions__patch_hash__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/submissions/{patch_hash}": {
     parameters: {
       query?: never;
@@ -98,6 +115,23 @@ export interface paths {
     };
     /** Submission Detail */
     get: operations["submission_detail_v1_submissions__patch_hash__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/campaigns/{campaign_id}/submissions/{patch_hash}/build-log": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Campaign Submission Build Log */
+    get: operations["campaign_submission_build_log_v1_campaigns__campaign_id__submissions__patch_hash__build_log_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -320,6 +354,38 @@ export interface operations {
       };
     };
   };
+  campaign_submission_detail_v1_campaigns__campaign_id__submissions__patch_hash__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        campaign_id: string;
+        patch_hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   submission_detail_v1_submissions__patch_hash__get: {
     parameters: {
       query?: never;
@@ -338,6 +404,40 @@ export interface operations {
         };
         content: {
           "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  campaign_submission_build_log_v1_campaigns__campaign_id__submissions__patch_hash__build_log_get: {
+    parameters: {
+      query?: {
+        tail?: number;
+      };
+      header?: never;
+      path: {
+        campaign_id: string;
+        patch_hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
         };
       };
       /** @description Validation Error */

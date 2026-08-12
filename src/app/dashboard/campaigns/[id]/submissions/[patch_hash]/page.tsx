@@ -16,6 +16,7 @@ import { isNotFound, isUnavailable } from "@/lib/api/errors";
 import { truncateHash } from "@/lib/api/format";
 import { campaignHref, decodePatchHash, isPatchHash } from "@/lib/routes";
 import {
+  isStalled,
   isTerminalState,
   reachedBuild,
   type Campaign,
@@ -92,7 +93,11 @@ async function SubmissionSections({
   if (detail.submission.campaign_id !== campaignId) notFound();
 
   const campaign = await loadCampaignOrNull(campaignId);
-  const states = detail.events.map((event) => event.state);
+  const states = [
+    detail.latest_state,
+    ...detail.events.map((event) => event.state),
+  ];
+  const stalled = isStalled(detail.latest_state, detail.jobs);
 
   return (
     <>
@@ -105,14 +110,18 @@ async function SubmissionSections({
 
       <SubmissionDetailHeader detail={detail} campaign={campaign} />
       <SubmissionMetadata submission={detail.submission} />
-      <PipelineTimeline events={detail.events} />
+      <PipelineTimeline
+        events={detail.events}
+        latestState={detail.latest_state}
+        stalled={stalled}
+      />
       <BenchReports reports={detail.bench_reports} />
 
       {reachedBuild(states) ? (
         <BuildLog
           campaignId={campaignId}
           patchHash={detail.submission.patch_hash || patchHash}
-          live={!isTerminalState(detail.latest_state)}
+          live={!isTerminalState(detail.latest_state) && !stalled}
         />
       ) : null}
     </>
