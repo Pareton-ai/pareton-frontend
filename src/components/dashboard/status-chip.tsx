@@ -10,7 +10,8 @@ import {
 const toneClass = {
   neutral: "border-border text-muted",
   progress: "border-accent/40 text-accent",
-  success: "border-accent/50 text-foreground",
+  // Filled success so Pass isolates among many outlined fail chips (Von Restorff).
+  success: "border-accent/50 bg-accent/15 text-foreground",
   danger: "border-rust/50 text-rust",
   warn: "border-rust/40 text-rust",
 } as const;

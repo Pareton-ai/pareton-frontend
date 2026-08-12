@@ -134,6 +134,9 @@ function SubmissionsTile({ data }: { data: SubmissionsPage | null }) {
     (row) => row.bench_verdict !== null && row.bench_verdict !== "pass"
   ).length;
   const pending = rows.length - pass - fail;
+  // Only the loaded page is available; a bar next to the campaign total would
+  // read as global (mental-model mismatch). Show mix only when the page is the
+  // full set.
   const complete = rows.length === data.total;
 
   return (
@@ -146,10 +149,10 @@ function SubmissionsTile({ data }: { data: SubmissionsPage | null }) {
           ? "none yet"
           : complete
             ? `${pass} passing · ${fail} rejected`
-            : `${rows.length} on this page`
+            : `${rows.length} listed below`
       }
     >
-      <MixBar pass={pass} fail={fail} pending={pending} />
+      {complete ? <MixBar pass={pass} fail={fail} pending={pending} /> : null}
     </Tile>
   );
 }

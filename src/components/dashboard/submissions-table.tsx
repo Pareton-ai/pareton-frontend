@@ -35,20 +35,36 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
   );
 }
 
-function PageLink({
+function PageControl({
   href,
   direction,
   children,
 }: {
-  href: string;
+  href: string | null;
   direction: "prev" | "next";
   children: string;
 }) {
   const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
+  const className =
+    "inline-flex min-h-9 min-w-20 items-center justify-center gap-1.5 border border-border px-3 font-mono text-body-sm uppercase tracking-caps transition-colors";
+
+  if (!href) {
+    return (
+      <span
+        aria-disabled="true"
+        className={`${className} cursor-not-allowed text-muted/50`}
+      >
+        {direction === "prev" ? <Icon className="size-4" aria-hidden /> : null}
+        {children}
+        {direction === "next" ? <Icon className="size-4" aria-hidden /> : null}
+      </span>
+    );
+  }
+
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1.5 font-mono text-body-sm uppercase tracking-caps text-muted transition-colors hover:text-foreground"
+      className={`${className} text-muted hover:border-border-strong hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
     >
       {direction === "prev" ? <Icon className="size-4" aria-hidden /> : null}
       {children}
@@ -119,31 +135,39 @@ export function SubmissionsTable({
       </div>
 
       {totalPages > 1 ? (
-        <div className="flex items-center justify-between border-t border-border px-4 py-3.5 sm:px-5">
-          {page > 1 ? (
-            <PageLink
-              href={`${campaignHref(campaignId)}?page=${page - 1}`}
+        <nav
+          aria-label="Submissions pages"
+          className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 sm:px-5"
+        >
+          <p className="font-mono text-body-sm text-muted">
+            Page{" "}
+            <span className="text-foreground">
+              {page} / {totalPages}
+            </span>
+          </p>
+          <div className="flex items-center gap-2">
+            <PageControl
+              href={
+                page > 1
+                  ? `${campaignHref(campaignId)}?page=${page - 1}`
+                  : null
+              }
               direction="prev"
             >
               Prev
-            </PageLink>
-          ) : (
-            <span />
-          )}
-          <p className="font-mono text-body-sm text-muted">
-            Page {page} / {totalPages}
-          </p>
-          {page < totalPages ? (
-            <PageLink
-              href={`${campaignHref(campaignId)}?page=${page + 1}`}
+            </PageControl>
+            <PageControl
+              href={
+                page < totalPages
+                  ? `${campaignHref(campaignId)}?page=${page + 1}`
+                  : null
+              }
               direction="next"
             >
               Next
-            </PageLink>
-          ) : (
-            <span />
-          )}
-        </div>
+            </PageControl>
+          </div>
+        </nav>
       ) : null}
     </section>
   );

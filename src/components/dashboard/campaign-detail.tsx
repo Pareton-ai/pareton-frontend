@@ -20,14 +20,17 @@ export function CampaignTitle({ campaign }: { campaign: Campaign }) {
         </h1>
         <CampaignStatusChip status={campaign.status} />
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-body-sm text-muted">
+      <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body-sm text-muted">
         <span className="text-secondary">
-          @{truncateMiddle(model.hf_revision, 12, 6)}
+          Model revision: @{truncateMiddle(model.hf_revision, 12, 6)}
         </span>
-        <CopyableMono
-          value={campaign.campaign_id}
-          display={truncateMiddle(campaign.campaign_id, 14, 8)}
-        />
+        <span className="text-secondary">
+          Campaign ID:{" "}
+          <CopyableMono
+            value={campaign.campaign_id}
+            display={truncateMiddle(campaign.campaign_id, 14, 8)}
+          />
+        </span>
       </div>
     </div>
   );

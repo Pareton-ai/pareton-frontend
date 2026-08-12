@@ -138,7 +138,7 @@ export default async function CampaignPage({
           href="/dashboard"
           aria-label="All campaigns"
           title="All campaigns"
-          className="mt-1 inline-flex size-8 shrink-0 items-center justify-center border border-border text-muted transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center border border-border text-muted transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <ArrowLeft className="size-4" aria-hidden />
         </Link>

@@ -135,11 +135,14 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
             {campaign.success_threshold || "—"}
           </p>
         </Row>
-        <Row label="Speedup metric">
-          <span className="text-secondary">
-            {cross_env.speedup_metric.replaceAll("_", " ")}
-          </span>
-        </Row>
+        {cross_env.speedup_metric &&
+        cross_env.speedup_metric !== campaign.priority_metric ? (
+          <Row label="Speedup metric">
+            <span className="text-secondary">
+              {cross_env.speedup_metric.replaceAll("_", " ")}
+            </span>
+          </Row>
+        ) : null}
         <Row label="Quality floor">
           <span className="text-secondary">
             {campaign.sla.quality_floor_spec || "—"}

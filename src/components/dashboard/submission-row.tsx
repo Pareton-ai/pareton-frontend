@@ -40,7 +40,11 @@ function PhaseMeter({
   if (reached < 0) return <span className="w-12 shrink-0" aria-hidden />;
 
   return (
-    <span className="flex w-12 shrink-0 gap-0.5" aria-hidden>
+    <span
+      className="flex w-12 shrink-0 gap-0.5"
+      aria-hidden
+      title="Pipeline progress: intake → build → bench"
+    >
       {SUBMISSION_PHASES.map((phase) => {
         const done = phase.states.filter(
           (s) => stageIndex(s) <= reached
