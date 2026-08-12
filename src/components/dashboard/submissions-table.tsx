@@ -4,7 +4,7 @@ import { SubmissionRow } from "@/components/dashboard/submission-row";
 import { campaignHref, submissionHref } from "@/lib/routes";
 import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
 
-export const PAGE_SIZE = 25;
+export const PAGE_SIZE = 10;
 
 export function EmptySubmissions({ status }: { status: CampaignStatus }) {
   const copy =

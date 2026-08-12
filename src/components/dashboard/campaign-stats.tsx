@@ -1,60 +1,36 @@
-import {
-  Clock,
-  Layers,
-  Timer,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
-import type { ReactNode } from "react";
-import { Countdown } from "@/components/dashboard/countdown";
-import { formatDurationRemaining, formatUtc } from "@/lib/api/format";
+import { Cpu, Layers, Timer, TrendingUp } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 import type { Campaign, SubmissionsPage } from "@/lib/api/types";
+
+/** Any icon that takes a className, so brand marks sit beside Lucide glyphs. */
+type TileIcon = ComponentType<{ className?: string }>;
 
 function Tile({
   icon: Icon,
   label,
   value,
-  valueClassName = "text-foreground",
   hint,
   children,
 }: {
-  icon: LucideIcon;
+  icon: TileIcon;
   label: string;
   value: ReactNode;
-  valueClassName?: string;
   hint?: string;
   children?: ReactNode;
 }) {
   return (
     <div className="bg-background px-5 py-4">
       <div className="flex items-center gap-2">
-        <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />
+        <Icon className="size-3.5 shrink-0 text-muted" />
         <p className="font-mono text-caption uppercase tracking-caps text-muted">
           {label}
         </p>
       </div>
-      <p className={`mt-3 font-mono text-title ${valueClassName}`}>{value}</p>
+      <p className="mt-3 font-mono text-title text-foreground">{value}</p>
       {children}
       {hint ? (
         <p className="mt-2 font-mono text-body-sm text-muted">{hint}</p>
       ) : null}
-    </div>
-  );
-}
-
-/** Single-fill progress rule, e.g. how much of the window has burned down. */
-function Meter({ fraction, label }: { fraction: number; label: string }) {
-  return (
-    <div
-      className="mt-3 h-1 w-full bg-border"
-      role="img"
-      aria-label={label}
-      title={label}
-    >
-      <div
-        className="h-full bg-accent"
-        style={{ width: `${Math.round(fraction * 100)}%` }}
-      />
     </div>
   );
 }
@@ -100,61 +76,50 @@ function MixBar({
   );
 }
 
-function WindowTile({ campaign }: { campaign: Campaign }) {
-  const opensAt = new Date(campaign.window.opens_at).getTime();
-  const closesAt = new Date(campaign.window.closes_at).getTime();
-  // Render-time snapshot of the window; the page revalidates on a short cycle.
-  // eslint-disable-next-line react-hooks/purity -- Date.now is the window boundary
-  const now = Date.now();
+/** Simple Icons NVIDIA mark; fills with `currentColor`. */
+function NvidiaMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z" />
+    </svg>
+  );
+}
 
-  if (Number.isNaN(opensAt) || Number.isNaN(closesAt)) {
-    return <Tile icon={Clock} label="Window" value="—" />;
+/** Datacenter / workstation families Pareton campaigns ship against. */
+function isNvidiaSku(sku: string): boolean {
+  return /(?:^|[_-])(A10|A30|A40|A100|H100|H200|B100|B200|L4|L40S?|V100|P100|T4|GH200|GB200|RTX\d*)(?:[_-]|$)/i.test(
+    sku
+  );
+}
+
+/** `A100_80GB` reads as `A100`; the memory size is implied by the family. */
+function shortSku(sku: string): string {
+  return sku.replace(/[_-]\d+\s*GB$/i, "");
+}
+
+function GpuTile({ campaign }: { campaign: Campaign }) {
+  const skus = campaign.gpu_skus;
+  const { gpu_count } = campaign.bench;
+
+  if (skus.length === 0) {
+    return <Tile icon={Cpu} label="Target GPUs" value="—" />;
   }
 
-  if (now < opensAt) {
-    return (
-      <Tile
-        icon={Clock}
-        label="Opens in"
-        value={formatDurationRemaining(campaign.window.opens_at, now)}
-        hint={formatUtc(campaign.window.opens_at)}
-      />
-    );
-  }
-
-  if (now >= closesAt) {
-    return (
-      <Tile
-        icon={Clock}
-        label="Window"
-        value="Closed"
-        hint={formatUtc(campaign.window.closes_at)}
-      >
-        <Meter fraction={1} label="Window complete" />
-      </Tile>
-    );
-  }
-
-  const elapsed = (now - opensAt) / (closesAt - opensAt);
+  const shown = skus.slice(0, 2).map(shortSku).join(" · ");
+  const value = skus.length > 2 ? `${shown} +${skus.length - 2}` : shown;
 
   return (
     <Tile
-      icon={Clock}
-      label="Closes in"
-      value={
-        <Countdown
-          closesAt={campaign.window.closes_at}
-          className="text-title"
-        />
-      }
-      valueClassName="text-accent"
-      hint={formatUtc(campaign.window.closes_at)}
-    >
-      <Meter
-        fraction={elapsed}
-        label={`${Math.round(elapsed * 100)}% of the window elapsed`}
-      />
-    </Tile>
+      icon={skus.every(isNvidiaSku) ? NvidiaMark : Cpu}
+      label="Target GPUs"
+      value={<span title={skus.join(", ")}>{value}</span>}
+      hint={`${gpu_count}× GPU per bench`}
+    />
   );
 }
 
@@ -190,8 +155,10 @@ function SubmissionsTile({ data }: { data: SubmissionsPage | null }) {
 }
 
 /**
- * The four numbers that decide whether a miner works this campaign: time left,
- * competition, and the two bars a patch has to clear.
+ * The four facts that decide whether a miner works this campaign: the hardware
+ * needed, the competition, and the two bars a patch has to clear. Deliberately
+ * free of the window, which stops meaning anything once campaigns run open
+ * ended.
  */
 export function CampaignStats({
   campaign,
@@ -208,7 +175,7 @@ export function CampaignStats({
       aria-label="Campaign summary"
       className="grid grid-cols-2 gap-px border border-border bg-border lg:grid-cols-4"
     >
-      <WindowTile campaign={campaign} />
+      <GpuTile campaign={campaign} />
       <SubmissionsTile data={submissions} />
       <Tile
         icon={TrendingUp}
