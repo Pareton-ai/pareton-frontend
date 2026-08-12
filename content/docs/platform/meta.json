@@ -1,4 +1,4 @@
 {
   "title": "Platform",
-  "pages": ["pipeline-stages", "campaigns"]
+  "pages": ["pipeline-stages", "campaigns", "calibration"]
 }
