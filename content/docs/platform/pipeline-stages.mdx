@@ -37,7 +37,7 @@ submission is missing. The dashboard pipeline view renders these stages in order
 - **Pull 2 images:** Pod downloads baseline (plain vLLM) and candidate (patched image).
 - **Download the model:** Pod downloads one shared model copy used by both engines.
 - **Compare baseline vs candidate:**
-  1. Correctness: same prompts; outputs must match closely.
+  1. Correctness: same prompts; outputs must match closely. Thresholds are set per campaign by [calibration](/docs/platform/calibration).
   2. Perf screen: quick check the candidate is not clearly slower.
   3. SLA bench: full latency run against campaign targets.
 - **Results and score:** Verdict and evidence are saved. On-chain weights and rewards are not wired yet.
