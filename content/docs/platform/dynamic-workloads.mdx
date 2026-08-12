@@ -14,7 +14,6 @@ We need a workload that is:
 1. Unpredictable and unknown to the miner at commit time.
 2. Public and auditable (no secret holdout).
 
-
 ## Idea
 
 1. Pre-bake a **public pool** of many pinned workload traces (same JSON shape as today's traces).
@@ -27,7 +26,7 @@ A z-score answers: how many standard deviations is this run's baseline–candida
 ## Campaign setup
 
 1. **Build `workload_pool`** — many pinned traces (`sha256` + `url`), same shape as current workload traces. Publish the pool with the campaign.
-2. **Calibrate a noise distribution** — run baseline-vs-baseline many times (50+) on different samples from the pool. Store mean and std per correctness metric. Keep the older max×safety caps as a hard fail *alongside* z (see [Calibration](/docs/platform/calibration)). What is new is the mean/std distribution used for z-scores.
+2. **Calibrate a noise distribution** — run baseline-vs-baseline many times (50+) on different samples from the pool. Store mean and std per correctness metric. Keep the older max×safety caps as a hard fail _alongside_ z (see [Calibration](/docs/platform/calibration)). What is new is the mean/std distribution used for z-scores.
 3. **Store sampling and gate knobs** on the campaign:
    - `sampling_rule`: uniform index into the pool; default `seed_block_offset=10` (blocks after commit before the seed block is read).
    - `z_threshold`: max allowed aggregate z for promotion (default `2.0`).
