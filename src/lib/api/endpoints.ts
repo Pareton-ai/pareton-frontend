@@ -17,6 +17,13 @@ import type {
 
 const SHORT_REVALIDATE = 30;
 
+/**
+ * Detail + build-log must not sit in the Next data cache: the page polls while
+ * the submission is non-terminal (PAR-44), and the API returns no-store for
+ * those responses.
+ */
+const LIVE_REVALIDATE = 0;
+
 /** Server-side cap from api/server.py. */
 export const BUILD_LOG_MAX_TAIL = 2000;
 
