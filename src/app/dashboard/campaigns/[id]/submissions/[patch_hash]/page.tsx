@@ -105,6 +105,7 @@ async function SubmissionSections({
     ...detail.events.map((event) => event.state),
   ];
   const stalled = isStalled(detail.latest_state, detail.jobs);
+  const live = !isTerminalState(detail.latest_state) && !stalled;
 
   return (
     <>
@@ -130,7 +131,7 @@ async function SubmissionSections({
         <BuildLog
           campaignId={campaignId}
           patchHash={detail.submission.patch_hash || patchHash}
-          live={!isTerminalState(detail.latest_state) && !stalled}
+          live={live}
         />
       ) : null}
     </>
