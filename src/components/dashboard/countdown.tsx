@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatDurationRemaining } from "@/lib/api/format";
+import { cn } from "@/lib/cn";
 
 type CountdownProps = {
   closesAt: string;
@@ -33,7 +34,7 @@ export function Countdown({ closesAt, className = "" }: CountdownProps) {
   }, [closesAt]);
 
   return (
-    <span className={`font-mono text-body tracking-wider ${className}`}>
+    <span className={cn("font-mono text-body tracking-wider", className)}>
       {label}
     </span>
   );
