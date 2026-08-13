@@ -1,4 +1,4 @@
 {
   "title": "Miner",
-  "pages": ["index", "submission", "evidence"]
+  "pages": ["index", "submission-fee", "submission", "evidence"]
 }

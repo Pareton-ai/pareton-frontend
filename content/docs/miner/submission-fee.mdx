@@ -1,0 +1,133 @@
+---
+title: Submission fee
+description: Why it exists, how the miner CLI pays it, and what Pareton checks on-chain before your patch counts.
+---
+
+<Callout type="warn">
+  Submissions are not live yet. You cannot submit at this time.
+</Callout>
+
+The fee is skin in the game and avoids spamming.
+
+You do not pay it by hand. `python -m miner.commit_patch` does everything in one
+shot: it sends the fee, references the payment in your commitment, and
+refuses to commit anything it cannot prove you paid for. This page exists so you
+know what that command is doing with your coldkey before you run it.
+
+## What you pay
+
+|            |                                                    |
+| ---------- | -------------------------------------------------- |
+| Amount     | **0.05 TAO** per submission                        |
+| Recipient  | `5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K` |
+| Signed by  | your **coldkey**                                   |
+| Refundable | no                                                 |
+
+The fee is charged per submission, not per campaign.
+
+This is separate from the subnet 10 registration burn. That burn is paid to the
+chain when you register a hotkey and has nothing to do with Pareton; see
+[registration burn](https://www.bittensor.com/docs/guides/mining/burn).
+
+## How the CLI pays
+
+`python -m miner.commit_patch` runs in this order:
+
+1. Requests a presigned upload and PUTs the patch bytes.
+2. Checks that your hotkey is registered on the subnet. The transfer happens
+   only after this passes, so an unregistered hotkey never wastes a fee.
+3. Transfers the fee from your **coldkey** to the recipient.
+4. Writes the commitment with the payment reference appended, signed by your
+   **hotkey**.
+5. Polls until the commitment is visible.
+
+Fund the coldkey, not the hotkey — the two keys have different jobs and the
+transfer is coldkey-signed. See
+[Wallets and keys](https://www.bittensor.com/docs/concepts/wallets).
+
+A successful run prints the payment before it prints the commitment:
+
+```
+paid fee 0.05 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K (payment 6123456-2)
+```
+
+`6123456-2` is the block number and the extrinsic index inside
+that block, and it is what lets you recover from a failed commit without paying
+twice.
+
+## The proof in the commitment
+
+The payload carries the payment as two extra positional fields:
+
+```
+v2|<campaign_id>|<baseline_commit>|sha256:<hex>|<retrieval_url>|<payment_block>|<payment_tx>
+```
+
+`payment_tx` is the extrinsic index within the block, not the transaction hash.
+finney caps a plaintext commitment at 384 bytes (`MaxFields=3` × 128-byte `Raw`
+chunks), and `|<block>|<index>` costs about 12 bytes against about 67 for
+`0x<hash>`.
+
+### Dry-run
+
+It sizes the payload against a worst-case payment reference
+before any money moves, so an oversized payload fails before you pay:
+
+```bash
+python -m miner.commit_patch ... --dry-run
+```
+
+```
+dry-run: would transfer 0.05 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K
+dry-run: not submitting on-chain
+```
+
+## What Pareton verifies
+
+The watcher reads the referenced block, decodes the extrinsic at that index, and
+checks it really paid. Any of these rejects the commitment:
+
+| Reason                       | Trigger                                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------- |
+| `payment_proof_missing`      | The commitment carries no `(block, index)`.                                                 |
+| `payment_ref_already_used`   | One payment backs exactly one submission.                                                   |
+| `payment_block_unavailable`  | The referenced block could not be read.                                                     |
+| `payment_index_out_of_range` | No extrinsic at that index in that block.                                                   |
+| `payment_not_a_transfer`     | The extrinsic is not `Balances.transfer_keep_alive` or `transfer_allow_death`.              |
+| `payment_recipient_mismatch` | The destination is not the payment recipient address.                                       |
+| `payment_below_fee`          | The amount in rao is under the fee. Overpaying is fine.                                     |
+| `payment_signer_not_miner`   | The signer is neither the submitting hotkey nor the coldkey that owns it per the metagraph. |
+| `payment_extrinsic_failed`   | The transfer is in the block but did not dispatch successfully.                             |
+| `payment_outcome_unknown`    | No success or failure event was found for that index.                                       |
+
+Pointing at somebody else's transfer does
+not buy you a submission: the signer must be your own hotkey or the coldkey that
+owns it. And a failed Substrate extrinsic stays in the block with its call data
+intact, so the success event is checked explicitly rather than trusting the call
+arguments.
+
+This check runs **before** the submission is inserted. That has two
+consequences:
+
+- A rejected proof produces nothing at all — no submission, no dashboard entry,
+  no event timeline. This is unlike a gate rejection, which does create a
+  submission you can inspect.
+- The `(campaign_id, patch_hash)` dedupe slot stays free, so the same patch
+  bytes can be committed again with a valid proof.
+
+## If the commitment fails after you paid
+
+The transfer and the commitment are two separate transactions. If the transfer
+lands and the commitment then fails, reuse the payment instead of paying again:
+
+```bash
+python -m miner.commit_patch ... --payment-block 6123456 --payment-tx 2
+```
+
+The CLI prints those exact flags to stderr when a commit fails after a payment.
+Both flags must be set together, and they require
+`PARETON_SUBMISSION_FEE_TAO > 0`.
+
+If the transfer landed but the SDK returned no extrinsic id, the CLI stops
+rather than committing an unprovable payment. Find the block and index on a
+block explorer and retry with the flags above. Do not pay twice.

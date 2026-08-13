@@ -10,6 +10,8 @@ description: Register, build a patch, and commit it on-chain with the miner CLI.
 ## Prerequisites
 
 - A Bittensor wallet whose hotkey is registered on subnet 10 (finney).
+- A coldkey funded with the [submission fee](/docs/miner/submission-fee) plus
+  transaction costs, and `PARETON_SUBMISSION_FEE_TAO` set in your environment.
 - The Pareton repository and its Python environment, which pins `bittensor` 11.x.
 - An open campaign. Get its `campaign_id` and pinned `baseline_commit` from the [dashboard](/dashboard) or the API.
 
@@ -43,12 +45,13 @@ python -m miner.commit_patch \
   --wallet-hotkey <hotkey_name>
 ```
 
-The CLI does four things:
+The CLI does five things:
 
 1. Requests a Pareton-presigned S3 upload URL bound to your hotkey.
 2. PUTs the patch bytes to that URL.
-3. Writes a plaintext `Commitments.set_commitment` record on subnet 10 containing the campaign, baseline commit, patch hash, and artifact URL.
-4. Polls the chain until the commitment is visible and prints the block it landed at.
+3. Transfers the submission fee from your coldkey, once your hotkey is confirmed registered. See [Submission fee](/docs/miner/submission-fee).
+4. Writes a plaintext `Commitments.set_commitment` record on subnet 10 containing the campaign, baseline commit, patch hash, artifact URL, and a reference to the fee payment.
+5. Polls the chain until the commitment is visible and prints the block it landed at.
 
 ### Dry-run first
 
