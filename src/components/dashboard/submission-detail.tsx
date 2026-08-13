@@ -1,23 +1,39 @@
+import {
+  Activity,
+  Clock,
+  Download,
+  GitBranch,
+  Timer,
+  TrendingUp,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
-import { FieldGrid, FieldGridItem } from "@/components/dashboard/field";
+import { GpuMark } from "@/components/dashboard/gpu";
 import { LiveElapsed } from "@/components/dashboard/live-elapsed";
+import { MeterRow } from "@/components/dashboard/meter";
+import { Panel, StatStrip, StatTile } from "@/components/dashboard/panel";
 import {
   BenchVerdictChip,
   PipelineChip,
 } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 import { isSafeArtifactUrl } from "@/lib/api/artifacts";
+import { summarizeBench, type BenchSummary } from "@/lib/api/bench";
 import {
   elapsedBetween,
   formatDuration,
+  formatRatio,
   formatUtc,
+  formatUtcShort,
+  formatUtcTime,
+  truncateDigest,
   truncateHash,
   truncateMiddle,
 } from "@/lib/api/format";
 import { campaignHref } from "@/lib/routes";
 import {
-  getFailedSubmissionJob,
+  firstEventByState,
   getSubmissionStateMeta,
   isStalled,
   isTerminalState,
@@ -25,42 +41,73 @@ import {
   SUBMISSION_STAGE_ORDER,
   type Campaign,
   type SubmissionDetail,
+  type SubmissionEvent,
   type SubmissionJob,
 } from "@/lib/api/types";
 
-function ProgressTrack({
-  reached,
-  halted,
+/**
+ * Title block sitting inline with the back control, mirroring the campaign page.
+ *
+ * Identity only: the patch digest that names the page, its verdict, and the ids
+ * you need to quote. Numbers go in the stat strip, provenance in the sidebar.
+ */
+export function SubmissionTitle({
+  detail,
+  campaign,
 }: {
-  reached: number;
-  halted: boolean;
+  detail: SubmissionDetail;
+  campaign: Campaign | null;
 }) {
+  const { submission } = detail;
+
   return (
-    <div
-      className="flex gap-px"
-      role="img"
-      aria-label={`Stage ${reached + 1} of ${SUBMISSION_STAGE_ORDER.length}`}
-    >
-      {SUBMISSION_STAGE_ORDER.map((state, index) => (
-        <span
-          key={state}
-          className={`h-1 flex-1 ${
-            index <= reached
-              ? halted
-                ? "bg-rust/70"
-                : "bg-accent"
-              : "bg-border-strong"
-          }`}
-        />
-      ))}
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* The `sha256:` prefix is constant across every patch, so the heading
+            drops it the way the submissions table does. */}
+        <h1 className="break-all font-mono text-display-section font-medium leading-display tracking-tight text-foreground">
+          {truncateDigest(submission.patch_hash, 8, 6)}
+        </h1>
+        <PipelineChip state={detail.latest_state} />
+        {detail.bench_verdict ? (
+          <BenchVerdictChip verdict={detail.bench_verdict} />
+        ) : null}
+      </div>
+
+      <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body-sm text-muted">
+        {campaign ? (
+          <span className="text-secondary">
+            Campaign:{" "}
+            <Link
+              href={campaignHref(submission.campaign_id)}
+              className={monoLinkClassName(
+                { size: "sm", tone: "accent" },
+                "normal-case tracking-normal underline-offset-4 hover:underline"
+              )}
+            >
+              {campaign.bench.model.hf_repo}
+            </Link>
+          </span>
+        ) : null}
+        <span className="max-w-full text-secondary">
+          Patch hash:{" "}
+          <CopyableMono
+            value={submission.patch_hash}
+            display={truncateHash(submission.patch_hash, 14, 8)}
+          />
+        </span>
+      </div>
     </div>
   );
 }
 
 /** Infra job failure with no matching rejection event (PAR-42). */
-function FailedJobNotice({ job }: { job: SubmissionJob }) {
+export function FailedJobNotice({ job }: { job: SubmissionJob }) {
   return (
-    <div className="border-b border-rust/30 bg-rust/5 px-5 py-4 sm:px-6">
+    <section
+      aria-label="Job failure"
+      className="border border-rust/30 bg-rust/5 px-4 py-4"
+    >
       <p className="font-mono text-caption uppercase tracking-caps text-rust">
         {job.kind} job failed
       </p>
@@ -68,15 +115,247 @@ function FailedJobNotice({ job }: { job: SubmissionJob }) {
         {job.last_error ?? "No error recorded."}
       </p>
       <p className="mt-2 max-w-2xl text-body leading-relaxed text-secondary">
-        The pipeline stopped without recording a rejection, so the timeline
-        below ends at the last stage that succeeded. This is an infrastructure
-        failure, not a verdict on the patch.
+        The pipeline stopped without recording a rejection, so the timeline ends
+        at the last stage that succeeded. This is an infrastructure failure, not
+        a verdict on the patch.
       </p>
+    </section>
+  );
+}
+
+/**
+ * Stage progress as one segment per happy-path stage.
+ *
+ * Each segment names its stage on hover with when it landed, so the strip is
+ * readable on its own instead of only being a progress ratio. The bar stays 1px
+ * tall; the segment around it is taller purely to be hoverable. The tip waits
+ * 150ms so a pass across the strip does not flash, then appears faster than a
+ * native `title`.
+ */
+function StageTrack({
+  events,
+  reached,
+  halted,
+}: {
+  events: SubmissionEvent[];
+  reached: number;
+  halted: boolean;
+}) {
+  const firstByState = firstEventByState(events);
+
+  return (
+    <div
+      className="mt-1.5 flex gap-px"
+      role="img"
+      aria-label={`Stage ${reached + 1} of ${SUBMISSION_STAGE_ORDER.length}`}
+    >
+      {SUBMISSION_STAGE_ORDER.map((state, index) => {
+        const meta = getSubmissionStateMeta(state);
+        const event = firstByState.get(state);
+        const cleared = index <= reached;
+        const when = event
+          ? `${formatUtcTime(event.created_at)} UTC`
+          : cleared
+            ? "reached"
+            : halted
+              ? "not reached"
+              : "pending";
+
+        return (
+          <span
+            key={state}
+            className="group/seg relative z-0 flex h-3.5 flex-1 cursor-help items-center hover:z-20"
+          >
+            <span
+              className={`h-1 w-full ${
+                cleared
+                  ? halted
+                    ? "bg-rust/70"
+                    : "bg-accent"
+                  : "bg-border-strong"
+              }`}
+            />
+            {/* Native `title` waits ~1s; this waits 150ms then fades in. Leave
+                is delay-0 so the tip does not linger when the pointer moves. */}
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute bottom-full z-10 mb-1.5 w-max max-w-52 border border-border bg-background px-2 py-1.5 text-left opacity-0 transition-opacity delay-0 duration-75 group-hover/seg:opacity-100 group-hover/seg:delay-150 ${
+                index === 0
+                  ? "left-0"
+                  : index === SUBMISSION_STAGE_ORDER.length - 1
+                    ? "right-0"
+                    : "left-1/2 -translate-x-1/2"
+              }`}
+            >
+              <span className="block font-mono text-caption text-foreground">
+                {meta.label} · {when}
+              </span>
+              <span className="mt-0.5 block font-mono text-caption leading-normal text-muted">
+                {meta.description}
+              </span>
+            </span>
+          </span>
+        );
+      })}
     </div>
   );
 }
 
-export function SubmissionDetailHeader({
+function formatMs(value: number): string {
+  return `${value.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} ms`;
+}
+
+/** Distance to a ceiling, as a share of the budget used. */
+function headroomLabel(used: number): string {
+  return used > 1
+    ? `${Math.round((used - 1) * 100)}% over`
+    : `${Math.round((1 - used) * 100)}% headroom`;
+}
+
+/** Worst speedup across SKUs against the campaign floor. */
+function SpeedupTile({
+  summary,
+  campaign,
+}: {
+  summary: BenchSummary;
+  campaign: Campaign | null;
+}) {
+  const floor = campaign?.bench.cross_env.min_speedup_each ?? null;
+
+  if (summary.speedup === null) {
+    return (
+      <StatTile
+        icon={TrendingUp}
+        label="Speedup"
+        value="—"
+        hint={
+          floor === null
+            ? "awaiting bench"
+            : `floor ≥ ${formatRatio(floor)} · awaiting bench`
+        }
+      />
+    );
+  }
+
+  const clears = floor === null || summary.speedup >= floor;
+  const scope =
+    summary.speedupSource === "perf_screen"
+      ? "perf screen only"
+      : summary.skuCount > 1
+        ? `worst of ${summary.skuCount} GPU SKUs`
+        : (summary.speedupSku ?? "single SKU");
+
+  return (
+    <StatTile
+      icon={TrendingUp}
+      label="Speedup"
+      value={
+        <span className={clears ? "text-foreground" : "text-rust"}>
+          {formatRatio(summary.speedup)}
+        </span>
+      }
+      hint={floor === null ? scope : `floor ≥ ${formatRatio(floor)} · ${scope}`}
+    />
+  );
+}
+
+/** Candidate p99 latency against the two gates the campaign publishes. */
+function LatencyTile({
+  summary,
+  campaign,
+}: {
+  summary: BenchSummary;
+  campaign: Campaign | null;
+}) {
+  const ttftCeiling = campaign?.sla.p99_ttft_ms ?? null;
+  const itlCeiling = campaign?.sla.p99_itl_ms ?? null;
+
+  if (summary.p99TtftMs === null && summary.p99ItlMs === null) {
+    return (
+      <StatTile
+        icon={Timer}
+        label="p99 latency"
+        value="—"
+        hint={
+          ttftCeiling !== null && itlCeiling !== null
+            ? `ceiling ${ttftCeiling} / ${itlCeiling} ms`
+            : "awaiting bench"
+        }
+      />
+    );
+  }
+
+  const gates = [
+    { label: "TTFT", value: summary.p99TtftMs, ceiling: ttftCeiling },
+    { label: "ITL", value: summary.p99ItlMs, ceiling: itlCeiling },
+  ].filter(
+    (gate): gate is { label: string; value: number; ceiling: number | null } =>
+      gate.value !== null
+  );
+
+  const worst = gates.some(
+    (gate) => gate.ceiling !== null && gate.value > gate.ceiling
+  );
+
+  return (
+    <StatTile
+      icon={Timer}
+      label="p99 latency"
+      value={
+        // Whole milliseconds at a glance; the SLA table below carries the
+        // precision, and decimals here wrap the tile on a phone.
+        <span className={worst ? "text-rust" : "text-foreground"}>
+          {gates.map((gate) => Math.round(gate.value)).join(" / ")}
+          <span className="text-muted"> ms</span>
+        </span>
+      }
+      hint={
+        summary.skuCount > 1
+          ? `worst of ${summary.skuCount} GPU SKUs`
+          : undefined
+      }
+    >
+      {/* The tile value already prints both numbers, so the meters carry the
+          reading that is not obvious from them: distance to the ceiling. */}
+      <div className="mt-3 space-y-2.5">
+        {gates.map((gate) => {
+          if (gate.ceiling === null) {
+            return (
+              <MeterRow
+                key={gate.label}
+                label={gate.label}
+                value={formatMs(gate.value)}
+                fraction={0}
+                tone="neutral"
+              />
+            );
+          }
+          const used = gate.value / gate.ceiling;
+          return (
+            <MeterRow
+              key={gate.label}
+              label={gate.label}
+              value={headroomLabel(used)}
+              fraction={used}
+              tone={used > 1 ? "rust" : "accent"}
+              title={`p99 ${gate.label} ${gate.value.toFixed(1)} ms against a ${gate.ceiling} ms ceiling`}
+            />
+          );
+        })}
+      </div>
+    </StatTile>
+  );
+}
+
+/**
+ * The four facts that decide whether a patch mattered: how far it got, how long
+ * it took, how much faster it made the engine, and whether it stayed inside the
+ * latency gates. Everything else on the page is evidence for these.
+ */
+export function SubmissionStats({
   detail,
   campaign,
 }: {
@@ -84,8 +363,8 @@ export function SubmissionDetailHeader({
   campaign: Campaign | null;
 }) {
   const { submission, events, latest_state: latestState } = detail;
+  const summary = summarizeBench(detail.bench_reports, campaign);
   const stateMeta = getSubmissionStateMeta(latestState);
-  const failedJob = getFailedSubmissionJob(detail.jobs);
   const stalled = isStalled(latestState, detail.jobs);
   const halted = latestState === "rejected" || stalled;
   const active = !isTerminalState(latestState) && !stalled;
@@ -102,85 +381,82 @@ export function SubmissionDetailHeader({
     elapsedBetween(submission.committed_at, new Date().toISOString()) ?? 0;
 
   return (
-    <section className="border border-border">
-      <div className="border-b border-border px-5 py-5 sm:px-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <PipelineChip state={latestState} />
-          {detail.bench_verdict ? (
-            <BenchVerdictChip verdict={detail.bench_verdict} />
-          ) : null}
-          {campaign ? (
-            <Link
-              href={campaignHref(submission.campaign_id)}
-              className={monoLinkClassName({ size: "sm", tone: "muted" })}
-            >
-              {campaign.bench.model.hf_repo}
-            </Link>
-          ) : null}
-        </div>
+    <StatStrip
+      label="Submission summary"
+      className="grid-cols-2 lg:grid-cols-4"
+    >
+      <StatTile
+        icon={Activity}
+        label="Stage"
+        value={
+          <span className={halted ? "text-rust" : undefined}>
+            {stateMeta.label}
+          </span>
+        }
+        hint={`${Math.min(reached + 1, SUBMISSION_STAGE_ORDER.length)} of ${
+          SUBMISSION_STAGE_ORDER.length
+        } stages`}
+      >
+        <StageTrack events={events} reached={reached} halted={halted} />
+      </StatTile>
 
-        <h1 className="mt-4 break-all font-mono text-display-section font-medium tracking-tight text-foreground">
-          {truncateHash(submission.patch_hash, 12, 8)}
-        </h1>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-          <CopyableMono
-            value={submission.patch_hash}
-            display="Full patch hash"
-          />
-          <p className="font-mono text-body-sm text-muted">
-            {stateMeta.description}
-          </p>
-        </div>
-      </div>
-
-      {stalled && failedJob ? <FailedJobNotice job={failedJob} /> : null}
-
-      <div className="px-5 py-5 sm:px-6">
-        <ProgressTrack reached={reached} halted={halted} />
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-          <p className="font-mono text-caption uppercase tracking-caps text-muted">
-            Stage {Math.min(reached + 1, SUBMISSION_STAGE_ORDER.length)} of{" "}
-            {SUBMISSION_STAGE_ORDER.length}
-            <span className={halted ? "text-rust" : "text-secondary"}>
-              {" · "}
-              {stateMeta.label}
+      <StatTile
+        icon={Clock}
+        label={
+          active ? "Running for" : stalled ? "Stalled after" : "Settled in"
+        }
+        value={
+          active ? (
+            <LiveElapsed
+              since={submission.committed_at}
+              initialMs={runningMs}
+              className="text-accent"
+            />
+          ) : (
+            <span className={stalled ? "text-rust" : undefined}>
+              {formatDuration(settledMs)}
             </span>
-          </p>
-          <p className="font-mono text-caption uppercase tracking-caps text-muted">
-            {active
-              ? "Running for "
-              : stalled
-                ? "Stalled after "
-                : "Settled in "}
-            <span className={stalled ? "text-rust" : "text-secondary"}>
-              {active ? (
-                <LiveElapsed
-                  since={submission.committed_at}
-                  initialMs={runningMs}
-                />
-              ) : (
-                formatDuration(settledMs)
-              )}
-            </span>
-          </p>
-        </div>
+          )
+        }
+        hint={`committed ${formatUtcShort(submission.committed_at)} UTC`}
+      />
+
+      <SpeedupTile summary={summary} campaign={campaign} />
+      <LatencyTile summary={summary} campaign={campaign} />
+    </StatStrip>
+  );
+}
+
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="px-4 py-3">
+      <p className="font-mono text-caption uppercase tracking-caps text-muted">
+        {label}
+      </p>
+      <div className="mt-1.5 font-mono text-body-sm text-foreground">
+        {children}
       </div>
-    </section>
+    </div>
   );
 }
 
 function PatchArtifact({ url }: { url: string }) {
   if (!url) {
-    return <p className="font-mono text-body-sm text-muted">—</p>;
+    return <span className="text-muted">—</span>;
   }
 
   // Miner-supplied URL that failed validation: show it, never link it.
   if (!isSafeArtifactUrl(url)) {
     return (
-      <p className="break-all font-mono text-body-sm text-muted" title={url}>
+      <span className="break-all text-muted" title={url}>
         {truncateMiddle(url, 20, 12)}
-      </p>
+      </span>
     );
   }
 
@@ -189,77 +465,87 @@ function PatchArtifact({ url }: { url: string }) {
       href={url}
       rel="noreferrer nofollow"
       target="_blank"
-      className={monoLinkClassName(
-        { size: "sm", tone: "accent" },
-        "inline-flex normal-case tracking-normal underline-offset-4 hover:underline"
-      )}
+      className="inline-flex items-center gap-1.5 text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
     >
-      Download diff ↗
+      <Download className="size-3 shrink-0" aria-hidden />
+      Download diff
     </a>
   );
 }
 
+/**
+ * Sidebar column: who submitted the patch and what it was built from. Reference
+ * material, so it sits beside the timeline rather than above it.
+ */
 export function SubmissionMetadata({
   submission,
+  campaign,
 }: {
   submission: SubmissionDetail["submission"];
+  campaign: Campaign | null;
 }) {
   return (
-    <section aria-label="Submission metadata" className="border border-border">
-      <div className="border-b border-border px-5 py-4 sm:px-6">
-        <h2 className="font-mono text-body-sm uppercase tracking-caps text-muted">
-          Metadata
-        </h2>
-      </div>
-
-      <FieldGrid>
-        <FieldGridItem label="Miner hotkey">
+    <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
+      <Panel icon={User} title="Miner">
+        <Row label="Hotkey">
           <CopyableMono
             value={submission.hotkey}
             display={truncateMiddle(submission.hotkey, 12, 8)}
           />
-        </FieldGridItem>
-
-        <FieldGridItem label="Committed">
-          <p className="font-mono text-body-sm text-secondary">
+        </Row>
+        <Row label="Committed">
+          <span className="text-secondary">
             {formatUtc(submission.committed_at)}
-          </p>
+          </span>
           {submission.commit_block !== null ? (
-            <p className="mt-1 font-mono text-caption text-muted">
+            <p className="mt-1 text-caption text-muted">
               block {submission.commit_block.toLocaleString("en-US")}
             </p>
           ) : null}
-        </FieldGridItem>
-
-        <FieldGridItem label="Baseline commit">
-          <CopyableMono
-            value={submission.baseline_commit}
-            display={truncateMiddle(submission.baseline_commit, 10, 8)}
-          />
-        </FieldGridItem>
-
-        <FieldGridItem label="Engine image">
-          {submission.engine_image_ref ? (
-            <CopyableMono
-              value={submission.engine_image_ref}
-              display={truncateHash(submission.engine_image_ref, 16, 10)}
-            />
-          ) : (
-            <p className="font-mono text-body-sm text-muted">Not built yet</p>
-          )}
-        </FieldGridItem>
-
-        <FieldGridItem label="Submission id">
+        </Row>
+        <Row label="Submission id">
           <CopyableMono
             value={submission.id}
             display={truncateMiddle(submission.id, 10, 8)}
           />
-        </FieldGridItem>
+        </Row>
+      </Panel>
 
-        <FieldGridItem label="Patch artifact">
+      <Panel icon={GitBranch} title="Build inputs">
+        <Row label="Patch artifact">
           <PatchArtifact url={submission.retrieval_url} />
-        </FieldGridItem>
-      </FieldGrid>
-    </section>
+        </Row>
+        <Row label="Baseline commit">
+          <CopyableMono
+            value={submission.baseline_commit}
+            display={truncateMiddle(submission.baseline_commit, 10, 8)}
+          />
+        </Row>
+        <Row label="Engine image">
+          {submission.engine_image_ref ? (
+            <CopyableMono
+              value={submission.engine_image_ref}
+              display={truncateHash(submission.engine_image_ref, 14, 8)}
+            />
+          ) : (
+            <span className="text-muted">Not built yet</span>
+          )}
+        </Row>
+        {campaign && campaign.gpu_skus.length > 0 ? (
+          <Row label="Target GPUs">
+            <span
+              className="inline-flex items-center gap-1.5 text-secondary"
+              title={campaign.gpu_skus.join(", ")}
+            >
+              <GpuMark
+                skus={campaign.gpu_skus}
+                className="size-3.5 shrink-0 text-muted"
+              />
+              {campaign.gpu_skus.join(" · ")}
+            </span>
+          </Row>
+        ) : null}
+      </Panel>
+    </aside>
   );
 }

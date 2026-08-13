@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BackLink } from "@/components/dashboard/back-link";
 import { BenchReports } from "@/components/dashboard/bench-reports";
 import { BuildLog } from "@/components/dashboard/build-log";
 import {
@@ -11,15 +11,17 @@ import {
 import { PipelineTimeline } from "@/components/dashboard/pipeline-timeline";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
-  SubmissionDetailHeader,
+  FailedJobNotice,
   SubmissionMetadata,
+  SubmissionStats,
+  SubmissionTitle,
 } from "@/components/dashboard/submission-detail";
-import { monoLinkClassName } from "@/components/ui/mono-link";
 import { getCampaign, getSubmission } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
-import { truncateHash } from "@/lib/api/format";
+import { truncateDigest, truncateHash } from "@/lib/api/format";
 import { campaignHref, decodePatchHash, isPatchHash } from "@/lib/routes";
 import {
+  getFailedSubmissionJob,
   isStalled,
   isTerminalState,
   reachedBuild,
@@ -71,6 +73,22 @@ async function loadCampaignOrNull(
   }
 }
 
+/** Back control plus title, the one row every branch of this page opens with. */
+function TitleRow({
+  campaignId,
+  children,
+}: {
+  campaignId: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-4">
+      <BackLink href={campaignHref(campaignId)} label="Back to campaign" />
+      {children}
+    </div>
+  );
+}
+
 async function SubmissionSections({
   campaignId,
   patchHash,
@@ -83,8 +101,13 @@ async function SubmissionSections({
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
     return (
-      <>
+      <div className="space-y-8">
         <LiveSubmissionPoll enabled />
+        <TitleRow campaignId={campaignId}>
+          <h1 className="break-all font-mono text-display-section font-medium leading-display tracking-tight text-foreground">
+            {truncateDigest(patchHash, 8, 6)}
+          </h1>
+        </TitleRow>
         <SectionUnavailable
           message={
             result.kind === "unavailable"
@@ -92,7 +115,7 @@ async function SubmissionSections({
               : "Could not load this submission."
           }
         />
-      </>
+      </div>
     );
   }
 
@@ -106,26 +129,38 @@ async function SubmissionSections({
   ];
   const stalled = isStalled(detail.latest_state, detail.jobs);
   const live = !isTerminalState(detail.latest_state) && !stalled;
+  const failedJob = stalled ? getFailedSubmissionJob(detail.jobs) : null;
 
   return (
-    <>
+    <div className="space-y-8">
       <LiveSubmissionPoll enabled={live} />
 
-      <Link
-        href={campaignHref(campaignId)}
-        className={monoLinkClassName({ size: "sm" }, "inline-flex")}
-      >
-        ← Campaign
-      </Link>
+      <TitleRow campaignId={campaignId}>
+        <SubmissionTitle detail={detail} campaign={campaign} />
+      </TitleRow>
 
-      <SubmissionDetailHeader detail={detail} campaign={campaign} />
-      <SubmissionMetadata submission={detail.submission} />
-      <PipelineTimeline
-        events={detail.events}
-        latestState={detail.latest_state}
-        stalled={stalled}
-      />
-      <BenchReports reports={detail.bench_reports} />
+      {failedJob ? <FailedJobNotice job={failedJob} /> : null}
+
+      <SubmissionStats detail={detail} campaign={campaign} />
+
+      {/* Verdict evidence outranks provenance: these numbers are why the page
+          gets opened, so they must not sit below a 13-row timeline. */}
+      <BenchReports reports={detail.bench_reports} campaign={campaign} />
+
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
+        <div className="min-w-0">
+          <PipelineTimeline
+            events={detail.events}
+            latestState={detail.latest_state}
+            stalled={stalled}
+          />
+        </div>
+
+        <SubmissionMetadata
+          submission={detail.submission}
+          campaign={campaign}
+        />
+      </div>
 
       {reachedBuild(states) ? (
         <BuildLog
@@ -134,7 +169,32 @@ async function SubmissionSections({
           live={live}
         />
       ) : null}
-    </>
+    </div>
+  );
+}
+
+function SubmissionFallback({
+  campaignId,
+  patchHash,
+}: {
+  campaignId: string;
+  patchHash: string;
+}) {
+  return (
+    <div className="space-y-8" aria-busy="true">
+      <TitleRow campaignId={campaignId}>
+        {/* The digest is known from the URL, so the heading needs no skeleton. */}
+        <h1 className="break-all font-mono text-display-section font-medium leading-display tracking-tight text-muted">
+          {truncateDigest(patchHash, 8, 6)}
+        </h1>
+      </TitleRow>
+      <div className="h-28 animate-pulse border border-border bg-border/10" />
+      <div className="h-64 animate-pulse border border-border bg-border/10" />
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="h-72 animate-pulse border border-border bg-border/10" />
+        <div className="h-72 animate-pulse border border-border bg-border/10" />
+      </div>
+    </div>
   );
 }
 
@@ -144,20 +204,14 @@ export default async function SubmissionPage({ params }: PageProps) {
   if (!isPatchHash(patchHash)) notFound();
 
   return (
-    <div className="space-y-8">
-      <LiveSubmissionPollHost>
-        <Suspense
-          fallback={
-            <>
-              <div className="h-3 w-24 animate-pulse bg-border/50" />
-              <div className="h-64 animate-pulse border border-border bg-border/10" />
-              <div className="h-80 animate-pulse border border-border bg-border/10" />
-            </>
-          }
-        >
-          <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
-        </Suspense>
-      </LiveSubmissionPollHost>
-    </div>
+    <LiveSubmissionPollHost>
+      <Suspense
+        fallback={
+          <SubmissionFallback campaignId={campaignId} patchHash={patchHash} />
+        }
+      >
+        <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
+      </Suspense>
+    </LiveSubmissionPollHost>
   );
 }
