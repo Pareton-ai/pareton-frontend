@@ -1,25 +1,28 @@
 import { Suspense } from "react";
 import { CampaignList } from "@/components/dashboard/campaign-list";
 
-function PanelFallback({ label }: { label: string }) {
+function CampaignsFallback() {
   return (
-    <div
-      className="h-40 animate-pulse border border-border bg-border/10"
-      aria-label={`Loading ${label}`}
-    />
+    <div className="space-y-8" aria-label="Loading campaigns">
+      <div className="h-64 animate-pulse border border-border bg-border/10" />
+    </div>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <header>
-        <h1 className="text-display-section font-medium tracking-tight text-foreground">
+        <h1 className="text-display-section font-medium leading-display tracking-tight text-foreground">
           Campaigns
         </h1>
+        <p className="mt-2 font-mono text-body-sm text-secondary">
+          Public snapshot of open campaigns, hardware targets, and miner
+          submissions.
+        </p>
       </header>
 
-      <Suspense fallback={<PanelFallback label="campaigns" />}>
+      <Suspense fallback={<CampaignsFallback />}>
         <CampaignList />
       </Suspense>
     </div>
