@@ -1,19 +1,24 @@
 ---
 title: Calibration
-description: How Pareton sets per-campaign correctness thresholds so a no-op patch passes and a real regression fails.
+description: How Pareton sets per-campaign correctness caps and a z-score noise floor before a campaign opens.
 ---
 
-Before a campaign opens, Pareton measures how noisy the correctness gate is on that exact model, hardware, and serve config. The measured noise floor becomes the campaign's pass/fail thresholds. Without that step, a harmless patch can fail for reasons that have nothing to do with the code change.
+Before a campaign opens, Pareton measures how noisy the baseline engine is on that exact model, hardware, and serve config. Two measurements come out of that work:
 
-## Why it exists
+1. **Hard correctness caps** (`bench.correctness.thresholds`) — this page.
+2. **Z-score noise distribution** (`campaigns.calibration`) — [Dynamic workloads](/docs/platform/dynamic-workloads).
+
+Without the caps, a harmless patch can fail for reasons that have nothing to do with the code change. Without the z-distribution, the worker cannot promote on z (it skips z if `z_threshold` or `calibration` is unset).
+
+## Why the caps exist
 
 The correctness gate asks: does the candidate engine produce the same answers as the baseline?
 
 It does that by comparing **logprobs** (the model's per-token confidence scores on a log scale) on an identical forced text sequence. Small numerical differences are normal on GPUs, especially with low-precision formats like FP8. Hardcoded thresholds that worked on one small model can reject a no-op patch on a larger campaign.
 
-Calibration answers one question: how far do two identical baseline engines already diverge on this campaign? That observed floor, plus a safety factor, becomes the limit every miner submission must stay under.
+Cap calibration answers: how far do two identical baseline engines already diverge on this campaign? That observed floor, plus a safety factor (default `2.0`), becomes the limit every miner submission must stay under. A submission that exceeds a cap fails with `fail_correctness`. That hard fail still runs alongside z-promotion.
 
-## What gets calibrated
+## What gets stored
 
 Three numbers, stored on the campaign under `bench.correctness.thresholds`:
 
@@ -23,7 +28,9 @@ Three numbers, stored on the campaign under `bench.correctness.thresholds`:
 | `max_abs_logprob_diff`  | Worst single-position gap                                    |
 | `argmax_mismatch_rate`  | Fraction of positions where the top predicted token differs  |
 
-A real GPU bench refuses to start until those thresholds are present and still match the campaign's current fingerprint (model, revision, engine image, trace, serve args, dtype, quantization, context length, GPU count). Change any of those and calibration must run again.
+A real GPU bench refuses to start until those thresholds are present and still match the campaign's current fingerprint: model, revision, engine image, serve args, dtype, quantization, context length, and GPU count. When `sampling_rule.type` is `hf_rows`, the fingerprint also binds the sampling pin (`dataset`, `revision`, `n_prompts`, `algo_version`). It does not bind the per-run trace hash, because each submission generates a new trace. Change any bound field and cap calibration must run again.
+
+Z-calibration stores mean and std per z-metric in `campaigns.calibration`. It does not write `z_threshold`. See [Dynamic workloads](/docs/platform/dynamic-workloads).
 
 ## How we keep the measurement honest
 
@@ -38,20 +45,24 @@ Those rules apply to every correctness run, including miner benches. Calibration
 
 ## Operator lifecycle
 
-Calibration is an operator flow, not a miner step. It uses the same bench machinery that will later judge submissions.
+Calibration is an operator flow, not a miner step. It uses the same bench machinery that will later judge submissions. Stay in `draft` with zero submissions through apply.
+
+**Hard caps** (`analyze` / `apply`):
 
 1. **Prepare** — build a bench request where baseline and candidate are the same image digest. Thresholds are set wide so the run records noise instead of failing early.
-2. **Run** — execute several correctness repetitions on real GPUs for that campaign's model and SKU (typically three).
-3. **Analyze** — read the reports, take the observed maxima across reps, multiply by a safety factor (default `2.0`), and write a summary.
+2. **Run** — execute that request on real GPUs for the campaign's model and SKU.
+3. **Analyze** — read the reports, take the observed maxima, multiply by a safety factor (default `2.0`), and write a summary.
 4. **Apply** — write the suggested thresholds into `campaigns.bench.correctness`, store the calibration fingerprint and metadata, then refresh `manifest_hash` and customer sign-off.
 
 After apply, a non-mock bench request for that campaign builds with the calibrated limits. An uncalibrated open campaign is blocked: the worker raises `campaign_correctness_calibration_missing` (or `_stale` if the fingerprint no longer matches).
 
+**Z-score** (`prepare --pool` / `analyze-z` / `apply-z`): generate 20 traces from the pinned HuggingFace dataset, run baseline vs baseline, store mean and std. Details and the `run-*` report layout are on [Dynamic workloads](/docs/platform/dynamic-workloads).
+
 ## What "good" looks like
 
-Success criterion for the gate after calibration:
+Success criterion for the correctness gate after cap calibration:
 
-- A **no-op** patch (empty or behavior-neutral diff) stays under the thresholds and reaches `correct`.
+- A **no-op** patch (empty or behavior-neutral diff) stays under the caps and reaches `correct`.
 - A **real regression** that changes model outputs exceeds them and is rejected with `fail_correctness`.
 
-Calibration is per campaign, not global.
+A z-pass is a separate claim: the candidate is not unusually worse than baseline noise on that generated workload. It is not a speedup claim. Calibration is per campaign, not global.
