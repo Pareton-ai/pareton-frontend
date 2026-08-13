@@ -148,9 +148,7 @@ export function SubmissionsTable({
           <div className="flex items-center gap-2">
             <PageControl
               href={
-                page > 1
-                  ? `${campaignHref(campaignId)}?page=${page - 1}`
-                  : null
+                page > 1 ? `${campaignHref(campaignId)}?page=${page - 1}` : null
               }
               direction="prev"
             >
