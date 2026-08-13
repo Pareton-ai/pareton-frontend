@@ -477,6 +477,22 @@ export function getSubmissionJob(
   return jobs.find((job) => job.kind === kind) ?? null;
 }
 
+/**
+ * First event recorded per state.
+ *
+ * A state can repeat (a retried fetch, say); the first occurrence is when the
+ * stage was actually reached, so later ones are dropped.
+ */
+export function firstEventByState(
+  events: readonly SubmissionEvent[]
+): Map<string, SubmissionEvent> {
+  const byState = new Map<string, SubmissionEvent>();
+  for (const event of events) {
+    if (!byState.has(event.state)) byState.set(event.state, event);
+  }
+  return byState;
+}
+
 /** First job with `status=failed`, if any. Infra failures append no event, so
  *  the trail can stop at `bench_queued` while only the job row records it. */
 export function getFailedSubmissionJob(
