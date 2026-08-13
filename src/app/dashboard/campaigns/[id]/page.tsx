@@ -1,7 +1,6 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { BackLink } from "@/components/dashboard/back-link";
 import { CampaignTitle } from "@/components/dashboard/campaign-detail";
 import {
   CampaignReference,
@@ -134,14 +133,7 @@ export default async function CampaignPage({
       <div className="flex items-start gap-4">
         {/* Rendered outside the Suspense boundary so the way back is never
             gated on the campaign fetch. */}
-        <Link
-          href="/dashboard"
-          aria-label="All campaigns"
-          title="All campaigns"
-          className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center border border-border text-muted transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-        </Link>
+        <BackLink href="/dashboard" label="All campaigns" />
 
         <Suspense
           fallback={

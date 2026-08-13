@@ -1,47 +1,10 @@
-import {
-  Cpu,
-  ExternalLink,
-  FolderTree,
-  GitBranch,
-  Target,
-  type LucideIcon,
-} from "lucide-react";
+import { Cpu, ExternalLink, FolderTree, GitBranch, Target } from "lucide-react";
 import type { ReactNode } from "react";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
+import { Panel } from "@/components/dashboard/panel";
 import { truncateHash, truncateMiddle } from "@/lib/api/format";
 import { cn } from "@/lib/cn";
 import type { Campaign } from "@/lib/api/types";
-
-/**
- * Bordered panel with a mono caps header.
- *
- * `bodyClassName` switches between the stacked sidebar form and the wide
- * hairline grid used for the reference band, where the 1px gap over a border
- * background draws the rules between cells.
- */
-function Panel({
-  icon: Icon,
-  title,
-  bodyClassName = "divide-y divide-border",
-  children,
-}: {
-  icon: LucideIcon;
-  title: string;
-  bodyClassName?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section aria-label={title} className="border border-border">
-      <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />
-        <h2 className="font-mono text-caption uppercase tracking-caps text-muted">
-          {title}
-        </h2>
-      </header>
-      <div className={bodyClassName}>{children}</div>
-    </section>
-  );
-}
 
 function Row({
   label,
