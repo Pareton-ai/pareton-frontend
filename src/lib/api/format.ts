@@ -60,6 +60,20 @@ export function formatUtcTime(iso: string): string {
   }).format(date);
 }
 
+/**
+ * Speedup ratio, e.g. `1.11×`.
+ *
+ * Two decimals keeps a column of measured ratios aligned. The cap sits at four
+ * because campaign thresholds are declared rather than measured: a floor of
+ * 1.11111111 has to print as `1.1111×` instead of running off its tile.
+ */
+export function formatRatio(value: number): string {
+  return `${value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  })}×`;
+}
+
 /** Compact elapsed span, e.g. `2.8s`, `4m 12s`, `1h 31m`. */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "—";
