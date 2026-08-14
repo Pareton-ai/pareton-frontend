@@ -56,7 +56,7 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
     <div className="group relative px-4 py-4 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-ui font-medium tracking-tight text-foreground flex items-start gap-1">
+          <p className="min-w-0 text-ui font-medium tracking-tight wrap-break-word text-foreground">
             <Link
               href={campaignHref(campaign.campaign_id)}
               className="outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
