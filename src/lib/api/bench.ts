@@ -164,6 +164,13 @@ export type BenchSummary = {
   speedupSku: string | null;
   /** Whether the speedup is from the full bench or the cheap screen. */
   speedupSource: "sla_bench" | "perf_screen" | null;
+  /**
+   * Whether that headline clears the floor that applies to its source.
+   * Screen-only numbers use the stage verdict, not a missing floor.
+   */
+  speedupClears: boolean | null;
+  /** Floor used for that judgment, when the campaign or report names one. */
+  speedupFloor: number | null;
   /** Worst (highest) p99 latency across SKUs, in ms. */
   p99TtftMs: number | null;
   p99ItlMs: number | null;
@@ -175,6 +182,8 @@ const EMPTY_SUMMARY: BenchSummary = {
   speedup: null,
   speedupSku: null,
   speedupSource: null,
+  speedupClears: null,
+  speedupFloor: null,
   p99TtftMs: null,
   p99ItlMs: null,
   skuCount: 0,
@@ -209,18 +218,30 @@ export function summarizeBench(
     // Before the full bench runs, the cheap screen is the only speedup signal.
     const screen = reports
       .filter((report) => report.stage === "perf_screen")
-      .map((report) => readPerfScreen(report.report).throughputRatio)
-      .filter((ratio): ratio is number => ratio !== null);
+      .map((report) => ({
+        report,
+        ratio: readPerfScreen(report.report).throughputRatio,
+      }))
+      .filter(
+        (entry): entry is { report: BenchReport; ratio: number } =>
+          entry.ratio !== null
+      );
 
     if (screen.length === 0) return EMPTY_SUMMARY;
+    const worst = screen.reduce((lowest, entry) =>
+      entry.ratio < lowest.ratio ? entry : lowest
+    );
     return {
       ...EMPTY_SUMMARY,
-      speedup: Math.min(...screen),
+      speedup: worst.ratio,
       speedupSource: "perf_screen",
+      speedupClears: worst.report.verdict === "pass",
+      speedupFloor: readPerfScreenFloor(worst.report.report, campaign),
     };
   }
 
   const metric = campaign?.bench.cross_env.speedup_metric;
+  const slaFloor = campaign?.bench.cross_env.min_speedup_each ?? null;
   const speedups = sla
     .map((entry) => ({
       sku: entry.sku,
@@ -240,6 +261,9 @@ export function summarizeBench(
     speedup: worst?.value ?? null,
     speedupSku: worst?.sku ?? null,
     speedupSource: worst ? "sla_bench" : null,
+    speedupClears:
+      worst === null ? null : slaFloor === null || worst.value >= slaFloor,
+    speedupFloor: slaFloor,
     p99TtftMs: maxOf(sla.map((entry) => entry.metrics.candidate.ttftMs.p99)),
     p99ItlMs: maxOf(sla.map((entry) => entry.metrics.candidate.itlMs.p99)),
     skuCount: new Set(sla.map((entry) => entry.sku ?? "default")).size,

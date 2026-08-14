@@ -140,13 +140,32 @@ describe("summarizeBench", () => {
     const summary = summarizeBench(screen, null);
     expect(summary.speedupSource).toBe("perf_screen");
     expect(summary.speedup).not.toBeNull();
+    expect(summary.speedupClears).toBe(false);
+    expect(summary.speedupFloor).toBeNull();
     expect(summary.p99TtftMs).toBeNull();
     expect(summary.skuCount).toBe(0);
+  });
+
+  it("treats a passed screen as clearing even below the SLA floor", () => {
+    const screen = parseSubmissionDetail(rejectedCrossEnv).bench_reports.filter(
+      (report) => report.stage === "perf_screen"
+    );
+
+    const summary = summarizeBench(screen, {
+      bench: {
+        cross_env: { min_speedup_each: 1.05 },
+        perf_screen: null,
+      },
+    } as Campaign);
+    expect(summary.speedupSource).toBe("perf_screen");
+    expect(summary.speedup).toBeCloseTo(0.9875, 4);
+    expect(summary.speedupClears).toBe(true);
   });
 
   it("stays empty when nothing has been benched", () => {
     const summary = summarizeBench([], null);
     expect(summary.speedup).toBeNull();
     expect(summary.speedupSource).toBeNull();
+    expect(summary.speedupClears).toBeNull();
   });
 });

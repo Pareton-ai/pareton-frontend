@@ -19,11 +19,7 @@ import {
 } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 import { isSafeArtifactUrl } from "@/lib/api/artifacts";
-import {
-  readPerfScreenFloor,
-  summarizeBench,
-  type BenchSummary,
-} from "@/lib/api/bench";
+import { summarizeBench, type BenchSummary } from "@/lib/api/bench";
 import {
   elapsedBetween,
   formatDuration,
@@ -228,10 +224,6 @@ function SpeedupTile({
   campaign: Campaign | null;
 }) {
   const slaFloor = campaign?.bench.cross_env.min_speedup_each ?? null;
-  const floor =
-    summary.speedupSource === "perf_screen"
-      ? readPerfScreenFloor(null, campaign)
-      : slaFloor;
 
   if (summary.speedup === null) {
     return (
@@ -248,7 +240,8 @@ function SpeedupTile({
     );
   }
 
-  const clears = floor === null || summary.speedup >= floor;
+  const floor = summary.speedupFloor;
+  const clears = summary.speedupClears === true;
   const scope =
     summary.speedupSource === "perf_screen"
       ? "perf screen only"
