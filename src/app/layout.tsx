@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | Pareton",
   },
   description:
-    "Pareton continuously searches, validates, and deploys the optimal inference configuration for AI workloads — across models, hardware, and serving stacks.",
+    "Pareton continuously discovers, validates, and deploys the optimal serving configuration for your inference workload.",
 };
 
 export default function RootLayout({
@@ -35,6 +35,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-screen flex-col">

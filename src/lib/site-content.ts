@@ -1,19 +1,28 @@
 /**
- * Single source of truth for the landing page's prose. `page.tsx`,
- * `how-it-works.tsx`, and the agent Markdown view (`home-markdown.ts`) all read
- * from here, so copy only ever lives in one place.
+ * Single source of truth for the landing page's prose. Landing components
+ * and the agent Markdown view (`home-markdown.ts`) all read from here, so
+ * copy only ever lives in one place.
  */
 
 export const siteContent = {
   name: "Pareton",
   eyebrow: "Inference optimization infrastructure",
-  title: "The Intelligence Layer for AI Inference",
+  title: "The intelligence layer for your inference.",
+  /** Substring of `title` rendered italic on the page. */
+  titleEmphasis: "your",
   heroDescription:
-    "AI models are converging in quality; cost and latency are the real competitive edge. Pareton continuously discovers, validates, and deploys the optimal serving configuration for your workload.",
-  /** Substring of `heroDescription` rendered italic on the page. */
-  heroEmphasis: "your",
-  buildStatus: "Build in progress · Coming soon",
+    "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving configuration space until a better engine holds on the workload you already run.",
+  buildStatus: "Coming Soon · Bittensor Subnet 10",
 
+  nav: [
+    { label: "Method", href: "#method" },
+    { label: "Why it holds", href: "#laws" },
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Docs", href: "/docs" },
+    { label: "Talk to us", href: "mailto:xavier@pareton.ai", end: true },
+  ],
+
+  /** Agent Markdown link list. Broader than the visible nav. */
   links: [
     { label: "Docs", href: "/docs" },
     { label: "Dashboard", href: "/dashboard" },
@@ -22,74 +31,111 @@ export const siteContent = {
     { label: "Contact", href: "mailto:xavier@pareton.ai" },
   ],
 
+  heroCta: { label: "View a campaign", href: "/dashboard" },
+  talkCta: { label: "Talk to us", href: "mailto:xavier@pareton.ai" },
+
+  colophon: [
+    { k: "Priority", v: "GPU-hours at SLA" },
+    { k: "Hard gate", v: "p99 TTFT / ITL" },
+    { k: "Search space", v: "Kernels, KV, batch, quant, and more" },
+    { k: "Baseline rule", v: "Only moves forward" },
+  ],
+
+  brief: {
+    index: "01 · Brief",
+    text: "Inference demand is compounding faster than efficiency improves.",
+    emphasis:
+      "Pareton exists to close the gap, one validated configuration at a time.",
+  },
+
   howItWorks: {
-    eyebrow: "How Pareton works",
-    title: "An optimization loop: your profile in, better engine out.",
+    index: "02 · Method",
+    title: "How a better engine gets in.",
+    lead: "We only keep a change if your latency cap still holds.",
+    loopNote: "Then we try again",
+    scrollCue: "Scroll to step through",
     steps: [
       {
         index: "01",
-        label: "Customer profile",
-        title: "You bring the setup. You define better.",
-        body: "Tell Pareton what you run in production — model, serving stack, workload profile, hardware — and the SLA gates you won't break. One success metric locks the goal, usually GPU-hours saved at SLA. That customer-approved profile is the yardstick for every candidate that follows.",
+        label: "Setup",
+        sub: "What you run today",
+        title: "You tell us what you run. We freeze it.",
+        body: "That snapshot is the ruler. Every later change is judged against it, not against a public leaderboard.",
       },
       {
         index: "02",
-        label: "Contributor patches",
-        title: "Contributors propose, you don't rewrite",
-        body: "Contributors (miners) submit small, reviewable patches against the current baseline — prefix caching, batch sizing, KV-cache allocation, kernels. Every candidate targets the same frozen profile, so proposals stay comparable.",
+        label: "Test",
+        sub: "Fair comparison",
+        title: "A change only counts if it beats today.",
+        body: "Same GPUs. Same traffic. Same latency cap. If it is not cheaper, it is discarded.",
       },
       {
         index: "03",
-        label: "Validate",
-        title: "Automated validation gates everything",
-        body: "Before any benchmark runs, the candidate has to build and run, preserve output quality and API compatibility, satisfy the customer's constraints, and work across the required GPU environments. Invalid patches are rejected.",
-      },
-      {
-        index: "04",
-        label: "Benchmark",
-        title: "Baseline vs. patched, head to head",
-        body: "The patched engine and the current baseline run the exact same workload trace, on identical hardware, under the same SLA gates. The comparison is apples-to-apples by construction.",
-      },
-      {
-        index: "05",
-        label: "Promote or reject",
-        title: "Promote on evidence, or move on",
-        body: "One binary call from measurements: did it improve the priority metric without breaking SLA? Yes — merge it and promote the new best baseline. No — discard it and test the next candidate. The baseline only moves forward.",
-      },
-      {
-        index: "06",
-        label: "Repeat",
-        title: "The loop compounds",
-        body: "Rounds repeat until the agreed success threshold is reached. Each accepted patch becomes the floor for the next, so gains compound instead of expiring.",
+        label: "Keep",
+        sub: "New starting point",
+        title: "A win becomes the new today. Then we search again.",
+        body: "Keep it, or throw it out. The starting point only gets better.",
       },
     ],
   },
 
-  facts: [
-    {
-      index: "01",
-      title: "Continuous search",
-      body: "The inference search space — kernels, batching, KV cache, quantization, scheduling — evolves faster than any isolated R&D team can track. Pareton benchmarks it continuously.",
-    },
-    {
-      index: "02",
-      title: "Deterministic validation",
-      body: "Every candidate configuration is stress-tested across GPU types, context lengths, and request patterns. Only improvements that hold universally reach the baseline.",
-    },
-    {
-      index: "03",
-      title: "Compounding baseline",
-      body: "Each validated improvement becomes the new floor for the next. Optimization stops being a per-company cost and becomes shared, accumulating infrastructure.",
-    },
-  ],
+  laws: {
+    index: "03 · Why it holds",
+    title: "Measured against your production baseline. Not a leaderboard.",
+    items: [
+      {
+        index: "01",
+        title: "Your workload is the benchmark",
+        body: "Every candidate is scored on the profile you approved: real traffic shape, production flags, and the hardware you actually serve on.",
+      },
+      {
+        index: "02",
+        title: "Auditable patches, not knobs",
+        body: "Improvements arrive as reviewable code and configuration diffs. You can see what changed, why it won, and what it did not touch.",
+      },
+      {
+        index: "03",
+        title: "Fragile gains are rejected",
+        body: "Build, quality, compatibility, and cross-GPU gates run before the bench. A trick that only works on one trace does not ship.",
+      },
+      {
+        index: "04",
+        title: "The loop is the team you did not hire",
+        body: "Search continues after the first win. Each promotion raises the floor, so GPU-hours, throughput, and latency keep moving.",
+      },
+    ],
+  },
 
-  positioning:
-    "Inference demand is compounding faster than efficiency improves. The gap shows up in margin, serving latency, and duplicated optimization work. Pareton exists to close it, one validated configuration at a time.",
-  /** Trailing clause of `positioning` de-emphasized (secondary) on the page. */
-  positioningEmphasis:
-    "Pareton exists to close it, one validated configuration at a time.",
+  buyers: {
+    index: "04 · Buyers",
+    title: "Built for the people who own GPU spend and SLA.",
+    items: [
+      {
+        role: "ML platform",
+        title: "Inference and serving leads",
+        body: "You run vLLM, TensorRT-LLM, or SGLang in production. You need the kernel and KV-cache work without freezing a quarter of the team.",
+      },
+      {
+        role: "Infrastructure",
+        title: "Heads of infra and GPU ops",
+        body: "Utilization and cost per token are the line. Pareton reports in GPU-hours at SLA, on the SKUs you already bought.",
+      },
+      {
+        role: "Technical eval",
+        title: "Staff ML engineers",
+        body: "You will read the campaign, the patch, and the bench. The product is a numeric record of what was tried, what failed, what shipped.",
+      },
+    ],
+  },
 
-  tagline: "Pushing the Pareto frontier of inference",
+  close: {
+    title: "Pushing the Pareto frontier of inference.",
+    body: "If you already serve models under a real SLA, send the profile. We will tell you whether the search is worth running.",
+    primary: { label: "Talk to us", href: "mailto:xavier@pareton.ai" },
+    secondary: { label: "Open the dashboard", href: "/dashboard" },
+  },
+
+  tagline: "The intelligence layer for AI inference",
 } as const;
 
 export type SiteContent = typeof siteContent;

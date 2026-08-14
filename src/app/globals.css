@@ -3,7 +3,7 @@
 @import "fumadocs-ui/css/preset.css";
 
 :root {
-  /* Deep charcoal-black, not flat black */
+  /* Deep charcoal-black, not flat black. Default matches fumadocs `dark`. */
   --background: #0e0f11;
   --foreground: #e7e8ea;
   --secondary: #9ba0a6;
@@ -14,6 +14,20 @@
   --accent: #4d8aff;
   --accent-dim: rgba(77, 138, 255, 0.14);
   --rust: #c47a4a;
+}
+
+/* Fumadocs prose uses --fd-* which already switch. Body and product tokens
+   lived only in :root, so docs light mode kept a dark canvas under dark type. */
+html.light {
+  --background: #fafafa;
+  --foreground: #161412;
+  --secondary: #5c6168;
+  --muted: #6b7078;
+  --border: rgba(22, 20, 18, 0.1);
+  --border-strong: rgba(22, 20, 18, 0.2);
+  --accent: #1f4fd4;
+  --accent-dim: rgba(31, 79, 212, 0.12);
+  --rust: #b4532a;
 }
 
 @theme inline {
@@ -94,28 +108,6 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
   background-clip: padding-box;
-}
-
-/* Scroll cue (how-it-works section) */
-@media (prefers-reduced-motion: no-preference) {
-  .scroll-cue-dot {
-    animation: scroll-cue 1.8s ease-in-out infinite;
-  }
-}
-
-@keyframes scroll-cue {
-  0%,
-  100% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  30% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 0;
-    transform: translateY(5px);
-  }
 }
 
 /* Low-opacity architectural alignment grid */
