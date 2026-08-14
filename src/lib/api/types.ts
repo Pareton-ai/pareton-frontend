@@ -363,7 +363,6 @@ export const SUBMISSION_STATE_META = {
   },
 } satisfies Partial<Record<SubmissionState, SubmissionStateMeta>>;
 
-
 export const BENCH_VERDICT_META: Record<
   NonNullable<BenchVerdict>,
   BenchVerdictMeta
