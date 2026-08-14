@@ -12,7 +12,7 @@ export const siteContent = {
   titleEmphasis: "your",
   heroDescription:
     "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving configuration space until a better engine holds on the workload you already run.",
-  buildStatus: "Build in progress · Coming soon",
+  buildStatus: "Coming Soon · Bittensor Subnet 10",
 
   nav: [
     { label: "Method", href: "#method" },
@@ -37,7 +37,7 @@ export const siteContent = {
   colophon: [
     { k: "Priority", v: "GPU-hours at SLA" },
     { k: "Hard gate", v: "p99 TTFT / ITL" },
-    { k: "Search space", v: "Kernels, KV, batch, quant" },
+    { k: "Search space", v: "Kernels, KV, batch, quant, and more" },
     { k: "Baseline rule", v: "Only moves forward" },
   ],
 
@@ -50,7 +50,7 @@ export const siteContent = {
 
   howItWorks: {
     index: "02 · Method",
-    title: "How a cheaper engine gets in.",
+    title: "How a better engine gets in.",
     lead: "We only keep a change if your latency cap still holds.",
     loopNote: "Then we try again",
     scrollCue: "Scroll to step through",
