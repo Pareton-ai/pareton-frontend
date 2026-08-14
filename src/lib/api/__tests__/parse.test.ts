@@ -22,7 +22,7 @@ import {
   getSubmissionStateMeta,
   isStalled,
   SUBMISSION_STAGE_ORDER,
-  SUBMISSION_STATES,
+  SUBMISSION_STATE_META,
 } from "@/lib/api/types";
 import submissionsList from "./fixtures/campaign-submissions.json";
 import benchJobFailed from "./fixtures/submission-bench-job-failed.json";
@@ -207,9 +207,13 @@ describe("bench verdicts", () => {
 
 describe("pipeline state vocabulary", () => {
   it("covers the states the live pipeline actually emits", () => {
-    for (const state of ["picked_up", "image_pushed", "bench_queued"]) {
-      expect(SUBMISSION_STATES).toContain(state);
-      expect(SUBMISSION_STAGE_ORDER).toContain(state);
+    for (const state of [
+      "picked_up",
+      "image_pushed",
+      "bench_queued",
+      "sampled",
+    ]) {
+      expect(SUBMISSION_STATE_META).toHaveProperty(state);
       expect(getSubmissionStateMeta(state).label).not.toBe("Committed");
     }
   });

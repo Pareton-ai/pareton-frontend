@@ -14,16 +14,30 @@ host directly.
    client import fails the build. `parse.ts` and `types.ts` do not, so the wire
    contract stays unit-testable.
 3. **Generated OpenAPI types + hand-narrowed domain types.**
-   - `schema.d.ts` — regenerated from `/openapi.json`. Use it as a path/param
-     reference; nothing in `src/` imports it yet. FastAPI often types response
-     bodies as `unknown`, so it does not validate display fields.
+   - `schema.d.ts` — regenerated from `/openapi.json`. `types.ts` imports the
+     `SubmissionState` union from it, so the pipeline vocabulary has exactly one
+     definition (the backend `gate/types.py` enum). The rest is a path/param
+     reference: FastAPI types most response bodies as `unknown`, so it does not
+     validate display fields.
    - `types.ts` — the shapes we render (`Campaign`, `SubmissionRow`, …).
    - `parse.ts` — narrows `unknown` bodies into those shapes. Never spread a
      response into a domain type; read named fields.
-4. **Regenerate when the backend changes** so the route list stays honest:
+4. **Regenerate when the backend changes** so the route list and the pipeline
+   state union stay honest:
 
    ```bash
-   npm run api:types
+   npm run api:types   # reads the deployed API
+   ```
+
+   Before the backend deploys, generate from the local app instead — otherwise
+   you overwrite `schema.d.ts` with a version that lacks `SubmissionState` and
+   break the build:
+
+   ```bash
+   (cd ../pareton && .venv/bin/python -c \
+     "import json; from api.server import app; print(json.dumps(app.openapi()))" \
+     > /tmp/pareton-openapi.json)
+   npx openapi-typescript /tmp/pareton-openapi.json -o src/lib/api/schema.d.ts
    ```
 
    Commit the updated `schema.d.ts`. Then update `types.ts` / `parse.ts` if any

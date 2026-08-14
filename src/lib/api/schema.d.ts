@@ -152,7 +152,8 @@ export interface paths {
      * @description Last `tail` lines of the durable build log (PAR-37 path), sanitized.
      *
      *     Content is miner-influenced build output: ANSI/control chars stripped,
-     *     served as text/plain, never cached beyond the shared 30s v1 policy.
+     *     served as text/plain. Non-terminal submissions are Cache-Control: no-store
+     *     so live tails are not held by CDN/browser caches (PAR-44).
      */
     get: operations["submission_build_log_v1_submissions__patch_hash__build_log_get"];
     put?: never;
@@ -195,6 +196,118 @@ export interface components {
       campaign_id: string;
       /** Hotkey */
       hotkey: string;
+    };
+    /**
+     * SubmissionDetailModel
+     * @description `submission` and `bench_reports` stay loose: no state field, no payoff.
+     */
+    SubmissionDetailModel: {
+      /** Submission */
+      submission: {
+        [key: string]: unknown;
+      };
+      /** Latest State */
+      latest_state?: components["schemas"]["SubmissionState"] | string | null;
+      /** Jobs */
+      jobs: components["schemas"]["SubmissionJobModel"][];
+      /** Events */
+      events: components["schemas"]["SubmissionEventModel"][];
+      /** Bench Reports */
+      bench_reports: {
+        [key: string]: unknown;
+      }[];
+      /** Bench Verdict */
+      bench_verdict?: string | null;
+    };
+    /** SubmissionEventModel */
+    SubmissionEventModel: {
+      /** State */
+      state: components["schemas"]["SubmissionState"] | string;
+      /** Evidence Ref */
+      evidence_ref?: string | null;
+      /** Detail */
+      detail?: {
+        [key: string]: unknown;
+      };
+      /** Created At */
+      created_at: string;
+    };
+    /** SubmissionJobModel */
+    SubmissionJobModel: {
+      /** Kind */
+      kind: string;
+      /** Status */
+      status: string;
+      /** Last Error */
+      last_error?: string | null;
+    };
+    /**
+     * SubmissionState
+     * @description The pipeline state vocabulary. This is the only definition.
+     *
+     *     `campaign.store.KNOWN_SUBMISSION_STATES`, the OpenAPI schema, and the
+     *     frontend `SubmissionState` union all derive from these members. Adding a
+     *     state here is the whole change on the backend. Member order is the pipeline
+     *     order and is used for `/v1/stats` bucket ordering, so append new states in
+     *     the position the worker reaches them.
+     * @enum {string}
+     */
+    SubmissionState:
+      | "committed"
+      | "picked_up"
+      | "fetched"
+      | "verified"
+      | "applied"
+      | "surface_ok"
+      | "building"
+      | "image_pushed"
+      | "built"
+      | "bench_queued"
+      | "sampled"
+      | "correct"
+      | "screened"
+      | "benched"
+      | "rejected";
+    /**
+     * SubmissionSummaryModel
+     * @description One row of `GET /v1/campaigns/{campaign_id}/submissions`.
+     */
+    SubmissionSummaryModel: {
+      /** Id */
+      id: string;
+      /** Campaign Id */
+      campaign_id: string;
+      /** Patch Hash */
+      patch_hash: string;
+      /** Hotkey */
+      hotkey: string;
+      /** Baseline Commit */
+      baseline_commit: string;
+      /** Retrieval Url */
+      retrieval_url: string;
+      /** Commit Block */
+      commit_block?: number | null;
+      /** Committed At */
+      committed_at: string;
+      /** Engine Image Ref */
+      engine_image_ref?: string | null;
+      /** Latest State */
+      latest_state?: components["schemas"]["SubmissionState"] | string | null;
+      /** Bench Verdict */
+      bench_verdict?: string | null;
+    };
+    /** SubmissionsPageModel */
+    SubmissionsPageModel: {
+      /** Campaign Id */
+      campaign_id: string;
+      /** Total */
+      total: number;
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Submissions */
+      submissions: components["schemas"]["SubmissionSummaryModel"][];
     };
     /** ValidationError */
     ValidationError: {
@@ -320,7 +433,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": components["schemas"]["SubmissionsPageModel"];
         };
       };
       /** @description Validation Error */
@@ -372,7 +485,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": components["schemas"]["SubmissionDetailModel"];
         };
       };
       /** @description Validation Error */
@@ -403,7 +516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": components["schemas"]["SubmissionDetailModel"];
         };
       };
       /** @description Validation Error */
