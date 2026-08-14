@@ -56,13 +56,15 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
     <div className="group relative px-4 py-4 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-ui font-medium tracking-tight text-foreground">
+          <p className="text-ui font-medium tracking-tight text-foreground flex items-start gap-1">
             <Link
               href={campaignHref(campaign.campaign_id)}
               className="outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
             >
               {model.hf_repo}
-              <span className="sr-only"> campaign details</span>
+              <span className="sr-only">
+                {` @${truncateMiddle(model.hf_revision, 8, 6)} campaign details`}
+              </span>
             </Link>
             <CopyableMono
               value={model.hf_revision}
