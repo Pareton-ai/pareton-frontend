@@ -2,6 +2,14 @@ import "server-only";
 
 import { apiFetch, apiFetchText } from "@/lib/api/client";
 import {
+  apiMocksEnabled,
+  mockGetCampaign,
+  mockGetSubmission,
+  mockGetSubmissionBuildLog,
+  mockListCampaigns,
+  mockListSubmissions,
+} from "@/lib/api/mocks";
+import {
   parseCampaign,
   parseCampaigns,
   parseSubmissionDetail,
@@ -30,6 +38,8 @@ export const BUILD_LOG_MAX_TAIL = 2000;
 export async function getCampaigns(opts?: {
   status?: CampaignStatus | string;
 }): Promise<Campaign[]> {
+  if (apiMocksEnabled()) return mockListCampaigns(opts?.status);
+
   const data = await apiFetch<unknown>("/v1/campaigns", {
     revalidate: SHORT_REVALIDATE,
     tags: ["campaigns"],
@@ -39,6 +49,8 @@ export async function getCampaigns(opts?: {
 }
 
 export async function getCampaign(campaignId: string): Promise<Campaign> {
+  if (apiMocksEnabled()) return mockGetCampaign(campaignId);
+
   const data = await apiFetch<unknown>(
     `/v1/campaigns/${encodeURIComponent(campaignId)}`,
     {
@@ -53,6 +65,8 @@ export async function getCampaignSubmissions(
   campaignId: string,
   opts?: { limit?: number; offset?: number }
 ): Promise<SubmissionsPage> {
+  if (apiMocksEnabled()) return mockListSubmissions(campaignId, opts);
+
   const limit = opts?.limit ?? 50;
   const offset = opts?.offset ?? 0;
   const data = await apiFetch<unknown>(
@@ -81,6 +95,8 @@ export async function getSubmission(
   campaignId: string,
   patchHash: string
 ): Promise<SubmissionDetail> {
+  if (apiMocksEnabled()) return mockGetSubmission(campaignId, patchHash);
+
   const data = await apiFetch<unknown>(
     `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`,
     {
@@ -107,6 +123,9 @@ export async function getSubmissionBuildLog(
   patchHash: string,
   opts?: { tail?: number }
 ): Promise<string> {
+  if (apiMocksEnabled())
+    return mockGetSubmissionBuildLog(campaignId, patchHash);
+
   const tail = Math.min(Math.max(opts?.tail ?? 200, 1), BUILD_LOG_MAX_TAIL);
   return await apiFetchText(
     `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/build-log`,

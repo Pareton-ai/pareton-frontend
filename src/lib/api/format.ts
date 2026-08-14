@@ -12,6 +12,11 @@ export function truncateMiddle(value: string, head = 8, tail = 6): string {
   return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
+/** Digest without its algorithm prefix, for columns where every row is sha256. */
+export function truncateDigest(value: string, head = 8, tail = 6): string {
+  return truncateMiddle(value.replace(/^sha256:/, ""), head, tail);
+}
+
 export function formatUtc(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -28,6 +33,20 @@ export function formatUtc(iso: string): string {
   );
 }
 
+/** Date and clock without the year, for dense columns headed with the zone. */
+export function formatUtcShort(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 /** Clock time only, for dense timelines where the date is already in context. */
 export function formatUtcTime(iso: string): string {
   const date = new Date(iso);
@@ -39,6 +58,20 @@ export function formatUtcTime(iso: string): string {
     second: "2-digit",
     hour12: false,
   }).format(date);
+}
+
+/**
+ * Speedup ratio, e.g. `1.11×`.
+ *
+ * Two decimals keeps a column of measured ratios aligned. The cap sits at four
+ * because campaign thresholds are declared rather than measured: a floor of
+ * 1.11111111 has to print as `1.1111×` instead of running off its tile.
+ */
+export function formatRatio(value: number): string {
+  return `${value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  })}×`;
 }
 
 /** Compact elapsed span, e.g. `2.8s`, `4m 12s`, `1h 31m`. */

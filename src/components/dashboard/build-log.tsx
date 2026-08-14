@@ -1,5 +1,6 @@
 "use client";
 
+import { Terminal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const POLL_INTERVAL_MS = 15_000;
@@ -106,11 +107,14 @@ export function BuildLog({
 
   return (
     <section aria-label="Build log" className="border border-border">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <h2 className="font-mono text-body-sm uppercase tracking-caps text-muted">
-            Build log
-          </h2>
+          <div className="flex items-center gap-2">
+            <Terminal className="size-3.5 shrink-0 text-muted" aria-hidden />
+            <h2 className="font-mono text-caption uppercase tracking-caps text-muted">
+              Build log
+            </h2>
+          </div>
           {live ? (
             <span className="inline-flex items-center gap-2 font-mono text-caption uppercase tracking-caps text-accent">
               <span
@@ -173,7 +177,7 @@ export function BuildLog({
           onScroll={onScroll}
           tabIndex={0}
           aria-label="Build log output"
-          className="max-h-96 overflow-auto bg-border/10 px-5 py-4 font-mono text-caption leading-relaxed text-secondary sm:px-6"
+          className="max-h-96 overflow-auto bg-border/10 px-4 py-3 font-mono text-caption leading-relaxed text-secondary"
         >
           {state.text}
         </pre>
