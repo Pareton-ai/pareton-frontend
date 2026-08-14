@@ -21,32 +21,23 @@ function msAt(iso: string): number {
   return Number.isNaN(ms) ? 0 : ms;
 }
 
+/**
+ * Newest first within a group. Campaigns run open ended — they carry no
+ * deadline to rank by, so recency is the only ordering left.
+ */
+function byNewest(a: Campaign, b: Campaign): number {
+  return msAt(b.created_at) - msAt(a.created_at);
+}
+
 /** Reading order: what is live, what is coming, what is history. */
 const GROUPS: {
   status: CampaignStatus;
   title: string;
   icon: DashboardIcon;
-  /** Most urgent first within the group. */
-  compare: (a: Campaign, b: Campaign) => number;
 }[] = [
-  {
-    status: "open",
-    title: "Open",
-    icon: CircleDot,
-    compare: (a, b) => msAt(a.window.closes_at) - msAt(b.window.closes_at),
-  },
-  {
-    status: "draft",
-    title: "Upcoming",
-    icon: CalendarClock,
-    compare: (a, b) => msAt(a.window.opens_at) - msAt(b.window.opens_at),
-  },
-  {
-    status: "closed",
-    title: "Closed",
-    icon: Archive,
-    compare: (a, b) => msAt(b.window.closes_at) - msAt(a.window.closes_at),
-  },
+  { status: "open", title: "Open", icon: CircleDot },
+  { status: "draft", title: "Upcoming", icon: CalendarClock },
+  { status: "closed", title: "Closed", icon: Archive },
 ];
 
 function CampaignRow({ campaign }: { campaign: Campaign }) {
@@ -124,7 +115,7 @@ function CampaignListView({ campaigns }: { campaigns: Campaign[] }) {
       {GROUPS.map((group) => {
         const rows = campaigns
           .filter((campaign) => campaign.status === group.status)
-          .sort(group.compare);
+          .sort(byNewest);
         if (rows.length === 0) return null;
 
         return (

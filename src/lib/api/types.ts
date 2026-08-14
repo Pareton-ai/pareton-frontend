@@ -92,11 +92,6 @@ export type CampaignSla = {
   quality_floor_spec: string;
 };
 
-export type CampaignWindow = {
-  opens_at: string;
-  closes_at: string;
-};
-
 export type CampaignBenchModel = {
   hf_repo: string;
   hf_revision: string;
@@ -142,7 +137,9 @@ export type Campaign = {
   scoring_config_url: string | null;
   allowed_paths: string[];
   denied_paths: string[];
-  window: CampaignWindow;
+  /** Row creation time. Campaigns run open ended, so this is the only date
+   *  they carry and the key the list orders on. */
+  created_at: string;
   manifest_hash: string;
   customer_signoff: CustomerSignoff | null;
   /** What the campaign optimizes for (throughput, gpu_hours, …). */
