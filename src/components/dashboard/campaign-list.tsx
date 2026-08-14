@@ -6,6 +6,7 @@ import {
   Hash,
 } from "lucide-react";
 import Link from "next/link";
+import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark, shortSku } from "@/components/dashboard/gpu";
 import { Panel, type DashboardIcon } from "@/components/dashboard/panel";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
@@ -52,22 +53,28 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
   const { model } = campaign.bench;
 
   return (
-    <Link
-      href={campaignHref(campaign.campaign_id)}
-      className="group block px-4 py-4 transition-colors hover:bg-accent-dim/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-    >
+    <div className="group relative px-4 py-4 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-ui font-medium tracking-tight text-foreground">
-            {model.hf_repo}
-            <span className="text-muted">
-              {" "}
-              @{truncateMiddle(model.hf_revision, 8, 6)}
-            </span>
+          <p className="min-w-0 text-ui font-medium tracking-tight wrap-break-word text-foreground">
+            <Link
+              href={campaignHref(campaign.campaign_id)}
+              className="outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
+            >
+              {model.hf_repo}
+              <span className="sr-only">
+                {` @${truncateMiddle(model.hf_revision, 8, 6)} campaign details`}
+              </span>
+            </Link>
+            <CopyableMono
+              value={model.hf_revision}
+              display={`@${truncateMiddle(model.hf_revision, 8, 6)}`}
+              className="relative z-10 ml-1 font-sans text-ui font-medium text-muted"
+            />
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-body-sm text-secondary">
             <span
-              className="inline-flex items-center gap-1.5"
+              className="inline-flex w-32 shrink-0 items-center gap-1.5 truncate"
               title={campaign.gpu_skus.join(", ")}
             >
               <GpuMark
@@ -91,7 +98,7 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
           aria-hidden
         />
       </div>
-    </Link>
+    </div>
   );
 }
 

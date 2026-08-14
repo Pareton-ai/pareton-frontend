@@ -22,7 +22,11 @@ export function CampaignTitle({ campaign }: { campaign: Campaign }) {
       </div>
       <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body-sm text-muted">
         <span className="text-secondary">
-          Model revision: @{truncateMiddle(model.hf_revision, 12, 6)}
+          Model revision:{" "}
+          <CopyableMono
+            value={model.hf_revision}
+            display={`@${truncateMiddle(model.hf_revision, 12, 6)}`}
+          />
         </span>
         <span className="text-secondary">
           Campaign ID:{" "}

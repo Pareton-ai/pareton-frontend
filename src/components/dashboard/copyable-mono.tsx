@@ -2,6 +2,7 @@
 
 import { Check, Copy } from "lucide-react";
 import { useState, type MouseEvent } from "react";
+import { cn } from "@/lib/cn";
 
 type CopyableMonoProps = {
   value: string;
@@ -36,7 +37,11 @@ export function CopyableMono({
       onClick={onCopy}
       title={label}
       aria-label={label}
-      className={`${iconOnly ? "inline-flex" : "group inline-flex"} max-w-full cursor-pointer items-center gap-2 font-mono text-body-sm tracking-tight text-secondary transition-colors hover:text-foreground ${className}`}
+      className={cn(
+        iconOnly ? "inline-flex" : "group inline-flex",
+        "max-w-full cursor-pointer items-center gap-2 font-mono text-body-sm tracking-tight text-secondary transition-colors hover:text-foreground",
+        className
+      )}
     >
       {iconOnly ? null : <span className="truncate">{display ?? value}</span>}
       <span
