@@ -1,30 +1,18 @@
 /**
  * Hand-narrowed domain types for the shapes the dashboard actually renders.
  *
- * FastAPI's OpenAPI schema types most response bodies as bare objects, so the
- * generated `schema.d.ts` is useful for path/param contracts but not for
- * display models. Narrow at the fetch boundary in `endpoints.ts`.
+ * The pipeline state union is generated from the backend enum via
+ * `schema.d.ts` (PAR-46). Everything else is narrowed at the fetch boundary in
+ * `parse.ts`, because FastAPI types most response bodies as bare objects.
  */
 
-/** Submission pipeline states, mirroring gate/types.py on the backend. */
-export const SUBMISSION_STATES = [
-  "committed",
-  "picked_up",
-  "fetched",
-  "verified",
-  "applied",
-  "surface_ok",
-  "building",
-  "image_pushed",
-  "built",
-  "bench_queued",
-  "correct",
-  "screened",
-  "benched",
-  "rejected",
-] as const;
+import type { components } from "@/lib/api/schema";
 
-export type SubmissionState = (typeof SUBMISSION_STATES)[number];
+/**
+ * Pipeline states, generated from `SubmissionState` in the backend
+ * `gate/types.py`. Regenerate with `npm run api:types` — never edit by hand.
+ */
+export type SubmissionState = components["schemas"]["SubmissionState"];
 
 /**
  * A state name off the wire. Unknown values are preserved rather than coerced,
@@ -277,10 +265,12 @@ export type BenchVerdictMeta = {
   tone: "neutral" | "success" | "danger" | "warn";
 };
 
-export const SUBMISSION_STATE_META: Record<
-  SubmissionState,
-  SubmissionStateMeta
-> = {
+/**
+ * Local presentation metadata: labels, tones, descriptions. Not the wire
+ * vocabulary. Partial by design — a state added on the backend needs no edit
+ * here and renders verbatim via `getSubmissionStateMeta` (PAR-46).
+ */
+export const SUBMISSION_STATE_META = {
   committed: {
     state: "committed",
     label: "Committed",
@@ -341,6 +331,12 @@ export const SUBMISSION_STATE_META: Record<
     description: "Waiting for a GPU host to run the benchmark.",
     tone: "progress",
   },
+  sampled: {
+    state: "sampled",
+    label: "Sampled",
+    description: "Per-submission workload trace drawn for this campaign.",
+    tone: "progress",
+  },
   correct: {
     state: "correct",
     label: "Correct",
@@ -365,7 +361,8 @@ export const SUBMISSION_STATE_META: Record<
     description: "Failed a gate; no further progression.",
     tone: "danger",
   },
-};
+} satisfies Partial<Record<SubmissionState, SubmissionStateMeta>>;
+
 
 export const BENCH_VERDICT_META: Record<
   NonNullable<BenchVerdict>,
@@ -409,15 +406,17 @@ export const BENCH_VERDICT_META: Record<
   },
 };
 
-export function isSubmissionState(value: unknown): value is SubmissionState {
-  return (
-    typeof value === "string" &&
-    (SUBMISSION_STATES as readonly string[]).includes(value)
-  );
+/** States that have local presentation metadata. Narrower than `SubmissionState`. */
+type StateWithMeta = keyof typeof SUBMISSION_STATE_META;
+
+function hasStateMeta(value: string): value is StateWithMeta {
+  return Object.hasOwn(SUBMISSION_STATE_META, value);
 }
 
+/** Metadata for any state, known or not. Unknown states render verbatim so a
+ *  backend addition never masquerades as an earlier stage. */
 export function getSubmissionStateMeta(state: string): SubmissionStateMeta {
-  if (isSubmissionState(state)) return SUBMISSION_STATE_META[state];
+  if (hasStateMeta(state)) return SUBMISSION_STATE_META[state];
   return {
     state,
     label: state.replaceAll("_", " ") || "unknown",
