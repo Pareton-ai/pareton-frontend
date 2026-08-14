@@ -347,6 +347,7 @@ html:has(.landing) body {
   max-width: 52rem;
 }
 
+/* `.statement p` is more specific than `.mono`, so exclude the index label. */
 .landing .statement p:not(.mono) {
   font-family: var(--serif);
   font-size: clamp(1.65rem, 3.1vw, 2.35rem);
@@ -1000,6 +1001,7 @@ html:has(.landing) body {
 
   .landing .sticky {
     position: sticky;
+    /* Offset by the sticky header so the kicker does not sit under it. */
     top: var(--nav);
     min-height: calc(100svh - var(--nav));
     display: flex;
