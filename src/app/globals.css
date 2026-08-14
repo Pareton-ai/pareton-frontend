@@ -96,28 +96,6 @@ body {
   background-clip: padding-box;
 }
 
-/* Scroll cue (how-it-works section) */
-@media (prefers-reduced-motion: no-preference) {
-  .scroll-cue-dot {
-    animation: scroll-cue 1.8s ease-in-out infinite;
-  }
-}
-
-@keyframes scroll-cue {
-  0%,
-  100% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  30% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-}
-
 /* Low-opacity architectural alignment grid */
 .bg-blueprint {
   background-image:
