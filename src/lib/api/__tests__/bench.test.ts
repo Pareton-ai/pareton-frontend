@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   readCorrectness,
   readPerfScreen,
+  readPerfScreenFloor,
   readSlaBench,
   speedupFor,
   summarizeBench,
@@ -47,6 +48,22 @@ describe("stage readers", () => {
     expect(metrics.baselineTokensPerS).toBeCloseTo(102502.11, 1);
     expect(metrics.candidateTokensPerS).toBeCloseTo(101218.38, 1);
     expect(metrics.throughputRatio).toBeCloseTo(0.9875, 4);
+  });
+
+  it("reads the screen floor, never the SLA speedup floor", () => {
+    const passed = stage("perf_screen").report;
+    expect(readPerfScreenFloor(passed, null)).toBeNull();
+    expect(
+      readPerfScreenFloor(passed, {
+        bench: {
+          cross_env: { min_speedup_each: 1.05 },
+          perf_screen: { min_throughput_ratio: 0.95 },
+        },
+      } as Campaign)
+    ).toBe(0.95);
+    expect(readPerfScreenFloor({ min_throughput_ratio: 0.97 }, null)).toBe(
+      0.97
+    );
   });
 
   it("reads both engines' percentiles from the SLA bench", () => {

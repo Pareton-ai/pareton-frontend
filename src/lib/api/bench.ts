@@ -99,6 +99,24 @@ export function readPerfScreen(report: unknown): PerfScreenMetrics {
   };
 }
 
+/**
+ * Floor the cheap screen actually gates on.
+ *
+ * Distinct from `cross_env.min_speedup_each`, which is the SLA / scoring
+ * floor (typically > 1x). The screen is a coarse filter; live campaigns
+ * pass around 0.99x and fail around 0.94x. The harness writes
+ * `min_throughput_ratio` on some payloads; otherwise the campaign spec
+ * may name it. Neither is `min_speedup_each`.
+ */
+export function readPerfScreenFloor(
+  report: unknown,
+  campaign: Campaign | null
+): number | null {
+  const fromReport = num(record(report).min_throughput_ratio);
+  if (fromReport !== null) return fromReport;
+  return num(record(campaign?.bench.perf_screen).min_throughput_ratio);
+}
+
 /** `null` when the payload carries no candidate run to compare against. */
 export function readSlaBench(report: unknown): SlaBenchMetrics | null {
   const source = record(report);

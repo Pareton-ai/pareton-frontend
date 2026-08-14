@@ -8,6 +8,7 @@ import { formatRatio } from "@/lib/api/format";
 import {
   readCorrectness,
   readPerfScreen,
+  readPerfScreenFloor,
   readSlaBench,
   speedupFor,
   type SlaBenchMetrics,
@@ -124,14 +125,15 @@ function ThroughputPair({
   candidate,
   ratio,
   floor,
+  clears,
 }: {
   baseline: number;
   candidate: number;
   ratio: number | null;
   floor: number | null;
+  clears: boolean;
 }) {
   const scale = Math.max(baseline, candidate);
-  const clears = ratio !== null && (floor === null || ratio >= floor);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_10rem] lg:items-center">
@@ -162,12 +164,14 @@ function ThroughputPair({
 function PerfScreenBody({
   report,
   campaign,
+  passed,
 }: {
   report: Record<string, unknown>;
   campaign: Campaign | null;
+  passed: boolean;
 }) {
   const metrics = readPerfScreen(report);
-  const floor = campaign?.bench.cross_env.min_speedup_each ?? null;
+  const floor = readPerfScreenFloor(report, campaign);
 
   if (
     metrics.baselineTokensPerS === null ||
@@ -186,6 +190,14 @@ function PerfScreenBody({
         <Metric
           label="Throughput ratio"
           value={fmtRatio(metrics.throughputRatio)}
+          hint={floor === null ? undefined : `floor ≥ ${formatRatio(floor)}`}
+          tone={
+            metrics.throughputRatio === null
+              ? "foreground"
+              : passed
+                ? "accent"
+                : "rust"
+          }
         />
       </MetricRow>
     );
@@ -197,6 +209,7 @@ function PerfScreenBody({
       candidate={metrics.candidateTokensPerS}
       ratio={metrics.throughputRatio}
       floor={floor}
+      clears={passed}
     />
   );
 }
@@ -414,7 +427,13 @@ function ReportBody({
     return <CorrectnessBody report={item.report} />;
   }
   if (item.stage === "perf_screen") {
-    return <PerfScreenBody report={item.report} campaign={campaign} />;
+    return (
+      <PerfScreenBody
+        report={item.report}
+        campaign={campaign}
+        passed={item.verdict === "pass"}
+      />
+    );
   }
   if (item.stage === "sla_bench") {
     return <SlaBenchBody report={item.report} campaign={campaign} />;

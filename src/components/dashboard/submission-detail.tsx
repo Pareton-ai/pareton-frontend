@@ -19,7 +19,11 @@ import {
 } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 import { isSafeArtifactUrl } from "@/lib/api/artifacts";
-import { summarizeBench, type BenchSummary } from "@/lib/api/bench";
+import {
+  readPerfScreenFloor,
+  summarizeBench,
+  type BenchSummary,
+} from "@/lib/api/bench";
 import {
   elapsedBetween,
   formatDuration,
@@ -215,7 +219,7 @@ function headroomLabel(used: number): string {
     : `${Math.round((1 - used) * 100)}% headroom`;
 }
 
-/** Worst speedup across SKUs against the campaign floor. */
+/** Headline speedup. The SLA floor applies only after the full bench. */
 function SpeedupTile({
   summary,
   campaign,
@@ -223,7 +227,11 @@ function SpeedupTile({
   summary: BenchSummary;
   campaign: Campaign | null;
 }) {
-  const floor = campaign?.bench.cross_env.min_speedup_each ?? null;
+  const slaFloor = campaign?.bench.cross_env.min_speedup_each ?? null;
+  const floor =
+    summary.speedupSource === "perf_screen"
+      ? readPerfScreenFloor(null, campaign)
+      : slaFloor;
 
   if (summary.speedup === null) {
     return (
@@ -232,9 +240,9 @@ function SpeedupTile({
         label="Speedup"
         value="—"
         hint={
-          floor === null
+          slaFloor === null
             ? "awaiting bench"
-            : `floor ≥ ${formatRatio(floor)} · awaiting bench`
+            : `floor ≥ ${formatRatio(slaFloor)} · awaiting bench`
         }
       />
     );
