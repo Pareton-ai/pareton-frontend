@@ -1,7 +1,7 @@
 /**
- * Single source of truth for the landing page's prose. `page.tsx`,
- * the method section, and the agent Markdown view (`home-markdown.ts`) all
- * read from here, so copy only ever lives in one place.
+ * Single source of truth for the landing page's prose. Landing components
+ * and the agent Markdown view (`home-markdown.ts`) all read from here, so
+ * copy only ever lives in one place.
  */
 
 export const siteContent = {
