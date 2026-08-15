@@ -19,7 +19,7 @@ export const siteContent = {
     { label: "Why it holds", href: "#laws" },
     { label: "Dashboard", href: "/dashboard" },
     { label: "Docs", href: "/docs" },
-    { label: "Talk to us", href: "mailto:xavier@pareton.ai", end: true },
+    { label: "View a campaign", href: "/dashboard", end: true },
   ],
 
   /** Agent Markdown link list. Broader than the visible nav. */
@@ -31,8 +31,8 @@ export const siteContent = {
     { label: "Contact", href: "mailto:xavier@pareton.ai" },
   ],
 
-  heroCta: { label: "View a campaign", href: "/dashboard" },
-  talkCta: { label: "Talk to us", href: "mailto:xavier@pareton.ai" },
+  heroCta: { label: "Talk to us", href: "mailto:xavier@pareton.ai" },
+  talkCta: { label: "View a campaign", href: "/dashboard" },
 
   colophon: [
     { k: "Priority", v: "GPU-hours at SLA" },
