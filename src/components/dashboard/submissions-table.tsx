@@ -25,7 +25,7 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
 
   return (
     <section className="border border-border px-5 py-14 text-center sm:px-6">
-      <p className="font-mono text-body-sm uppercase tracking-caps text-accent">
+      <p className="font-mono text-body uppercase tracking-caps text-accent">
         {copy.title}
       </p>
       <p className="mx-auto mt-4 max-w-lg text-body-lg leading-relaxed text-secondary">
@@ -46,7 +46,7 @@ function PageControl({
 }) {
   const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
   const className =
-    "inline-flex min-h-9 min-w-20 items-center justify-center gap-1.5 border border-border px-3 font-mono text-body-sm uppercase tracking-caps transition-colors";
+    "inline-flex min-h-9 min-w-20 items-center justify-center gap-1.5 border border-border px-3 font-mono text-body uppercase tracking-caps transition-colors";
 
   if (!href) {
     return (
@@ -101,7 +101,7 @@ export function SubmissionsTable({
             Submissions
           </h2>
         </div>
-        <p className="font-mono text-body-sm text-muted">
+        <p className="font-mono text-body text-muted">
           {showingFrom}–{showingTo} of {data.total}
         </p>
       </div>
@@ -139,7 +139,7 @@ export function SubmissionsTable({
           aria-label="Submissions pages"
           className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 sm:px-5"
         >
-          <p className="font-mono text-body-sm text-muted">
+          <p className="font-mono text-body text-muted">
             Page{" "}
             <span className="text-foreground">
               {page} / {totalPages}

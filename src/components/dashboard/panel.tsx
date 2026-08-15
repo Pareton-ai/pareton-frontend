@@ -35,7 +35,8 @@ export function Panel({
           </h2>
         </div>
         {meta ? (
-          <p className="font-mono text-body-sm text-muted">{meta}</p>
+          /* Serif italic, the way the landing page sets its counters. */
+          <p className="font-serif text-body-lg italic text-muted">{meta}</p>
         ) : null}
       </header>
       <div className={bodyClassName}>{children}</div>
@@ -84,10 +85,12 @@ export function StatTile({
           {label}
         </p>
       </div>
-      <p className="mt-3 font-mono text-title text-foreground">{value}</p>
+      <p className="mt-3 font-mono text-title tracking-tight text-foreground">
+        {value}
+      </p>
       {children}
       {hint ? (
-        <p className="mt-2 font-mono text-body-sm text-muted">{hint}</p>
+        <p className="mt-2 font-mono text-body text-muted">{hint}</p>
       ) : null}
     </div>
   );

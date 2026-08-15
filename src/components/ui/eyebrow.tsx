@@ -6,7 +6,6 @@ const eyebrowVariants = cva("font-mono uppercase tracking-caps", {
   variants: {
     size: {
       body: "text-body",
-      sm: "text-body-sm",
       caption: "text-caption",
     },
     tone: {

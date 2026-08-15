@@ -20,7 +20,6 @@ export default function CampaignError({
         type="button"
         onClick={reset}
         className={monoLinkClassName({
-          size: "sm",
           tone: "accent",
         })}
       >
@@ -29,7 +28,6 @@ export default function CampaignError({
       <Link
         href="/dashboard"
         className={monoLinkClassName({
-          size: "sm",
           tone: "muted",
         })}
       >

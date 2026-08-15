@@ -22,9 +22,7 @@ export function EmptyState({
     <div
       className={cn("border border-border px-6 py-14 text-center", className)}
     >
-      <Eyebrow size="sm" tone={tone}>
-        {title}
-      </Eyebrow>
+      <Eyebrow tone={tone}>{title}</Eyebrow>
       <p className="mx-auto mt-4 max-w-md text-body-lg leading-relaxed text-secondary">
         {message}
       </p>

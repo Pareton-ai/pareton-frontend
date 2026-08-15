@@ -75,7 +75,7 @@ export function SubmissionRow({
     // makes the row a containing block and `clip-path` keeps the overlay inside
     // it; both are no-ops where `relative` already works.
     <tr className="group relative border-t border-border/80 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
-      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-body-sm text-foreground sm:px-5">
+      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-body text-foreground sm:px-5">
         {/* Stretched link: the anchor's ::after covers the row, so the row is a
             real link and cmd/middle-click still open it in a new tab. */}
         <Link
@@ -94,7 +94,7 @@ export function SubmissionRow({
         />
       </td>
       <td
-        className="whitespace-nowrap px-3 py-3.5 font-mono text-body-sm text-secondary"
+        className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary"
         title={formatUtc(row.committed_at)}
       >
         {formatUtcShort(row.committed_at)}

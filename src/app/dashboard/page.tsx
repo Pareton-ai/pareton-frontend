@@ -13,10 +13,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-display-section font-medium leading-display tracking-tight text-foreground">
+        <h1 className="display-serif text-display-section leading-display text-foreground">
           Campaigns
         </h1>
-        <p className="mt-2 font-mono text-body-sm text-secondary">
+        <p className="mt-4 max-w-[46ch] text-body-lg leading-relaxed text-secondary">
           Public snapshot of open campaigns, hardware targets, and miner
           submissions.
         </p>

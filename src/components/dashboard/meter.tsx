@@ -72,7 +72,7 @@ export function MeterRow({
         <span className="font-mono text-caption uppercase tracking-caps text-muted">
           {label}
         </span>
-        <span className={`font-mono text-body-sm ${valueClassName[tone]}`}>
+        <span className={`font-mono text-body ${valueClassName[tone]}`}>
           {value}
         </span>
       </div>

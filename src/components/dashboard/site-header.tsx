@@ -3,26 +3,25 @@ import { Logo } from "@/components/logo";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 
 const nav = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Home", href: "/" },
-  { label: "GitHub", href: "https://github.com/pareton-ai" },
+  { label: "Dashboard", href: "/dashboard", key: "dashboard" },
+  { label: "Docs", href: "/docs", key: "docs" },
+  { label: "Home", href: "/", key: "home" },
+  { label: "GitHub", href: "https://github.com/pareton-ai", key: null },
 ] as const;
 
 export function SiteHeader({
   active = "dashboard",
 }: {
-  active?: "dashboard" | "home";
+  active?: "dashboard" | "docs" | "home";
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-border px-6 py-5 sm:px-12">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/85 px-6 py-5 backdrop-blur-md sm:px-12">
       <Link href="/" className="transition-opacity hover:opacity-90">
         <Logo />
       </Link>
       <nav className="flex items-center gap-4 sm:gap-8">
         {nav.map((link) => {
-          const isActive =
-            (active === "dashboard" && link.href === "/dashboard") ||
-            (active === "home" && link.href === "/");
+          const isActive = link.key === active;
           const external = link.href.startsWith("http");
           return (
             <Link
@@ -31,9 +30,13 @@ export function SiteHeader({
               {...(external
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className={monoLinkClassName({
-                tone: isActive ? "foreground" : "muted",
-              })}
+              className={monoLinkClassName(
+                { tone: isActive ? "foreground" : "muted" },
+                // Landing nav marks the current destination with a hairline rule.
+                isActive
+                  ? "underline decoration-1 underline-offset-[0.45em]"
+                  : undefined
+              )}
             >
               {link.label}
             </Link>

@@ -15,12 +15,12 @@ export function CampaignTitle({ campaign }: { campaign: Campaign }) {
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="text-display-section font-medium leading-display tracking-tight text-foreground">
+        <h1 className="display-serif text-display-section leading-display text-foreground">
           {model.hf_repo}
         </h1>
         <CampaignStatusChip status={campaign.status} />
       </div>
-      <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body-sm text-muted">
+      <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body text-muted">
         <span className="text-secondary">
           Model revision:{" "}
           <CopyableMono

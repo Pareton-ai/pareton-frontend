@@ -46,7 +46,7 @@ export function PipelineChip({ state }: { state: SubmissionState | string }) {
 export function BenchVerdictChip({ verdict }: { verdict: BenchVerdict }) {
   const meta = getBenchVerdictMeta(verdict);
   if (!meta) {
-    return <span className="font-mono text-body-sm text-muted">—</span>;
+    return <span className="font-mono text-body text-muted">—</span>;
   }
   return (
     <span
@@ -61,7 +61,7 @@ export function BenchVerdictChip({ verdict }: { verdict: BenchVerdict }) {
 /** Per-stage verdict from `bench_reports[]`, which can carry harness errors. */
 export function StageVerdictChip({ verdict }: { verdict: string }) {
   if (!verdict) {
-    return <span className="font-mono text-body-sm text-muted">—</span>;
+    return <span className="font-mono text-body text-muted">—</span>;
   }
   return (
     <span
