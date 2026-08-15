@@ -39,7 +39,7 @@ export function CopyableMono({
       aria-label={label}
       className={cn(
         iconOnly ? "inline-flex" : "group inline-flex",
-        "max-w-full cursor-pointer items-center gap-2 font-mono text-body-sm tracking-tight text-secondary transition-colors hover:text-foreground",
+        "max-w-full cursor-pointer items-center gap-2 font-mono text-body tracking-tight text-secondary transition-colors hover:text-foreground",
         className
       )}
     >

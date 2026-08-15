@@ -2,13 +2,9 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 
 const monoLinkVariants = cva(
-  "font-mono uppercase tracking-caps transition-colors hover:text-foreground",
+  "font-mono text-body uppercase tracking-caps transition-colors hover:text-foreground",
   {
     variants: {
-      size: {
-        body: "text-body",
-        sm: "text-body-sm",
-      },
       tone: {
         muted: "text-muted",
         accent: "text-accent",
@@ -16,7 +12,6 @@ const monoLinkVariants = cva(
       },
     },
     defaultVariants: {
-      size: "body",
       tone: "muted",
     },
   }

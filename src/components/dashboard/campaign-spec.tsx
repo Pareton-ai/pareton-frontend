@@ -20,7 +20,7 @@ function Row({
       <p className="font-mono text-caption uppercase tracking-caps text-muted">
         {label}
       </p>
-      <div className="mt-1.5 font-mono text-body-sm text-foreground">
+      <div className="mt-1.5 font-mono text-body text-foreground">
         {children}
       </div>
     </div>

@@ -376,17 +376,17 @@ function SlaBenchBody({
 
                 return (
                   <tr key={row.label} className="border-t border-border/80">
-                    <td className="py-2.5 font-mono text-body-sm text-secondary">
+                    <td className="py-2.5 font-mono text-body text-secondary">
                       {row.label}
                     </td>
-                    <td className="py-2.5 text-right font-mono text-body-sm text-muted">
+                    <td className="py-2.5 text-right font-mono text-body text-muted">
                       {fmt(base, row.digits, row.suffix)}
                     </td>
-                    <td className="py-2.5 text-right font-mono text-body-sm text-foreground">
+                    <td className="py-2.5 text-right font-mono text-body text-foreground">
                       {fmt(cand, row.digits, row.suffix)}
                     </td>
                     <td
-                      className={`py-2.5 text-right font-mono text-body-sm ${
+                      className={`py-2.5 text-right font-mono text-body ${
                         better === null
                           ? "text-muted"
                           : better

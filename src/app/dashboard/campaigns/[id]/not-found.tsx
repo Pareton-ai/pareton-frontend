@@ -8,7 +8,6 @@ export default function CampaignNotFound() {
       <Link
         href="/dashboard"
         className={monoLinkClassName({
-          size: "sm",
           tone: "accent",
         })}
       >

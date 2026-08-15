@@ -19,14 +19,11 @@ export default function SubmissionError({
       <button
         type="button"
         onClick={reset}
-        className={monoLinkClassName({ size: "sm", tone: "accent" })}
+        className={monoLinkClassName({ tone: "accent" })}
       >
         Retry
       </button>
-      <Link
-        href="/dashboard"
-        className={monoLinkClassName({ size: "sm", tone: "muted" })}
-      >
+      <Link href="/dashboard" className={monoLinkClassName({ tone: "muted" })}>
         All campaigns
       </Link>
     </EmptyState>

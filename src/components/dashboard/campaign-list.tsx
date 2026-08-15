@@ -10,6 +10,7 @@ import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark, shortSku } from "@/components/dashboard/gpu";
 import { Panel, type DashboardIcon } from "@/components/dashboard/panel";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getCampaigns } from "@/lib/api/endpoints";
 import { isUnavailable } from "@/lib/api/errors";
 import { truncateMiddle } from "@/lib/api/format";
@@ -44,10 +45,10 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
   const { model } = campaign.bench;
 
   return (
-    <div className="group relative px-4 py-4 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
+    <div className="group relative px-5 py-5 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="min-w-0 text-ui font-medium tracking-tight wrap-break-word text-foreground">
+          <p className="min-w-0 text-title font-medium tracking-tight wrap-break-word text-foreground">
             <Link
               href={campaignHref(campaign.campaign_id)}
               className="outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
@@ -60,10 +61,10 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
             <CopyableMono
               value={model.hf_revision}
               display={`@${truncateMiddle(model.hf_revision, 8, 6)}`}
-              className="relative z-10 ml-1 font-sans text-ui font-medium text-muted"
+              className="relative z-10 ml-1 font-sans text-title font-normal text-muted"
             />
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-body-sm text-secondary">
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-body text-secondary">
             <span
               className="inline-flex w-32 shrink-0 items-center gap-1.5 truncate"
               title={campaign.gpu_skus.join(", ")}
@@ -95,15 +96,11 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
 
 function EmptyCampaigns() {
   return (
-    <div className="border border-border px-5 py-14 text-center sm:px-6">
-      <p className="font-mono text-body-sm uppercase tracking-caps text-accent">
-        No campaigns
-      </p>
-      <p className="mx-auto mt-4 max-w-md text-body-lg leading-relaxed text-secondary">
-        There are no campaigns to list yet. When a campaign opens, it will
-        appear here with its model and GPU SKUs.
-      </p>
-    </div>
+    <EmptyState
+      tone="accent"
+      title="No campaigns"
+      message="There are no campaigns to list yet. When a campaign opens, it will appear here with its model and GPU SKUs."
+    />
   );
 }
 

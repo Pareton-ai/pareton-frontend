@@ -4,16 +4,30 @@
 
 :root {
   /* Deep charcoal-black, not flat black. Default matches fumadocs `dark`. */
-  --background: #0e0f11;
-  --foreground: #e7e8ea;
-  --secondary: #9ba0a6;
-  /* Muted/accent/rust sized for ≥3:1 on --background (prefer ~5:1+ for text) */
-  --muted: #8a8f96;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --accent: #4d8aff;
-  --accent-dim: rgba(77, 138, 255, 0.14);
+  --background: #0f1013;
+  /* Warm off-white ink, matching the landing page's dark plate (`--plate-fg`)
+     rather than a cool neutral grey. */
+  --foreground: #ece8df;
+  --secondary: #a8a396;
+  /* Muted/accent/rust sized for ≥3:1 on --background (prefer ~5:1+ for text).
+     `--muted` is the landing page's `--plate-quiet`, the value it already uses
+     for quiet text on its dark plate — 6.38:1 here. */
+  --muted: #9a958a;
+  --border: rgba(236, 232, 223, 0.1);
+  --border-strong: rgba(236, 232, 223, 0.18);
+  /* Same blue the landing page uses on its dark plate. */
+  --accent: #3b78ff;
+  --accent-dim: rgba(59, 120, 255, 0.14);
   --rust: #c47a4a;
+
+  /* Type stacks live behind their own names so a scope (the dashboard shell)
+     can repoint them without every utility being rewritten. */
+  --sans-stack: var(--font-inter), system-ui, "Helvetica Neue", sans-serif;
+  --mono-stack: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+  /* Fraunces is loaded per-scope, so the display stack is only complete inside
+     `.dashboard-shell`. Custom properties substitute where they are declared,
+     which is why this one names no font here. */
+  --serif-stack: "Times New Roman", serif;
 }
 
 /* Fumadocs prose uses --fd-* which already switch. Body and product tokens
@@ -40,27 +54,30 @@ html.light {
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
   --color-rust: var(--rust);
-  --font-sans: var(--font-inter), system-ui, "Helvetica Neue", sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+  --font-sans: var(--sans-stack);
+  --font-mono: var(--mono-stack);
+  --font-serif: var(--serif-stack);
 
-  /* Product type scale: six UI steps plus three fluid display sizes.
-     Stock Tailwind sizes are 12/14/16px, which do not fit this 11/12/13 rhythm. */
-  --text-caption: 11px;
-  --text-body-sm: 12px;
-  --text-body: 13px;
-  --text-body-lg: 14px;
-  --text-ui: 16px;
-  --text-title: 18px;
-  --text-display-lede: clamp(1.15rem, 2.2vw, 1.5rem);
-  --text-display-section: clamp(1.5rem, 2.8vw, 2rem);
-  --text-display-hero: clamp(2.1rem, 4.5vw, 3.1rem);
+  /* Product type scale: four UI steps at a ~1.15–1.2 ratio, plus one display
+     size. Steps closer than that read as inconsistency rather than hierarchy,
+     which is why there is no 13px between `caption` and `body`.
 
-  /* Mono caps spread. Stock tracking stops at 0.1em, so this stays custom.
-     Tighten headings with stock `tracking-tight`. */
-  --tracking-caps: 0.14em;
+     caption  mono caps labels, chips, field keys
+     body     mono chrome and metadata rows
+     body-lg  prose: ledes, field values, empty states
+     title    row titles and stat values */
+  --text-caption: 12px;
+  --text-body: 14px;
+  --text-body-lg: 16px;
+  --text-title: 19px;
+  --text-display-section: clamp(1.85rem, 3.4vw, 2.6rem);
+
+  /* Mono caps spread, matching the landing page's `.mono` label. Stock tracking
+     stops at 0.1em, so this stays custom. Tighten headings with `tracking-tight`. */
+  --tracking-caps: 0.16em;
 
   /* Display headings only. Body copy uses stock `leading-normal` / `leading-relaxed`. */
-  --leading-display: 1.12;
+  --leading-display: 1.06;
 }
 
 html {
@@ -110,13 +127,44 @@ body {
   background-clip: padding-box;
 }
 
+/* The dashboard borrows the landing page's type system: Bricolage for UI text,
+   Azeret for mono chrome, Fraunces for display headings. Docs keep Inter/Plex,
+   so the swap is scoped to the shell rather than done in `@theme`. */
+.dashboard-shell {
+  --sans-stack: var(--font-landing-sans), system-ui, sans-serif;
+  --mono-stack: var(--font-landing-mono), ui-monospace, monospace;
+  --serif-stack: var(--font-landing-serif), "Times New Roman", serif;
+
+  font-family: var(--sans-stack);
+  font-optical-sizing: auto;
+}
+
+/* The caps-label treatment, matching the landing page's `.mono`: mono, upper,
+   0.16em, weight 500.
+   `tracking-caps` is bespoke to this one pattern and never used as a generic
+   letter-spacing, so the weight rides with it instead of being repeated at 33
+   call sites. Light type on dark optically thins; 500 is what holds these
+   together at 12px, and it is what the landing already uses. */
+.dashboard-shell .tracking-caps {
+  font-weight: 500;
+}
+
+/* Fraunces display heading. Optical sizing plus a low weight keeps it a
+   masthead, not a bold UI title. */
+.display-serif {
+  font-family: var(--serif-stack);
+  font-weight: 400;
+  font-optical-sizing: auto;
+  letter-spacing: -0.03em;
+}
+
 /* Low-opacity architectural alignment grid */
 .bg-blueprint {
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(to right, rgba(255, 255, 255, 0.014) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+    linear-gradient(to right, rgba(236, 232, 223, 0.026) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(236, 232, 223, 0.026) 1px, transparent 1px),
+    linear-gradient(to right, rgba(236, 232, 223, 0.016) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(236, 232, 223, 0.016) 1px, transparent 1px);
   background-size:
     96px 96px,
     96px 96px,

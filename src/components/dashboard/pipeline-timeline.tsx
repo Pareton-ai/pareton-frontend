@@ -52,7 +52,7 @@ function DetailItem({
       <dt className="font-mono text-caption uppercase tracking-caps text-muted">
         {label}
       </dt>
-      <dd className="mt-1 break-words font-mono text-body-sm text-secondary">
+      <dd className="mt-1 break-words font-mono text-body text-secondary">
         {children}
       </dd>
     </div>

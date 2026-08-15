@@ -74,14 +74,14 @@ export function SubmissionTitle({
         ) : null}
       </div>
 
-      <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body-sm text-muted">
+      <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body text-muted">
         {campaign ? (
           <span className="text-secondary">
             Campaign:{" "}
             <Link
               href={campaignHref(submission.campaign_id)}
               className={monoLinkClassName(
-                { size: "sm", tone: "accent" },
+                { tone: "accent" },
                 "normal-case tracking-normal underline-offset-4 hover:underline"
               )}
             >
@@ -440,7 +440,7 @@ function Row({
       <p className="font-mono text-caption uppercase tracking-caps text-muted">
         {label}
       </p>
-      <div className="mt-1.5 font-mono text-body-sm text-foreground">
+      <div className="mt-1.5 font-mono text-body text-foreground">
         {children}
       </div>
     </div>
