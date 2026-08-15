@@ -5,7 +5,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 type EmptyStateProps = {
   title: string;
   message: string;
-  tone?: "muted" | "rust";
+  tone?: "muted" | "rust" | "accent";
   children?: ReactNode;
   className?: string;
 };

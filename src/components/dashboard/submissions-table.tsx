@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import Link from "next/link";
 import { SubmissionRow } from "@/components/dashboard/submission-row";
+import { EmptyState } from "@/components/ui/empty-state";
 import { campaignHref, submissionHref } from "@/lib/routes";
 import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
 
@@ -23,16 +24,7 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
             body: "This campaign closed without recorded submissions.",
           };
 
-  return (
-    <section className="border border-border px-5 py-14 text-center sm:px-6">
-      <p className="font-mono text-body uppercase tracking-caps text-accent">
-        {copy.title}
-      </p>
-      <p className="mx-auto mt-4 max-w-lg text-body-lg leading-relaxed text-secondary">
-        {copy.body}
-      </p>
-    </section>
-  );
+  return <EmptyState tone="accent" title={copy.title} message={copy.body} />;
 }
 
 function PageControl({

@@ -10,6 +10,7 @@ import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark, shortSku } from "@/components/dashboard/gpu";
 import { Panel, type DashboardIcon } from "@/components/dashboard/panel";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getCampaigns } from "@/lib/api/endpoints";
 import { isUnavailable } from "@/lib/api/errors";
 import { truncateMiddle } from "@/lib/api/format";
@@ -95,15 +96,11 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
 
 function EmptyCampaigns() {
   return (
-    <div className="border border-border px-5 py-16 text-center sm:px-6">
-      <p className="font-mono text-caption uppercase tracking-caps text-accent">
-        No campaigns
-      </p>
-      <p className="mx-auto mt-4 max-w-md text-body-lg leading-relaxed text-secondary">
-        There are no campaigns to list yet. When a campaign opens, it will
-        appear here with its model and GPU SKUs.
-      </p>
-    </div>
+    <EmptyState
+      tone="accent"
+      title="No campaigns"
+      message="There are no campaigns to list yet. When a campaign opens, it will appear here with its model and GPU SKUs."
+    />
   );
 }
 
