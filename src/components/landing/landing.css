@@ -240,6 +240,9 @@ html:has(.landing) body {
 }
 
 .landing .mark-hero {
+  /* One axis holds for a step; `--axis-count` of them make the full cycle. */
+  --axis-step: 5s;
+  --axis-cycle: calc(var(--axis-count) * var(--axis-step));
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
@@ -249,26 +252,88 @@ html:has(.landing) body {
   aspect-ratio: 2 / 3;
 }
 
-.landing .mark-hero span {
+.landing .mark-hero > span {
+  position: relative;
   display: block;
   background: transparent;
   border: 1px solid var(--rule-strong);
 }
 
-.landing .mark-hero span.on {
+.landing .mark-hero > span.on {
+  overflow: hidden;
   background: var(--blue);
   border-color: var(--blue);
   animation: landing-settle 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.landing .mark-hero span.on:nth-child(1) {
+.landing .mark-hero > span.on:nth-child(1) {
   animation-delay: 0.05s;
 }
-.landing .mark-hero span.on:nth-child(4) {
+.landing .mark-hero > span.on:nth-child(4) {
   animation-delay: 0.18s;
 }
-.landing .mark-hero span.on:nth-child(5) {
+.landing .mark-hero > span.on:nth-child(5) {
   animation-delay: 0.32s;
+}
+
+/* A column of every axis, advanced one cell per step. The swap is discrete and
+   lands while the label is faded out, so it reads as a cross-fade. */
+.landing .mark-hero .axis-roll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(var(--axis-count) * 100%);
+  animation: landing-axis-roll var(--axis-cycle)
+    steps(var(--axis-count), jump-end) calc(var(--slot) * var(--axis-step) * -1)
+    infinite both;
+}
+
+.landing .mark-hero em {
+  flex: 0 0 calc(100% / var(--axis-count));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  font-family: var(--sans);
+  font-size: clamp(0.72rem, 1.15vw, 0.95rem);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--paper);
+  opacity: 0;
+  animation: landing-axis var(--axis-step) cubic-bezier(0.16, 1, 0.3, 1)
+    infinite both;
+}
+
+@keyframes landing-axis-roll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes landing-axis {
+  0% {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+  14%,
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-0.4rem);
+  }
 }
 
 @keyframes landing-settle {
@@ -1041,9 +1106,10 @@ html:has(.landing) body {
     display: none;
   }
 
+  /* The mark only works beside the copy: stacked, its square cells are either
+     cramped or absurdly tall. It is decorative, so phones go without it. */
   .landing .mark-hero {
-    width: 180px;
-    margin: 1.5rem 0 0;
+    display: none;
   }
 
   .landing .give,
@@ -1088,8 +1154,20 @@ html:has(.landing) body {
   }
 
   .landing .hero-copy > *,
-  .landing .mark-hero span.on,
+  .landing .mark-hero > span.on,
   .landing .mouse span {
     animation: none !important;
+  }
+
+  /* Park each roll on its own axis instead of cycling through them. */
+  .landing .mark-hero .axis-roll {
+    animation: none !important;
+    transform: translateY(calc(var(--slot) * -100% / var(--axis-count)));
+  }
+
+  .landing .mark-hero em {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
   }
 }

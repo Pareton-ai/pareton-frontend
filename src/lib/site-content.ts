@@ -13,6 +13,18 @@ export const siteContent = {
   heroDescription:
     "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving configuration space until a better engine holds on the workload you already run.",
   buildStatus: "Coming Soon · Bittensor Subnet 10",
+  /** Axes of the search space, cycled around the hero mark. */
+  heroAxes: [
+    "Model",
+    "Hardware",
+    "Serving Configs",
+    "Workload",
+    "Quantization",
+    "Launch Flags",
+    "Kernel",
+    "Traffic Shape",
+    "Serving Stack",
+  ],
 
   nav: [
     { label: "Method", href: "#method" },
