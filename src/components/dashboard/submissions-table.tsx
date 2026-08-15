@@ -16,7 +16,7 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
       : status === "draft"
         ? {
             title: "No submissions yet",
-            body: "This campaign has not opened. Submissions will appear here once the window starts.",
+            body: "This campaign has not opened. Submissions will appear here once it does.",
           }
         : {
             title: "No submissions",

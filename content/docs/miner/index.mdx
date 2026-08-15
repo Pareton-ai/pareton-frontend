@@ -33,7 +33,7 @@ Every submission walks the same sequence of states:
 
 1. **Committed** — your on-chain commitment is seen and recorded.
 2. **Fetched** — the worker retrieves the patch artifact and checks the hash matches your commitment.
-3. **Verified** — identity and eligibility checks pass: registered hotkey, open campaign window, correct baseline pin, hotkey-bound artifact URL.
+3. **Verified** — identity and eligibility checks pass: registered hotkey, correct baseline pin, hotkey-bound artifact URL.
 4. **Applied** — the diff applies cleanly onto the baseline checkout.
 5. **Surface OK** — path constraints hold: no denied paths, no absolute paths, no traversal, no symlink or binary payloads.
 6. **Building** — the hermetic container build is running. This step can take hours for a full engine compile.

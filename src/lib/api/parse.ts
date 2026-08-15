@@ -11,7 +11,6 @@ import {
   type CampaignBenchModel,
   type CampaignSla,
   type CampaignStatus,
-  type CampaignWindow,
   type CustomerSignoff,
   type Submission,
   type SubmissionDetail,
@@ -65,14 +64,6 @@ function parseSla(value: unknown): CampaignSla {
     p99_ttft_ms: asNumber(o.p99_ttft_ms),
     p99_itl_ms: asNumber(o.p99_itl_ms),
     quality_floor_spec: asString(o.quality_floor_spec),
-  };
-}
-
-function parseWindow(value: unknown): CampaignWindow {
-  const o = asRecord(value);
-  return {
-    opens_at: asString(o.opens_at),
-    closes_at: asString(o.closes_at),
   };
 }
 
@@ -138,7 +129,7 @@ export function parseCampaign(value: unknown): Campaign {
     scoring_config_url: asNullableString(o.scoring_config_url),
     allowed_paths: asStringArray(o.allowed_paths),
     denied_paths: asStringArray(o.denied_paths),
-    window: parseWindow(o.window),
+    created_at: asString(o.created_at),
     manifest_hash: asString(o.manifest_hash),
     customer_signoff: parseSignoff(o.customer_signoff),
     priority_metric: asString(o.priority_metric),
