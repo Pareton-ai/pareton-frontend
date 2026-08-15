@@ -44,10 +44,6 @@ function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 3_600_000).toISOString();
 }
 
-function hoursFromNow(hours: number): string {
-  return new Date(Date.now() + hours * 3_600_000).toISOString();
-}
-
 function minutesAfter(iso: string, minutes: number): string {
   return new Date(new Date(iso).getTime() + minutes * 60_000).toISOString();
 }
@@ -86,10 +82,7 @@ export const MOCK_CAMPAIGN: Campaign = {
   scoring_config_url: null,
   allowed_paths: ["src/**"],
   denied_paths: [".git/**"],
-  window: {
-    opens_at: hoursAgo(48),
-    closes_at: minutesAfter(hoursAgo(48), 14 * 24 * 60),
-  },
+  created_at: hoursAgo(48),
   manifest_hash:
     "sha256:3333333333333333333333333333333333333333333333333333333333333333",
   customer_signoff: null,
@@ -123,10 +116,7 @@ export const MOCK_DRAFT_CAMPAIGN: Campaign = {
   profile_id: "mock-profile-draft",
   status: "draft",
   gpu_skus: ["H100_80GB"],
-  window: {
-    opens_at: hoursFromNow(72),
-    closes_at: hoursFromNow(72 + 14 * 24),
-  },
+  created_at: hoursAgo(12),
   manifest_hash:
     "sha256:5555555555555555555555555555555555555555555555555555555555555555",
   bench: {
@@ -147,10 +137,7 @@ export const MOCK_CLOSED_CAMPAIGN: Campaign = {
   profile_id: "mock-profile-closed",
   status: "closed",
   gpu_skus: ["L40S", "A10"],
-  window: {
-    opens_at: hoursAgo(30 * 24),
-    closes_at: hoursAgo(16 * 24),
-  },
+  created_at: hoursAgo(30 * 24),
   manifest_hash:
     "sha256:6666666666666666666666666666666666666666666666666666666666666666",
   bench: {

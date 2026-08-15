@@ -21,7 +21,7 @@ export function SectionHeader({
       <Eyebrow tone="accent">{eyebrow}</Eyebrow>
       <h2
         className={cn(
-          "mt-4 max-w-xl text-display-section font-medium leading-tight tracking-tight text-foreground",
+          "display-serif mt-4 max-w-xl text-display-section leading-display text-foreground",
           titleClassName
         )}
       >

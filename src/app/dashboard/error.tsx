@@ -18,7 +18,7 @@ export default function DashboardError({
       <button
         type="button"
         onClick={reset}
-        className={monoLinkClassName({ size: "sm", tone: "accent" })}
+        className={monoLinkClassName({ tone: "accent" })}
       >
         Retry
       </button>

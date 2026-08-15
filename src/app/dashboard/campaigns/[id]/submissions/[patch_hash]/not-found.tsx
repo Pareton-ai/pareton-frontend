@@ -8,10 +8,7 @@ export default function SubmissionNotFound() {
       title="Not found"
       message="No submission exists for this patch hash. It may not have been committed on chain yet."
     >
-      <Link
-        href="/dashboard"
-        className={monoLinkClassName({ size: "sm", tone: "accent" })}
-      >
+      <Link href="/dashboard" className={monoLinkClassName({ tone: "accent" })}>
         ← Back to campaigns
       </Link>
     </EmptyState>

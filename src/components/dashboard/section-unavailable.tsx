@@ -11,9 +11,7 @@ export function SectionUnavailable({
 }: SectionUnavailableProps) {
   return (
     <div className="border border-border px-5 py-8">
-      <Eyebrow size="sm" tone="rust">
-        {title}
-      </Eyebrow>
+      <Eyebrow tone="rust">{title}</Eyebrow>
       <p className="mt-3 max-w-xl text-body-lg leading-relaxed text-secondary">
         {message}
       </p>

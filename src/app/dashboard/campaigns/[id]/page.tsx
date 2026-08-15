@@ -56,7 +56,7 @@ async function CampaignHeading({ id }: { id: string }) {
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
     return (
-      <p className="font-mono text-body-sm uppercase tracking-caps text-muted">
+      <p className="font-mono text-body uppercase tracking-caps text-muted">
         Campaign {id}
       </p>
     );
