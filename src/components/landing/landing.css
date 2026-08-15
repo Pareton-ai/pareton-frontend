@@ -1106,14 +1106,10 @@ html:has(.landing) body {
     display: none;
   }
 
+  /* The mark only works beside the copy: stacked, its square cells are either
+     cramped or absurdly tall. It is decorative, so phones go without it. */
   .landing .mark-hero {
-    width: 220px;
-    margin: 1.5rem 0 0;
-  }
-
-  .landing .mark-hero em {
-    padding: 0.3rem;
-    font-size: 0.7rem;
+    display: none;
   }
 
   .landing .give,
