@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { NavLink } from "@/components/landing/nav-link";
 import { siteContent } from "@/lib/site-content";
 
@@ -16,6 +16,22 @@ function withEmphasis(
       {wrap(mark)}
       {text.slice(at + mark.length)}
     </>
+  );
+}
+
+/**
+ * A filled cell of the hero mark, rolling through the search axes. `slot`
+ * offsets the roll so the three cells never show the same axis at once.
+ */
+function AxisCell({ slot }: { slot: number }) {
+  return (
+    <span className="on">
+      <span className="axis-roll" style={{ "--slot": slot } as CSSProperties}>
+        {siteContent.heroAxes.map((axis) => (
+          <em key={axis}>{axis}</em>
+        ))}
+      </span>
+    </span>
   );
 }
 
@@ -45,12 +61,18 @@ export function Hero() {
           </div>
           <p className="mono soon">{siteContent.buildStatus}</p>
         </div>
-        <div className="mark-hero" aria-hidden="true">
-          <span className="on" />
+        <div
+          className="mark-hero"
+          aria-hidden="true"
+          style={
+            { "--axis-count": siteContent.heroAxes.length } as CSSProperties
+          }
+        >
+          <AxisCell slot={0} />
           <span />
           <span />
-          <span className="on" />
-          <span className="on" />
+          <AxisCell slot={1} />
+          <AxisCell slot={2} />
           <span />
         </div>
       </div>
