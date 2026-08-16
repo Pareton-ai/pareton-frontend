@@ -22,6 +22,12 @@ export const siteContent = {
     { label: "View a campaign", href: "/dashboard", end: true },
   ],
 
+  /** Compact top-right links; shown only below the desktop nav breakpoint. */
+  mobileNav: [
+    { label: "Docs", href: "/docs" },
+    { label: "Campaign", href: "/dashboard" },
+  ],
+
   /** Agent Markdown link list. Broader than the visible nav. */
   links: [
     { label: "Docs", href: "/docs" },

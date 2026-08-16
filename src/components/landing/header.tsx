@@ -20,6 +20,15 @@ export function Header() {
               {link.label}
             </NavLink>
           ))}
+          {siteContent.mobileNav.map((link) => (
+            <NavLink
+              key={`mobile-${link.label}`}
+              href={link.href}
+              className={`mono${link === siteContent.mobileNav[siteContent.mobileNav.length - 1] ? " end" : ""} mobile-only`}
+            >
+              {link.label}
+            </NavLink>
+          ))}
         </nav>
       </div>
     </header>

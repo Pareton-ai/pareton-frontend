@@ -145,6 +145,10 @@ html:has(.landing) body {
   text-underline-offset: 0.28em;
 }
 
+.landing .nav-links a.mobile-only {
+  display: none;
+}
+
 .landing .nav-links a:focus-visible,
 .landing .btn:focus-visible,
 .landing .text-link:focus-visible,
@@ -1039,6 +1043,14 @@ html:has(.landing) body {
 
   .landing .nav-links a:not(.end) {
     display: none;
+  }
+
+  .landing .nav-links a.end:not(.mobile-only) {
+    display: none;
+  }
+
+  .landing .nav-links a.mobile-only {
+    display: inline;
   }
 
   .landing .mark-hero {
