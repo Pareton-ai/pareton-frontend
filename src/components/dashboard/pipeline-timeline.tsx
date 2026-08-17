@@ -122,15 +122,17 @@ function StepLabel({ step }: { step: Step }) {
   const meta = getSubmissionStateMeta(step.state);
 
   return (
-    <span className={stepLabelClassName(step.status)}>
+    <span
+      className={`flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 ${stepLabelClassName(step.status)}`}
+    >
       <span className="text-body-lg">{meta.label}</span>
       {step.status === "current" ? (
-        <span className="ml-2 font-mono text-caption uppercase tracking-caps text-accent">
+        <span className="font-mono text-caption uppercase tracking-caps text-accent">
           in progress
         </span>
       ) : null}
       {step.status === "stalled" ? (
-        <span className="ml-2 font-mono text-caption uppercase tracking-caps text-rust">
+        <span className="font-mono text-caption uppercase tracking-caps text-rust">
           stopped
         </span>
       ) : null}
@@ -138,18 +140,37 @@ function StepLabel({ step }: { step: Step }) {
   );
 }
 
-function StepWhen({ step }: { step: Step }) {
-  if (!step.event) return null;
+/**
+ * Clock and delta as two fixed gutters so a column of `13:32:16` / `+854ms`
+ * still lines up when the next row is `+17s` or carries an "in progress" badge.
+ *
+ * `HH:MM:SS` is 8ch in the mono caption. The delta gutter fits `+59m 59s`.
+ */
+function StepWhen({
+  at,
+  deltaMs,
+}: {
+  at: string | null;
+  deltaMs: number | null;
+}) {
+  const showDelta = deltaMs !== null && deltaMs > 0;
 
   return (
-    <span className="font-mono text-caption text-muted">
-      {formatUtcTime(step.event.created_at)}
-      {step.sincePrevious !== null && step.sincePrevious > 0 ? (
-        <span className="text-secondary">
-          {" +"}
-          {formatDuration(step.sincePrevious)}
-        </span>
-      ) : null}
+    <span className="flex shrink-0 items-baseline gap-2 font-mono text-caption tabular-nums">
+      {at ? (
+        <time
+          dateTime={at}
+          title={formatUtc(at)}
+          className="w-[8ch] whitespace-nowrap text-right text-muted"
+        >
+          {formatUtcTime(at)}
+        </time>
+      ) : (
+        <span className="w-[8ch]" />
+      )}
+      <span className="w-[8ch] whitespace-nowrap text-secondary">
+        {showDelta ? `+${formatDuration(deltaMs)}` : null}
+      </span>
     </span>
   );
 }
@@ -197,10 +218,13 @@ function TimelineRow({
           open={active}
           className={`group/step min-w-0 flex-1 ${isLast ? "" : "pb-3"}`}
         >
-          <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-x-4 rounded-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <summary className="flex cursor-pointer list-none items-baseline justify-between gap-x-3 rounded-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
             <StepLabel step={step} />
-            <span className="flex items-baseline gap-2">
-              <StepWhen step={step} />
+            <span className="flex shrink-0 items-baseline gap-2">
+              <StepWhen
+                at={step.event?.created_at ?? null}
+                deltaMs={step.sincePrevious}
+              />
               <ChevronRight
                 aria-hidden
                 className="size-3.5 shrink-0 self-center text-muted transition-transform group-open/step:rotate-90"
@@ -220,7 +244,13 @@ function TimelineRow({
   );
 }
 
-function RejectionRow({ event }: { event: SubmissionEvent }) {
+function RejectionRow({
+  event,
+  sincePrevious,
+}: {
+  event: SubmissionEvent;
+  sincePrevious: number | null;
+}) {
   const reason =
     typeof event.detail.reason === "string" ? event.detail.reason : null;
   const entries = Object.entries(event.detail);
@@ -232,13 +262,15 @@ function RejectionRow({ event }: { event: SubmissionEvent }) {
       </div>
       {/* Open by default: the reason is the whole point of a rejected run. */}
       <details open className="group/step min-w-0 flex-1">
-        <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-x-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-          <span className="text-body-lg text-rust">Rejected</span>
-          <span className="flex items-baseline gap-2 font-mono text-caption text-muted">
-            {formatUtcTime(event.created_at)}
+        <summary className="flex cursor-pointer list-none items-baseline justify-between gap-x-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <span className="min-w-0 flex-1 text-body-lg text-rust">
+            Rejected
+          </span>
+          <span className="flex shrink-0 items-baseline gap-2">
+            <StepWhen at={event.created_at} deltaMs={sincePrevious} />
             <ChevronRight
               aria-hidden
-              className="size-3.5 shrink-0 self-center transition-transform group-open/step:rotate-90"
+              className="size-3.5 shrink-0 self-center text-muted transition-transform group-open/step:rotate-90"
             />
           </span>
         </summary>
@@ -250,6 +282,13 @@ function RejectionRow({ event }: { event: SubmissionEvent }) {
           <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
             <DetailItem label="Recorded">
               {formatUtc(event.created_at)}
+            </DetailItem>
+            <DetailItem label="Since previous step">
+              {sincePrevious !== null ? (
+                formatDuration(sincePrevious)
+              ) : (
+                <span className="text-muted">—</span>
+              )}
             </DetailItem>
             {event.evidence_ref ? (
               <DetailItem label="Evidence">{event.evidence_ref}</DetailItem>
@@ -290,9 +329,16 @@ export function PipelineTimeline({
     previousOf.set(event, index > 0 ? events[index - 1] : null);
   });
 
+  function sincePreviousOf(event: SubmissionEvent | null): number | null {
+    if (!event) return null;
+    const previous = previousOf.get(event) ?? null;
+    return previous
+      ? elapsedBetween(previous.created_at, event.created_at)
+      : null;
+  }
+
   function toStep(state: string): Step {
     const event = firstByState.get(state) ?? null;
-    const previous = event ? (previousOf.get(event) ?? null) : null;
     const index = stageIndex(state);
     const reachedViaLatest =
       currentIndex !== -1 && index !== -1 && index < currentIndex;
@@ -310,10 +356,7 @@ export function PipelineTimeline({
       state,
       status,
       event,
-      sincePrevious:
-        event && previous
-          ? elapsedBetween(previous.created_at, event.created_at)
-          : null,
+      sincePrevious: sincePreviousOf(event),
     };
   }
 
@@ -403,7 +446,10 @@ export function PipelineTimeline({
       {rejection ? (
         <div className="bg-rust/5 px-4 py-4">
           <ol>
-            <RejectionRow event={rejection} />
+            <RejectionRow
+              event={rejection}
+              sincePrevious={sincePreviousOf(rejection)}
+            />
           </ol>
         </div>
       ) : null}
