@@ -8,6 +8,7 @@ import {
   type BenchVerdict,
   type Campaign,
   type CampaignBench,
+  type CampaignBenchCorrectness,
   type CampaignBenchCrossEnv,
   type CampaignBenchModel,
   type CampaignSla,
@@ -88,6 +89,28 @@ function parseCrossEnv(value: unknown): CampaignBenchCrossEnv {
   };
 }
 
+function parseCorrectness(value: unknown): CampaignBenchCorrectness | null {
+  if (value == null) return null;
+  const t = asRecord(asRecord(value).thresholds);
+  const argmax_mismatch_rate = asNullableNumber(t.argmax_mismatch_rate);
+  const mean_abs_logprob_diff = asNullableNumber(t.mean_abs_logprob_diff);
+  const max_abs_logprob_diff = asNullableNumber(t.max_abs_logprob_diff);
+  if (
+    argmax_mismatch_rate == null ||
+    mean_abs_logprob_diff == null ||
+    max_abs_logprob_diff == null
+  ) {
+    return null;
+  }
+  return {
+    thresholds: {
+      argmax_mismatch_rate,
+      mean_abs_logprob_diff,
+      max_abs_logprob_diff,
+    },
+  };
+}
+
 function parseBench(value: unknown): CampaignBench {
   const o = asRecord(value);
   return {
@@ -97,7 +120,7 @@ function parseBench(value: unknown): CampaignBench {
     serve_args: Array.isArray(o.serve_args)
       ? o.serve_args.filter((a): a is string => typeof a === "string")
       : null,
-    correctness: o.correctness ?? null,
+    correctness: parseCorrectness(o.correctness),
     perf_screen: o.perf_screen ?? null,
     baseline_engine_image_digest: asString(o.baseline_engine_image_digest),
   };

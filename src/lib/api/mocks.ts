@@ -103,7 +103,13 @@ export const MOCK_CAMPAIGN: Campaign = {
     },
     gpu_count: 1,
     serve_args: null,
-    correctness: null,
+    correctness: {
+      thresholds: {
+        argmax_mismatch_rate: 0.001,
+        mean_abs_logprob_diff: 0.0246,
+        max_abs_logprob_diff: 0.164,
+      },
+    },
     perf_screen: null,
     baseline_engine_image_digest:
       "sha256:4444444444444444444444444444444444444444444444444444444444444444",
@@ -128,6 +134,8 @@ export const MOCK_DRAFT_CAMPAIGN: Campaign = {
       quantization: null,
       max_model_len: 16384,
     },
+    // Live draft campaigns omit correctness; the Objective panel must not crash.
+    correctness: null,
   },
 };
 

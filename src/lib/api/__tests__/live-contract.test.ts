@@ -4,7 +4,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseSubmissionDetail, parseSubmissionsPage } from "@/lib/api/parse";
+import {
+  parseCampaign,
+  parseSubmissionDetail,
+  parseSubmissionsPage,
+} from "@/lib/api/parse";
 import { getFailedSubmissionJob, isStalled } from "@/lib/api/types";
 
 const API = process.env.PARETON_API_URL ?? "https://api.pareton.ai";
@@ -59,5 +63,28 @@ describe.skipIf(!process.env.PARETON_LIVE_API_TESTS)(
         expect(detail.bench_verdict).toBe(body.bench_verdict);
       }
     }, 60_000);
+
+    it("parses live campaign correctness thresholds without crashing on drafts", async () => {
+      const openId = "1f0a7c64-3b52-4d19-9a83-5c6e1d2f4b70";
+      const draftId = "b3f1c9d2-4a5e-4c8b-9f10-2e7d6a4b8c31";
+
+      const open = parseCampaign(
+        await (await fetch(`${API}/v1/campaigns/${openId}`)).json()
+      );
+      expect(open.bench.correctness).toEqual({
+        thresholds: {
+          argmax_mismatch_rate: 0.001,
+          mean_abs_logprob_diff: 0.0246,
+          max_abs_logprob_diff: 0.164,
+        },
+      });
+      expect(open.bench.cross_env.min_speedup_each.toFixed(4)).toBe("1.1111");
+
+      const draft = parseCampaign(
+        await (await fetch(`${API}/v1/campaigns/${draftId}`)).json()
+      );
+      expect(draft.bench.correctness).toBeNull();
+      expect(draft.sla.quality_floor_spec).not.toBe("");
+    }, 20_000);
   }
 );

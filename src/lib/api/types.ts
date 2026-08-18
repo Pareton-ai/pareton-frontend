@@ -107,12 +107,22 @@ export type CampaignBenchCrossEnv = {
   min_speedup_each: number;
 };
 
+export type CampaignBenchCorrectnessThresholds = {
+  argmax_mismatch_rate: number;
+  mean_abs_logprob_diff: number;
+  max_abs_logprob_diff: number;
+};
+
+export type CampaignBenchCorrectness = {
+  thresholds: CampaignBenchCorrectnessThresholds;
+};
+
 export type CampaignBench = {
   model: CampaignBenchModel;
   cross_env: CampaignBenchCrossEnv;
   gpu_count: number;
   serve_args: string[] | null;
-  correctness: unknown | null;
+  correctness: CampaignBenchCorrectness | null;
   perf_screen: unknown | null;
   baseline_engine_image_digest: string;
 };

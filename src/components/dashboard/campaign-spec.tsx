@@ -4,7 +4,19 @@ import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
 import { truncateHash, truncateMiddle } from "@/lib/api/format";
 import { cn } from "@/lib/cn";
-import type { Campaign } from "@/lib/api/types";
+import type {
+  Campaign,
+  CampaignBenchCorrectnessThresholds,
+} from "@/lib/api/types";
+
+const QUALITY_THRESHOLD_ROWS = [
+  { key: "argmax_mismatch_rate", label: "Token mismatch rate" },
+  { key: "mean_abs_logprob_diff", label: "Mean logprob drift" },
+  { key: "max_abs_logprob_diff", label: "Max logprob drift" },
+] as const satisfies ReadonlyArray<{
+  key: keyof CampaignBenchCorrectnessThresholds;
+  label: string;
+}>;
 
 function Row({
   label,
@@ -85,7 +97,7 @@ function ArtifactLink({ href }: { href: string }) {
 
 /** Sidebar column: what a patch has to achieve and what it runs against. */
 export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
-  const { model, cross_env } = campaign.bench;
+  const { model, cross_env, correctness } = campaign.bench;
 
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
@@ -98,18 +110,25 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
             {campaign.success_threshold || "—"}
           </p>
         </Row>
-        {cross_env.speedup_metric &&
-        cross_env.speedup_metric !== campaign.priority_metric ? (
-          <Row label="Speedup metric">
-            <span className="text-secondary">
-              {cross_env.speedup_metric.replaceAll("_", " ")}
-            </span>
-          </Row>
-        ) : null}
+        <Row label="Speedup floor">
+          <span className="text-secondary tabular-nums">
+            {cross_env.min_speedup_each.toFixed(4)}×{" "}
+            {cross_env.speedup_metric.replaceAll("_", " ")}
+          </span>
+        </Row>
         <Row label="Quality floor">
           <span className="text-secondary">
             {campaign.sla.quality_floor_spec || "—"}
           </span>
+          {correctness ? (
+            <ul className="mt-2 space-y-1 text-secondary tabular-nums">
+              {QUALITY_THRESHOLD_ROWS.map(({ key, label }) => (
+                <li key={key}>
+                  {label} ≤ {correctness.thresholds[key]}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </Row>
       </Panel>
 
