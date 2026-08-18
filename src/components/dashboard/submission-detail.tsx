@@ -31,7 +31,7 @@ import {
   truncateHash,
   truncateMiddle,
 } from "@/lib/api/format";
-import { campaignHref } from "@/lib/routes";
+import { campaignHref, minerExplorerHref } from "@/lib/routes";
 import {
   firstEventByState,
   getSubmissionStateMeta,
@@ -492,6 +492,8 @@ export function SubmissionMetadata({
           <CopyableMono
             value={submission.hotkey}
             display={truncateMiddle(submission.hotkey, 12, 8)}
+            href={minerExplorerHref(submission.hotkey)}
+            hint="Open taomarketcap and copy miner hotkey"
           />
         </Row>
         <Row label="Committed">

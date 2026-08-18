@@ -10,6 +10,14 @@ export function submissionHref(campaignId: string, patchHash: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`;
 }
 
+/** Bittensor subnet the campaigns run on, used for external explorer links. */
+const NETUID = 10;
+
+/** Public explorer page for a miner hotkey on our subnet. */
+export function minerExplorerHref(hotkey: string): string {
+  return `https://taomarketcap.com/subnets/${NETUID}/miners?query=${encodeURIComponent(hotkey)}`;
+}
+
 /** True for a canonical on-chain patch digest (`sha256:` + 64 lowercase hex). */
 export function isPatchHash(value: string): boolean {
   return PATCH_HASH_RE.test(value);
