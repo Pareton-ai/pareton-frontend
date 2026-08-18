@@ -57,7 +57,10 @@ export function StatStrip({
   return (
     <section
       aria-label={label}
-      className={cn("grid gap-px border border-border bg-border", className)}
+      className={cn(
+        "grid gap-px border border-border bg-border [&>*]:min-w-0",
+        className
+      )}
     >
       {children}
     </section>
@@ -78,14 +81,14 @@ export function StatTile({
   children?: ReactNode;
 }) {
   return (
-    <div className="bg-background px-5 py-4">
+    <div className="min-w-0 bg-background px-5 py-4">
       <div className="flex items-center gap-2">
         <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />
         <p className="font-mono text-caption uppercase tracking-caps text-muted">
           {label}
         </p>
       </div>
-      <p className="mt-3 font-mono text-title tracking-tight text-foreground">
+      <p className="mt-3 min-w-0 font-mono text-title tracking-tight wrap-break-word text-foreground">
         {value}
       </p>
       {children}

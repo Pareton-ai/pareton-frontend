@@ -15,7 +15,7 @@ export function CampaignTitle({ campaign }: { campaign: Campaign }) {
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="display-serif text-display-section leading-display text-foreground">
+        <h1 className="display-serif min-w-0 text-display-section leading-display wrap-break-word text-foreground">
           {model.hf_repo}
         </h1>
         <CampaignStatusChip status={campaign.status} />

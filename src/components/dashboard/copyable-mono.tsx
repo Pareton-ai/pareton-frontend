@@ -52,7 +52,7 @@ export function CopyableMono({
   );
 
   const shell = cn(
-    "group inline-flex max-w-full items-center gap-2 font-mono text-body tracking-tight text-secondary transition-colors",
+    "group inline-flex min-w-0 max-w-full items-center gap-2 font-mono text-body tracking-tight text-secondary transition-colors",
     className
   );
 
@@ -98,11 +98,13 @@ export function CopyableMono({
       aria-label={label}
       className={cn(
         iconOnly ? "inline-flex" : "group inline-flex",
-        "max-w-full cursor-pointer items-center gap-2 font-mono text-body tracking-tight text-secondary transition-colors hover:text-foreground",
+        "min-w-0 max-w-full cursor-pointer items-center gap-2 font-mono text-body tracking-tight text-secondary transition-colors hover:text-foreground",
         className
       )}
     >
-      {iconOnly ? null : <span className="truncate">{display ?? value}</span>}
+      {iconOnly ? null : (
+        <span className="min-w-0 truncate">{display ?? value}</span>
+      )}
       {copyIcon}
     </button>
   );
