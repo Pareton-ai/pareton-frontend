@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BackLink } from "@/components/dashboard/back-link";
 import { BenchReports } from "@/components/dashboard/bench-reports";
 import { BuildLog } from "@/components/dashboard/build-log";
+import { LiveActivityLine } from "@/components/dashboard/live-activity";
 import {
   LiveSubmissionPoll,
   LiveSubmissionPollHost,
@@ -22,6 +23,7 @@ import { truncateDigest, truncateHash } from "@/lib/api/format";
 import { campaignHref, decodePatchHash, isPatchHash } from "@/lib/routes";
 import {
   getFailedSubmissionJob,
+  getLiveActivity,
   isStalled,
   isTerminalState,
   reachedBuild,
@@ -130,6 +132,8 @@ async function SubmissionSections({
   const stalled = isStalled(detail.latest_state, detail.jobs);
   const live = !isTerminalState(detail.latest_state) && !stalled;
   const failedJob = stalled ? getFailedSubmissionJob(detail.jobs) : null;
+  const now = new Date().toISOString();
+  const activity = getLiveActivity(detail.jobs, now);
 
   return (
     <div className="space-y-8">
@@ -154,6 +158,7 @@ async function SubmissionSections({
             latestState={detail.latest_state}
             stalled={stalled}
           />
+          {activity ? <LiveActivityLine activity={activity} now={now} /> : null}
         </div>
 
         <SubmissionMetadata

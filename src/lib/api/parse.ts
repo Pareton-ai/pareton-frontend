@@ -1,6 +1,7 @@
 /** Wire -> domain narrowing. Pure (no server-only / I/O) so tests can call it. */
 
 import {
+  isBenchPhase,
   isBenchVerdict,
   SUBMISSION_JOB_KINDS,
   type BenchReport,
@@ -220,10 +221,20 @@ function parseBenchReport(value: unknown): BenchReport {
 
 export function parseSubmissionJob(value: unknown): SubmissionJob {
   const o = asRecord(value);
+  // Unknown phase names have no label; drop the live block with them.
+  const phase = isBenchPhase(o.phase) ? o.phase : null;
   return {
     kind: asString(o.kind),
     status: asString(o.status),
     last_error: asNullableString(o.last_error),
+    phase,
+    phase_started_at:
+      phase === null ? null : asNullableString(o.phase_started_at),
+    heartbeat_at: phase === null ? null : asNullableString(o.heartbeat_at),
+    progress:
+      phase !== null && o.progress !== null && typeof o.progress === "object"
+        ? asRecord(o.progress)
+        : null,
   };
 }
 

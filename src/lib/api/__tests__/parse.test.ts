@@ -16,13 +16,19 @@ import {
 } from "@/lib/api/parse";
 import {
   BENCH_FAIL_REASONS,
+  BENCH_PHASE_META,
+  BENCH_PHASES,
   getBenchVerdictMeta,
   getFailedSubmissionJob,
+  getLiveActivity,
+  getRunningSubmissionJob,
   getSubmissionJob,
   getSubmissionStateMeta,
+  HEARTBEAT_STALE_AFTER_MS,
   isStalled,
   SUBMISSION_STAGE_ORDER,
   SUBMISSION_STATE_META,
+  type SubmissionJob,
 } from "@/lib/api/types";
 import submissionsList from "./fixtures/campaign-submissions.json";
 import benchJobFailed from "./fixtures/submission-bench-job-failed.json";
@@ -33,6 +39,33 @@ function without(body: object, key: string): Record<string, unknown> {
   const copy: Record<string, unknown> = { ...body };
   delete copy[key];
   return copy;
+}
+
+function settled(job: {
+  kind: string;
+  status: string;
+  last_error: string | null;
+}): SubmissionJob {
+  return {
+    ...job,
+    phase: null,
+    phase_started_at: null,
+    heartbeat_at: null,
+    progress: null,
+  };
+}
+
+function runningBench(overrides: Partial<SubmissionJob> = {}): SubmissionJob {
+  return {
+    kind: "bench",
+    status: "running",
+    last_error: null,
+    phase: "downloading_model",
+    phase_started_at: "2026-08-17T12:00:00+00:00",
+    heartbeat_at: "2026-08-17T12:20:00+00:00",
+    progress: { gpu_sku: "H200-SXM-141GB" },
+    ...overrides,
+  };
 }
 
 describe("parseSubmissionDetail against live responses", () => {
@@ -126,12 +159,12 @@ describe("submission jobs", () => {
   it("parses kind, status and last_error", () => {
     const { jobs } = parseSubmissionDetail(benchJobFailed);
     expect(jobs).toStrictEqual([
-      { kind: "gates", status: "done", last_error: null },
-      {
+      settled({ kind: "gates", status: "done", last_error: null }),
+      settled({
         kind: "bench",
         status: "failed",
         last_error: "bench_engine_baseline_or_unknown",
-      },
+      }),
     ]);
   });
 
@@ -151,6 +184,16 @@ describe("submission jobs", () => {
       jobs: [{ kind: "score", status: "pending", last_error: null }],
     }).jobs;
     expect(jobs.map((job) => job.kind)).toStrictEqual(["score"]);
+  });
+
+  it("tolerates an API build with no phase fields", () => {
+    const jobs = parseSubmissionDetail({
+      ...benchJobFailed,
+      jobs: [{ kind: "bench", status: "running", last_error: null }],
+    }).jobs;
+    expect(jobs[0]).toStrictEqual(
+      settled({ kind: "bench", status: "running", last_error: null })
+    );
   });
 
   it("tolerates an API build with no jobs field", () => {
@@ -176,6 +219,106 @@ describe("submission jobs", () => {
     expect(isStalled(detail.latest_state, detail.jobs)).toBe(false);
     expect(getSubmissionJob(detail.jobs, "bench")?.status).toBe("done");
     expect(getSubmissionJob(detail.jobs, "nope")).toBeNull();
+  });
+});
+
+describe("live bench activity", () => {
+  const jobsWith = (job: SubmissionJob) => [
+    settled({ kind: "gates", status: "done", last_error: null }),
+    job,
+  ];
+
+  it("parses the phase, its start, and the heartbeat off a running job", () => {
+    const { jobs } = parseSubmissionDetail({
+      ...benchJobFailed,
+      jobs: [runningBench()],
+    });
+    expect(jobs[0]).toStrictEqual(runningBench());
+  });
+
+  it("drops phase text outside the fixed vocabulary", () => {
+    const { jobs } = parseSubmissionDetail({
+      ...benchJobFailed,
+      jobs: [runningBench({ phase: "rm -rf /" as never })],
+    });
+    expect(jobs[0].phase).toBeNull();
+    expect(jobs[0].phase_started_at).toBeNull();
+    expect(jobs[0].heartbeat_at).toBeNull();
+    expect(jobs[0].progress).toBeNull();
+  });
+
+  it("describes what the bench is doing now", () => {
+    const activity = getLiveActivity(
+      jobsWith(runningBench()),
+      "2026-08-17T12:20:30+00:00"
+    );
+    expect(activity?.phase).toBe("downloading_model");
+    expect(activity?.label).toBe("Downloading model weights");
+    expect(activity?.since).toBe("2026-08-17T12:00:00+00:00");
+    expect(activity?.heartbeatAgeMs).toBe(30_000);
+    expect(activity?.stale).toBe(false);
+  });
+
+  it("reports a dead worker as stale rather than as active work", () => {
+    const activity = getLiveActivity(
+      jobsWith(runningBench()),
+      "2026-08-17T13:20:00+00:00"
+    );
+    expect(activity?.stale).toBe(true);
+    expect(activity?.heartbeatAgeMs).toBe(3_600_000);
+  });
+
+  it("treats a missing heartbeat as stale", () => {
+    const activity = getLiveActivity(
+      jobsWith(runningBench({ heartbeat_at: null })),
+      "2026-08-17T12:20:30+00:00"
+    );
+    expect(activity?.stale).toBe(true);
+    expect(activity?.heartbeatAgeMs).toBeNull();
+  });
+
+  it("holds the phase across a few missed beats before calling it stale", () => {
+    const nearly = new Date(
+      new Date("2026-08-17T12:20:00+00:00").getTime() +
+        HEARTBEAT_STALE_AFTER_MS -
+        1_000
+    ).toISOString();
+    expect(getLiveActivity(jobsWith(runningBench()), nearly)?.stale).toBe(
+      false
+    );
+  });
+
+  it("shows nothing for a settled or unstarted job", () => {
+    expect(
+      getLiveActivity(
+        jobsWith(settled({ kind: "bench", status: "done", last_error: null })),
+        "2026-08-17T12:20:30+00:00"
+      )
+    ).toBeNull();
+    // Claimed but not yet reporting: the stage list already says bench_queued.
+    expect(
+      getLiveActivity(
+        jobsWith(runningBench({ phase: null })),
+        "2026-08-17T12:20:30+00:00"
+      )
+    ).toBeNull();
+    expect(getRunningSubmissionJob([])).toBeNull();
+  });
+
+  it("labels every phase the backend can report", () => {
+    for (const phase of BENCH_PHASES) {
+      expect(BENCH_PHASE_META[phase].label).not.toBe("");
+      expect(BENCH_PHASE_META[phase].description).not.toBe("");
+    }
+    expect(Object.keys(BENCH_PHASE_META)).toStrictEqual([...BENCH_PHASES]);
+  });
+
+  it("keeps phases out of the pipeline stage vocabulary", () => {
+    // Two vocabularies on purpose: a phase is what is happening now, a state is
+    // a milestone that was reached and recorded.
+    for (const phase of BENCH_PHASES) {
+      expect(SUBMISSION_STAGE_ORDER).not.toContain(phase);
+    }
   });
 });
 

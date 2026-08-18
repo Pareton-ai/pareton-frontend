@@ -461,23 +461,38 @@ function slaBenchReport(opts: {
   };
 }
 
+function settledJob(
+  kind: string,
+  status: string
+): SubmissionDetail["jobs"][number] {
+  return {
+    kind,
+    status,
+    last_error: null,
+    phase: null,
+    phase_started_at: null,
+    heartbeat_at: null,
+    progress: null,
+  };
+}
+
 function jobsFor(terminal: PipelineTerminal): SubmissionDetail["jobs"] {
   if (terminal === "building") {
-    return [
-      { kind: "gates", status: "running", last_error: null },
-      { kind: "bench", status: "pending", last_error: null },
-    ];
+    return [settledJob("gates", "running"), settledJob("bench", "pending")];
   }
   if (terminal === "bench_queued" || terminal === "screened") {
     return [
-      { kind: "gates", status: "done", last_error: null },
-      { kind: "bench", status: "running", last_error: null },
+      settledJob("gates", "done"),
+      {
+        ...settledJob("bench", "running"),
+        phase: terminal === "bench_queued" ? "downloading_model" : "sla_bench",
+        phase_started_at: minutesAfter(hoursAgo(1), 22),
+        heartbeat_at: hoursAgo(0),
+        progress: { gpu_sku: "A100_80GB" },
+      },
     ];
   }
-  return [
-    { kind: "gates", status: "done", last_error: null },
-    { kind: "bench", status: "done", last_error: null },
-  ];
+  return [settledJob("gates", "done"), settledJob("bench", "done")];
 }
 
 type ReportSeed = {

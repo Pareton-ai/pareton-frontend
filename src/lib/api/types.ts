@@ -6,6 +6,7 @@
  * `parse.ts`, because FastAPI types most response bodies as bare objects.
  */
 
+import { elapsedBetween } from "@/lib/api/format";
 import type { components } from "@/lib/api/schema";
 
 /**
@@ -208,6 +209,31 @@ export const SUBMISSION_JOB_STATUSES = [
 
 export type SubmissionJobStatus = (typeof SUBMISSION_JOB_STATUSES)[number];
 
+/**
+ * Live bench operations. Unknown names are dropped at parse time rather than
+ * rendered: they originate on a GPU pod running miner-supplied code.
+ */
+export const BENCH_PHASES = [
+  "provisioning",
+  "bootstrapping",
+  "pulling_image",
+  "downloading_model",
+  "starting_engine",
+  "correctness",
+  "perf_screen",
+  "sla_bench",
+  "teardown",
+] as const;
+
+export type BenchPhase = (typeof BENCH_PHASES)[number];
+
+export function isBenchPhase(value: unknown): value is BenchPhase {
+  return (
+    typeof value === "string" &&
+    (BENCH_PHASES as readonly string[]).includes(value)
+  );
+}
+
 /** A `submission_jobs` row from the detail response. Kind/status are widened
  *  to `string` so new DB CHECK values still render. */
 export type SubmissionJob = {
@@ -215,6 +241,12 @@ export type SubmissionJob = {
   status: SubmissionJobStatus | string;
   /** Machine-readable failure code, e.g. `bench_exit_bad_request`. */
   last_error: string | null;
+  /** Current operation; null once the job settles. */
+  phase: BenchPhase | null;
+  phase_started_at: string | null;
+  /** Last proof of life from the worker. Absent or old means it went away. */
+  heartbeat_at: string | null;
+  progress: Record<string, unknown> | null;
 };
 
 export const BENCH_STAGES = [
@@ -502,4 +534,94 @@ export function isStalled(
   jobs: readonly SubmissionJob[]
 ): boolean {
   return !isTerminalState(latestState) && getFailedSubmissionJob(jobs) !== null;
+}
+
+/** Plain-language copy for each live phase. */
+export const BENCH_PHASE_META: Record<
+  BenchPhase,
+  { label: string; description: string }
+> = {
+  provisioning: {
+    label: "Renting a GPU pod",
+    description: "Waiting on a provider to hand over a machine.",
+  },
+  bootstrapping: {
+    label: "Preparing the pod",
+    description: "Installing the harness and shipping the repo.",
+  },
+  pulling_image: {
+    label: "Pulling engine images",
+    description: "Fetching the baseline and candidate engine images.",
+  },
+  downloading_model: {
+    label: "Downloading model weights",
+    description: "Staging the campaign model onto the pod.",
+  },
+  starting_engine: {
+    label: "Starting the engine",
+    description: "Loading weights and waiting for the server to answer.",
+  },
+  correctness: {
+    label: "Running correctness",
+    description: "Comparing candidate output against the baseline engine.",
+  },
+  perf_screen: {
+    label: "Running perf screen",
+    description: "Cheap throughput check before the full bench.",
+  },
+  sla_bench: {
+    label: "Running the SLA bench",
+    description: "Full workload replay against the latency gates.",
+  },
+  teardown: {
+    label: "Releasing the pod",
+    description: "Destroying the pod and its volume.",
+  },
+};
+
+/** Missing heartbeat older than this: the phase is no longer "now". Worker beats every 12s. */
+export const HEARTBEAT_STALE_AFTER_MS = 60_000;
+
+export type LiveActivity = {
+  job: SubmissionJob;
+  phase: BenchPhase;
+  label: string;
+  description: string;
+  /** When the current phase started, for a ticking elapsed reading. */
+  since: string | null;
+  heartbeatAgeMs: number | null;
+  /** Worker stopped proving it is alive; the phase is history, not now. */
+  stale: boolean;
+};
+
+export function getRunningSubmissionJob(
+  jobs: readonly SubmissionJob[]
+): SubmissionJob | null {
+  return (
+    jobs.find((job) => job.status === "running" && job.phase !== null) ?? null
+  );
+}
+
+/** Live activity for the detail page, or null. `now` is injected so SSR and tests agree. */
+export function getLiveActivity(
+  jobs: readonly SubmissionJob[],
+  now: string
+): LiveActivity | null {
+  const job = getRunningSubmissionJob(jobs);
+  if (!job || job.phase === null) return null;
+
+  const meta = BENCH_PHASE_META[job.phase];
+  const heartbeatAgeMs = job.heartbeat_at
+    ? elapsedBetween(job.heartbeat_at, now)
+    : null;
+
+  return {
+    job,
+    phase: job.phase,
+    label: meta.label,
+    description: meta.description,
+    since: job.phase_started_at,
+    heartbeatAgeMs,
+    stale: heartbeatAgeMs === null || heartbeatAgeMs > HEARTBEAT_STALE_AFTER_MS,
+  };
 }
