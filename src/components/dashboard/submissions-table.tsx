@@ -98,7 +98,9 @@ export function SubmissionsTable({
         </p>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* contain-paint keeps transformed row overlays from expanding the page;
+          the min-width table still scrolls inside this pane. */}
+      <div className="overflow-x-auto contain-paint">
         <table className="w-full min-w-[560px] text-left">
           <thead>
             <tr className="whitespace-nowrap border-b border-border font-mono text-caption uppercase tracking-caps text-muted">

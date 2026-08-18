@@ -15,10 +15,10 @@ export default function DashboardLayout({
 }) {
   return (
     <div
-      className={`dashboard-shell bg-blueprint flex min-h-screen flex-col bg-background ${landingFontClassName}`}
+      className={`dashboard-shell bg-blueprint flex min-h-screen min-w-0 flex-col bg-background ${landingFontClassName}`}
     >
       <SiteHeader active="dashboard" />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-12 sm:px-12 sm:py-16">
+      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-6 py-12 sm:px-12 sm:py-16">
         {children}
       </main>
       <footer className="border-t border-border">

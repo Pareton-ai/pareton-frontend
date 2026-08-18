@@ -16,11 +16,11 @@ function Row({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("px-4 py-3", className)}>
+    <div className={cn("min-w-0 px-4 py-3", className)}>
       <p className="font-mono text-caption uppercase tracking-caps text-muted">
         {label}
       </p>
-      <div className="mt-1.5 font-mono text-body text-foreground">
+      <div className="mt-1.5 min-w-0 font-mono text-body wrap-break-word text-foreground">
         {children}
       </div>
     </div>
@@ -51,11 +51,11 @@ function Tags({
         : "border-border";
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex min-w-0 flex-wrap gap-1.5">
       {values.map((value) => (
         <span
           key={value}
-          className={`inline-flex border px-2 py-0.5 text-caption text-secondary ${border}`}
+          className={`inline-flex max-w-full wrap-break-word border px-2 py-0.5 text-caption text-secondary ${border}`}
         >
           {value}
         </span>
@@ -75,7 +75,7 @@ function ArtifactLink({ href }: { href: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex max-w-full items-center gap-1.5 text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+      className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
     >
       <span className="truncate">{linkLabel(href)}</span>
       <ExternalLink className="size-3 shrink-0" aria-hidden />
@@ -141,7 +141,7 @@ export function CampaignReference({ campaign }: { campaign: Campaign }) {
       <Panel
         icon={GitBranch}
         title="Provenance"
-        bodyClassName="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3"
+        bodyClassName="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0"
       >
         <GridRow label="Baseline repo">
           <ArtifactLink href={campaign.baseline_repo} />
@@ -192,7 +192,7 @@ export function CampaignReference({ campaign }: { campaign: Campaign }) {
       <Panel
         icon={FolderTree}
         title="Patch scope"
-        bodyClassName="grid gap-px bg-border sm:grid-cols-2"
+        bodyClassName="grid gap-px bg-border sm:grid-cols-2 [&>*]:min-w-0"
       >
         <GridRow label="Allowed paths">
           <Tags values={campaign.allowed_paths} tone="accent" />

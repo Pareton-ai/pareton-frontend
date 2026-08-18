@@ -15,11 +15,11 @@ export function SiteHeader({
   active?: "dashboard" | "docs" | "home";
 }) {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/85 px-6 py-5 backdrop-blur-md sm:px-12">
+    <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-border bg-background/85 px-6 py-5 backdrop-blur-md sm:px-12">
       <Link href="/" className="transition-opacity hover:opacity-90">
         <Logo />
       </Link>
-      <nav className="flex items-center gap-4 sm:gap-8">
+      <nav className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-2 sm:gap-8">
         {nav.map((link) => {
           const isActive = link.key === active;
           const external = link.href.startsWith("http");
