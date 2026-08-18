@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseBenchVerdict,
+  parseCampaign,
   parseSubmissionDetail,
   parseSubmissionRow,
   parseSubmissionsPage,
@@ -304,5 +305,117 @@ describe("parseSubmissionsPage", () => {
       offset: 50,
       submissions: [],
     });
+  });
+});
+
+/** Thresholds as returned by the live campaign in PAR-68, plus extra fields
+ *  the parser must ignore (`calibration`, `num_prompts`, …). */
+const LIVE_CORRECTNESS = {
+  thresholds: {
+    argmax_mismatch_rate: 0.001,
+    max_abs_logprob_diff: 0.164,
+    mean_abs_logprob_diff: 0.0246,
+  },
+  calibration: {
+    calibrated_at: "2026-08-17T11:23:46Z",
+    safety_factor: 2.0,
+  },
+  num_prompts: 32,
+};
+
+const LIVE_CROSS_ENV = {
+  aggregate: "min",
+  speedup_metric: "output_tokens_per_s_ratio",
+  min_speedup_each: 1.1111,
+};
+
+describe("parseCampaign correctness thresholds", () => {
+  it("keeps the three enforced numbers and drops calibration", () => {
+    const campaign = parseCampaign({
+      bench: { correctness: LIVE_CORRECTNESS, cross_env: LIVE_CROSS_ENV },
+    });
+    expect(campaign.bench.correctness).toStrictEqual({
+      thresholds: {
+        argmax_mismatch_rate: 0.001,
+        mean_abs_logprob_diff: 0.0246,
+        max_abs_logprob_diff: 0.164,
+      },
+    });
+    expect(campaign.bench.correctness).not.toHaveProperty("calibration");
+  });
+
+  it("prints the live numbers exactly, without rounding or percents", () => {
+    const parsed = parseCampaign({
+      bench: { correctness: LIVE_CORRECTNESS },
+    }).bench.correctness;
+    expect(parsed).not.toBeNull();
+    if (parsed == null) return;
+    const { thresholds } = parsed;
+
+    expect(String(thresholds.argmax_mismatch_rate)).toBe("0.001");
+    expect(String(thresholds.mean_abs_logprob_diff)).toBe("0.0246");
+    expect(String(thresholds.max_abs_logprob_diff)).toBe("0.164");
+  });
+
+  it("always keeps the speedup floor, including four decimal places", () => {
+    const { cross_env } = parseCampaign({
+      bench: { cross_env: LIVE_CROSS_ENV },
+    }).bench;
+    expect(cross_env.min_speedup_each).toBe(1.1111);
+    expect(cross_env.min_speedup_each.toFixed(4)).toBe("1.1111");
+    expect(
+      `${cross_env.min_speedup_each.toFixed(4)}× ${cross_env.speedup_metric.replaceAll("_", " ")}`
+    ).toBe("1.1111× output tokens per s ratio");
+  });
+
+  it("falls back to null when correctness is missing", () => {
+    expect(parseCampaign({ bench: {} }).bench.correctness).toBeNull();
+    expect(
+      parseCampaign({ bench: { correctness: null } }).bench.correctness
+    ).toBeNull();
+  });
+
+  it("falls back to null when any of the three numbers is missing", () => {
+    expect(
+      parseCampaign({
+        bench: {
+          correctness: {
+            thresholds: {
+              argmax_mismatch_rate: 0.001,
+              max_abs_logprob_diff: 0.164,
+            },
+          },
+        },
+      }).bench.correctness
+    ).toBeNull();
+  });
+
+  it("rejects stringly-typed or non-finite thresholds", () => {
+    expect(
+      parseCampaign({
+        bench: {
+          correctness: {
+            thresholds: {
+              argmax_mismatch_rate: "0.001",
+              mean_abs_logprob_diff: 0.0246,
+              max_abs_logprob_diff: 0.164,
+            },
+          },
+        },
+      }).bench.correctness
+    ).toBeNull();
+    expect(
+      parseCampaign({
+        bench: {
+          correctness: {
+            thresholds: {
+              argmax_mismatch_rate: 0.001,
+              mean_abs_logprob_diff: Number.NaN,
+              max_abs_logprob_diff: 0.164,
+            },
+          },
+        },
+      }).bench.correctness
+    ).toBeNull();
   });
 });
