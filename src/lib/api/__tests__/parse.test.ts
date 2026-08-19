@@ -26,6 +26,7 @@ import {
   getSubmissionJob,
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
+  isLiveSubmissionRow,
   isStalled,
   SUBMISSION_STAGE_ORDER,
   SUBMISSION_STATE_META,
@@ -220,6 +221,35 @@ describe("submission jobs", () => {
     expect(isStalled(detail.latest_state, detail.jobs)).toBe(false);
     expect(getSubmissionJob(detail.jobs, "bench")?.status).toBe("done");
     expect(getSubmissionJob(detail.jobs, "nope")).toBeNull();
+  });
+});
+
+describe("isLiveSubmissionRow", () => {
+  it("treats intake and build as live without a bench phase", () => {
+    expect(
+      isLiveSubmissionRow({ latest_state: "building", bench_phase: null })
+    ).toBe(true);
+  });
+
+  it("treats a bench stage as live only while a phase is set", () => {
+    expect(
+      isLiveSubmissionRow({
+        latest_state: "sampled",
+        bench_phase: "downloading_model",
+      })
+    ).toBe(true);
+    expect(
+      isLiveSubmissionRow({ latest_state: "sampled", bench_phase: null })
+    ).toBe(false);
+  });
+
+  it("stops after a terminal state", () => {
+    expect(
+      isLiveSubmissionRow({ latest_state: "benched", bench_phase: null })
+    ).toBe(false);
+    expect(
+      isLiveSubmissionRow({ latest_state: "rejected", bench_phase: null })
+    ).toBe(false);
   });
 });
 

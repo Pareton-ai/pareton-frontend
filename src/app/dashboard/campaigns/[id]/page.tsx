@@ -7,6 +7,10 @@ import {
   CampaignRequirements,
 } from "@/components/dashboard/campaign-spec";
 import { CampaignStats } from "@/components/dashboard/campaign-stats";
+import {
+  LiveCampaignPoll,
+  LiveCampaignPollHost,
+} from "@/components/dashboard/live-campaign-poll";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
   EmptySubmissions,
@@ -16,7 +20,11 @@ import {
 import { getCampaign, getCampaignSubmissions } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
 import { campaignHref } from "@/lib/routes";
-import type { Campaign, SubmissionsPage } from "@/lib/api/types";
+import {
+  isLiveSubmissionRow,
+  type Campaign,
+  type SubmissionsPage,
+} from "@/lib/api/types";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -91,8 +99,13 @@ async function CampaignBody({ id, page }: { id: string; page: number }) {
     }
   }
 
+  const live =
+    campaign.status === "open" &&
+    (data?.submissions.some(isLiveSubmissionRow) ?? false);
+
   return (
     <div className="space-y-8">
+      <LiveCampaignPoll enabled={live} />
       <CampaignStats campaign={campaign} submissions={data} />
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
@@ -129,34 +142,36 @@ export default async function CampaignPage({
   const page = Number.parseInt(sp.page ?? "1", 10);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start gap-4">
-        {/* Rendered outside the Suspense boundary so the way back is never
-            gated on the campaign fetch. */}
-        <BackLink href="/dashboard" label="All campaigns" />
+    <LiveCampaignPollHost>
+      <div className="space-y-8">
+        <div className="flex items-start gap-4">
+          {/* Rendered outside the Suspense boundary so the way back is never
+              gated on the campaign fetch. */}
+          <BackLink href="/dashboard" label="All campaigns" />
+
+          <Suspense
+            fallback={
+              <div className="mt-1 h-8 w-72 animate-pulse bg-border/50" />
+            }
+          >
+            <CampaignHeading id={id} />
+          </Suspense>
+        </div>
 
         <Suspense
           fallback={
-            <div className="mt-1 h-8 w-72 animate-pulse bg-border/50" />
+            <div className="space-y-8">
+              <div className="h-28 animate-pulse border border-border bg-border/10" />
+              <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
+                <div className="h-72 animate-pulse border border-border bg-border/10" />
+                <div className="h-72 animate-pulse border border-border bg-border/10" />
+              </div>
+            </div>
           }
         >
-          <CampaignHeading id={id} />
+          <CampaignBody id={id} page={page} />
         </Suspense>
       </div>
-
-      <Suspense
-        fallback={
-          <div className="space-y-8">
-            <div className="h-28 animate-pulse border border-border bg-border/10" />
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
-              <div className="h-72 animate-pulse border border-border bg-border/10" />
-              <div className="h-72 animate-pulse border border-border bg-border/10" />
-            </div>
-          </div>
-        }
-      >
-        <CampaignBody id={id} page={page} />
-      </Suspense>
-    </div>
+    </LiveCampaignPollHost>
   );
 }

@@ -513,6 +513,24 @@ export function isTerminalState(state: string): boolean {
   return state === "benched" || state === "rejected";
 }
 
+/**
+ * Whether a campaign-list row is still expected to change.
+ *
+ * List payloads have no job array, so a stall is inferred: bench stages
+ * without `bench_phase` have settled (the API clears the phase when the job
+ * stops). Intake and build still move on `latest_state` alone.
+ */
+export function isLiveSubmissionRow(row: {
+  latest_state: string;
+  bench_phase: BenchPhase | null;
+}): boolean {
+  if (isTerminalState(row.latest_state)) return false;
+  if (row.bench_phase !== null) return true;
+  const idx = stageIndex(row.latest_state);
+  if (idx < 0) return true;
+  return idx < stageIndex("bench_queued");
+}
+
 /** Whether the pipeline got far enough for a build log to exist. */
 export function reachedBuild(states: readonly string[]): boolean {
   const buildIndex = stageIndex("building");
