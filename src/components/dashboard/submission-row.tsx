@@ -102,7 +102,7 @@ export function SubmissionRow({
       <td className="whitespace-nowrap px-3 py-3.5">
         <span className="flex items-center gap-2.5">
           <PhaseMeter state={row.latest_state} verdict={row.bench_verdict} />
-          <PipelineChip state={row.latest_state} />
+          <PipelineChip state={row.latest_state} benchPhase={row.bench_phase} />
         </span>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5">

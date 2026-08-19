@@ -374,10 +374,25 @@ describe("pipeline state vocabulary", () => {
       "image_pushed",
       "built",
       "bench_queued",
+      "sampled",
       "correct",
       "screened",
       "benched",
     ]);
+  });
+
+  it("keeps a live bench phase on a row and rejects anything else", () => {
+    // A run in progress and one that died hours ago share latest_state, so this
+    // is the only thing on the row that separates them.
+    expect(
+      parseSubmissionRow({ id: "1", bench_phase: "downloading_model" })
+        .bench_phase
+    ).toBe("downloading_model");
+    for (const bad of [null, undefined, "", "not_a_phase", 3]) {
+      expect(
+        parseSubmissionRow({ id: "1", bench_phase: bad }).bench_phase
+      ).toBeNull();
+    }
   });
 
   it("renders an unknown state verbatim instead of collapsing to committed", () => {

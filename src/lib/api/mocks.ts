@@ -280,6 +280,8 @@ function rowFromSpec(spec: SeedSpec): SubmissionRow {
     campaign_id: MOCK_CAMPAIGN_ID,
     hotkey: spec.hotkey,
     committed_at: hoursAgo(spec.hours_ago),
+    // Mock rows are static snapshots; a live phase belongs to a running job.
+    bench_phase: null,
     latest_state: spec.latest_state,
     bench_verdict: spec.bench_verdict,
   };

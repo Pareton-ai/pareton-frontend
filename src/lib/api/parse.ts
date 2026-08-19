@@ -185,6 +185,7 @@ export function parseSubmissionRow(value: unknown): SubmissionRow {
     committed_at: asString(o.committed_at),
     latest_state: parseSubmissionState(o.latest_state),
     bench_verdict: parseBenchVerdict(o.bench_verdict),
+    bench_phase: isBenchPhase(o.bench_phase) ? o.bench_phase : null,
   };
 }
 

@@ -34,6 +34,11 @@ export const SUBMISSION_STAGE_ORDER = [
   "image_pushed",
   "built",
   "bench_queued",
+  // Only sampling campaigns emit this, so it is deliberately absent from
+  // SUBMISSION_PHASES: a phase step that can never fill would leave older
+  // campaigns' finished submissions reading 4/5 forever. Ordered here so
+  // stageIndex resolves and the row meter renders at all.
+  "sampled",
   "correct",
   "screened",
   "benched",
@@ -174,6 +179,13 @@ export type SubmissionRow = {
   committed_at: string;
   latest_state: SubmissionStateName;
   bench_verdict: BenchVerdict;
+  /**
+   * Phase of a bench running right now, else null. Read live from the job row
+   * by the API, so it clears itself when the work stops. The event trail has
+   * nothing between `sampled` and a result, so `latest_state` alone cannot tell
+   * a run in progress from one that died hours ago.
+   */
+  bench_phase: BenchPhase | null;
 };
 
 export type SubmissionsPage = {
