@@ -231,16 +231,13 @@ describe("isLiveSubmissionRow", () => {
     ).toBe(true);
   });
 
-  it("treats a bench stage as live only while a phase is set", () => {
+  it("stays live through the GPU wait, before a bench phase exists", () => {
     expect(
-      isLiveSubmissionRow({
-        latest_state: "sampled",
-        bench_phase: "downloading_model",
-      })
+      isLiveSubmissionRow({ latest_state: "bench_queued", bench_phase: null })
     ).toBe(true);
     expect(
       isLiveSubmissionRow({ latest_state: "sampled", bench_phase: null })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("stops after a terminal state", () => {

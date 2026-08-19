@@ -76,7 +76,12 @@ async function CampaignBody({ id, page }: { id: string; page: number }) {
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    return campaignLoadUnavailable(result.kind);
+    return (
+      <div className="space-y-8">
+        <LiveCampaignPoll enabled />
+        {campaignLoadUnavailable(result.kind)}
+      </div>
+    );
   }
   const { campaign } = result;
 
@@ -99,9 +104,12 @@ async function CampaignBody({ id, page }: { id: string; page: number }) {
     }
   }
 
+  // A submissions blip must not send `enabled={false}`: that would stop the
+  // host. Keep polling while the campaign is open until a successful idle
+  // page proves there is nothing live.
   const live =
     campaign.status === "open" &&
-    (data?.submissions.some(isLiveSubmissionRow) ?? false);
+    (data === null || data.submissions.some(isLiveSubmissionRow));
 
   return (
     <div className="space-y-8">
