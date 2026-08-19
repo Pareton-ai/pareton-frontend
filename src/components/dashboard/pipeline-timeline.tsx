@@ -360,8 +360,15 @@ export function PipelineTimeline({
     };
   }
 
+  // Keyed on the phases, not the stage order: those lists answer different
+  // questions. A state can be ordered (so progress counts it) without belonging
+  // to a rendered phase, e.g. `sampled`, which only sampling campaigns emit.
+  // Filtering on stage order would render such an event nowhere at all.
+  const phaseStates: ReadonlySet<string> = new Set(
+    SUBMISSION_PHASES.flatMap((phase) => phase.states)
+  );
   const offPath = events.filter(
-    (event) => event.state !== "rejected" && stageIndex(event.state) === -1
+    (event) => event.state !== "rejected" && !phaseStates.has(event.state)
   );
 
   const allStates = SUBMISSION_PHASES.flatMap((phase) => phase.states);

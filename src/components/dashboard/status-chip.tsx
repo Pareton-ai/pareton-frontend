@@ -1,8 +1,10 @@
 import type { CampaignStatus } from "@/lib/api/types";
 import {
+  BENCH_PHASE_META,
   getBenchVerdictMeta,
   getStageVerdictTone,
   getSubmissionStateMeta,
+  type BenchPhase,
   type BenchVerdict,
   type SubmissionState,
 } from "@/lib/api/types";
@@ -31,7 +33,29 @@ export function CampaignStatusChip({ status }: { status: CampaignStatus }) {
   );
 }
 
-export function PipelineChip({ state }: { state: SubmissionState | string }) {
+export function PipelineChip({
+  state,
+  benchPhase = null,
+}: {
+  state: SubmissionState | string;
+  /**
+   * Phase of a bench running right now. Wins over `state` because the event
+   * trail records nothing between `sampled` and a result, so without it a run
+   * in progress and one that died hours ago both read as SAMPLED.
+   */
+  benchPhase?: BenchPhase | null;
+}) {
+  if (benchPhase) {
+    const phase = BENCH_PHASE_META[benchPhase];
+    return (
+      <span
+        className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass.progress}`}
+        title={phase.description}
+      >
+        {phase.label}
+      </span>
+    );
+  }
   const meta = getSubmissionStateMeta(state);
   return (
     <span
