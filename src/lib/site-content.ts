@@ -7,7 +7,7 @@
 export const siteContent = {
   name: "Pareton",
   eyebrow: "Inference optimization infrastructure",
-  title: "The intelligence layer for your inference.",
+  title: "Verified speedups for your inference",
   /** Substring of `title` rendered italic on the page. */
   titleEmphasis: "your",
   heroDescription:
@@ -147,7 +147,7 @@ export const siteContent = {
     secondary: { label: "Open the dashboard", href: "/dashboard" },
   },
 
-  tagline: "The intelligence layer for AI inference",
+  tagline: "Verified speedups for your inference",
 } as const;
 
 export type SiteContent = typeof siteContent;

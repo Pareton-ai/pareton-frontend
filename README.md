@@ -2,7 +2,7 @@
 
 # Pareton (Frontend)
 
-**The Intelligence Layer for AI Inference**
+**Verified speedups for your inference**
 
 [![Discord](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor)
 [![Docs](https://img.shields.io/badge/docs-pareton.ai-blue)](https://pareton.ai)
