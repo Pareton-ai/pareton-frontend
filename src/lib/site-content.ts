@@ -6,12 +6,15 @@
 
 export const siteContent = {
   name: "Pareton",
-  eyebrow: "Inference optimization infrastructure",
-  title: "The intelligence layer for your inference.",
+  eyebrow: "Inference optimization",
+  title: "Faster. Cheaper. Verified on yours.",
   /** Substring of `title` rendered italic on the page. */
-  titleEmphasis: "your",
+  titleEmphasis: "yours",
   heroDescription:
-    "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving configuration space until a better engine holds on the workload you already run.",
+    "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving config space until a better engine holds on the workload you already run.",
+  /** Substring of `heroDescription` rendered bold. */
+  heroDescriptionBold:
+    "Pareton searches the serving config space until a better engine holds on the workload you already run.",
   buildStatus: "Coming Soon · Bittensor Subnet 10",
   /** Axes of the search space, cycled around the hero mark. */
   heroAxes: [
@@ -147,7 +150,7 @@ export const siteContent = {
     secondary: { label: "Open the dashboard", href: "/dashboard" },
   },
 
-  tagline: "The intelligence layer for AI inference",
+  tagline: "Faster. Cheaper. Verified on yours",
 } as const;
 
 export type SiteContent = typeof siteContent;

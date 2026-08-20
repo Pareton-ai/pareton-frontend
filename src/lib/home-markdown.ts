@@ -37,7 +37,7 @@ _${c.eyebrow}._
 
 **${c.title}**
 
-${c.heroDescription}
+${c.heroDescription.replace(c.heroDescriptionBold, `**${c.heroDescriptionBold}**`)}
 
 ${c.buildStatus}.
 

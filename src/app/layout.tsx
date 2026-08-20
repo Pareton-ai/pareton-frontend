@@ -19,7 +19,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Pareton: The Intelligence Layer for AI Inference",
+    default: "Pareton | Better Inference",
     template: "%s | Pareton",
   },
   description:
