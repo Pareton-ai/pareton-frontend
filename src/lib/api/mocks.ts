@@ -6,9 +6,13 @@
 
 import { ApiError } from "@/lib/api/errors";
 import type {
-  BenchFailReason,
-  BenchVerdict,
   Campaign,
+  Leader,
+  Round,
+  RoundDetail,
+  RoundEntry,
+  RoundsPage,
+  ScoreProgressSeries,
   SubmissionDetail,
   SubmissionRow,
   SubmissionStateName,
@@ -18,6 +22,10 @@ import type {
 export const MOCK_CAMPAIGN_ID = "mock-campaign";
 export const MOCK_DRAFT_CAMPAIGN_ID = "mock-campaign-draft";
 export const MOCK_CLOSED_CAMPAIGN_ID = "mock-campaign-closed";
+
+const MOCK_ROUND_1 = "11111111-1111-1111-1111-111111111111";
+const MOCK_ROUND_2 = "22222222-2222-2222-2222-222222222222";
+const MOCK_ROUND_3 = "33333333-3333-3333-3333-333333333333";
 
 /** Enough rows to exercise pagination (PAGE_SIZE = 25). */
 const EXTRA_SUBMISSION_COUNT = 36;
@@ -31,11 +39,11 @@ const HOTKEYS = [
   "5FakeHotkeyFFFF666666666666666666666666666666666666666666",
 ] as const;
 
-const PASS_HASH =
+const SCORED_HASH =
   "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const REJECT_CROSS_ENV_HASH =
+const DISQUALIFIED_HASH =
   "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-const REJECT_PERF_HASH =
+const REJECTED_HASH =
   "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 const QUEUED_HASH =
   "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
@@ -86,8 +94,9 @@ export const MOCK_CAMPAIGN: Campaign = {
   manifest_hash:
     "sha256:3333333333333333333333333333333333333333333333333333333333333333",
   customer_signoff: null,
-  priority_metric: "output_tokens_per_s_ratio",
-  success_threshold: "Beat baseline speedup on every target SKU.",
+  priority_metric: "throughput",
+  success_threshold: "Beat baseline median e2e latency on the campaign SKU.",
+  scoring_rule: { name: "median_e2e_speedup" },
   bench: {
     model: {
       hf_repo: "meta-llama/Llama-3.1-8B-Instruct",
@@ -95,11 +104,6 @@ export const MOCK_CAMPAIGN: Campaign = {
       dtype: "bfloat16",
       quantization: null,
       max_model_len: 8192,
-    },
-    cross_env: {
-      aggregate: "worst",
-      speedup_metric: "output_tokens_per_s_ratio",
-      min_speedup_each: 1.05,
     },
     gpu_count: 1,
     serve_args: null,
@@ -110,7 +114,6 @@ export const MOCK_CAMPAIGN: Campaign = {
         max_abs_logprob_diff: 0.164,
       },
     },
-    perf_screen: null,
     baseline_engine_image_digest:
       "sha256:4444444444444444444444444444444444444444444444444444444444444444",
   },
@@ -134,7 +137,6 @@ export const MOCK_DRAFT_CAMPAIGN: Campaign = {
       quantization: null,
       max_model_len: 16384,
     },
-    // Live draft campaigns omit correctness; the Objective panel must not crash.
     correctness: null,
   },
 };
@@ -167,7 +169,12 @@ const MOCK_CAMPAIGNS: Campaign[] = [
 ];
 
 type PipelineTerminal =
-  "benched" | "rejected" | "bench_queued" | "building" | "screened";
+  | "scored"
+  | "disqualified"
+  | "rejected"
+  | "bench_queued"
+  | "building"
+  | "round_assigned";
 
 type SeedSpec = {
   id: string;
@@ -175,40 +182,49 @@ type SeedSpec = {
   hotkey: string;
   hours_ago: number;
   latest_state: SubmissionStateName;
-  bench_verdict: BenchVerdict;
   terminal: PipelineTerminal;
-  reject_reason?: BenchFailReason;
+  round?: SubmissionRow["round"];
 };
 
 const SEED_SPECS: SeedSpec[] = [
   {
     id: "11111111-1111-1111-1111-111111111111",
-    patch_hash: PASS_HASH,
+    patch_hash: SCORED_HASH,
     hotkey: HOTKEYS[0],
     hours_ago: 6,
-    latest_state: "benched",
-    bench_verdict: "pass",
-    terminal: "benched",
+    latest_state: "scored",
+    terminal: "scored",
+    round: {
+      round_id: MOCK_ROUND_3,
+      ordinal: 3,
+      status: "scored",
+      score: 0.31,
+      disqualify_reason: null,
+    },
   },
   {
     id: "22222222-2222-2222-2222-222222222222",
-    patch_hash: REJECT_CROSS_ENV_HASH,
+    patch_hash: DISQUALIFIED_HASH,
     hotkey: HOTKEYS[1],
     hours_ago: 12,
-    latest_state: "rejected",
-    bench_verdict: "fail_cross_env_speedup",
-    terminal: "rejected",
-    reject_reason: "fail_cross_env_speedup",
+    latest_state: "disqualified",
+    terminal: "disqualified",
+    round: {
+      round_id: MOCK_ROUND_1,
+      ordinal: 1,
+      status: "disqualified",
+      score: null,
+      disqualify_reason: "fail_correctness",
+    },
   },
   {
     id: "33333333-3333-3333-3333-333333333333",
-    patch_hash: REJECT_PERF_HASH,
+    patch_hash: REJECTED_HASH,
     hotkey: HOTKEYS[2],
     hours_ago: 18,
     latest_state: "rejected",
-    bench_verdict: "fail_perf_screen",
     terminal: "rejected",
-    reject_reason: "fail_perf_screen",
+    round: null,
   },
   {
     id: "44444444-4444-4444-4444-444444444444",
@@ -216,60 +232,63 @@ const SEED_SPECS: SeedSpec[] = [
     hotkey: HOTKEYS[3],
     hours_ago: 2,
     latest_state: "bench_queued",
-    bench_verdict: null,
     terminal: "bench_queued",
+    round: null,
   },
 ];
 
 const EXTRA_VARIANTS: Array<{
   latest_state: SubmissionStateName;
-  bench_verdict: BenchVerdict;
   terminal: PipelineTerminal;
-  reject_reason?: BenchFailReason;
+  round?: SubmissionRow["round"];
 }> = [
   {
-    latest_state: "benched",
-    bench_verdict: "pass",
-    terminal: "benched",
+    latest_state: "scored",
+    terminal: "scored",
+    round: {
+      round_id: MOCK_ROUND_3,
+      ordinal: 3,
+      status: "scored",
+      score: 0.22,
+      disqualify_reason: null,
+    },
+  },
+  {
+    latest_state: "disqualified",
+    terminal: "disqualified",
+    round: {
+      round_id: MOCK_ROUND_1,
+      ordinal: 1,
+      status: "disqualified",
+      score: null,
+      disqualify_reason: "fail_correctness",
+    },
   },
   {
     latest_state: "rejected",
-    bench_verdict: "fail_correctness",
     terminal: "rejected",
-    reject_reason: "fail_correctness",
-  },
-  {
-    latest_state: "rejected",
-    bench_verdict: "fail_perf_screen",
-    terminal: "rejected",
-    reject_reason: "fail_perf_screen",
-  },
-  {
-    latest_state: "rejected",
-    bench_verdict: "fail_cross_env_speedup",
-    terminal: "rejected",
-    reject_reason: "fail_cross_env_speedup",
-  },
-  {
-    latest_state: "rejected",
-    bench_verdict: "fail_sla",
-    terminal: "rejected",
-    reject_reason: "fail_sla",
+    round: null,
   },
   {
     latest_state: "bench_queued",
-    bench_verdict: null,
     terminal: "bench_queued",
+    round: null,
   },
   {
     latest_state: "building",
-    bench_verdict: null,
     terminal: "building",
+    round: null,
   },
   {
-    latest_state: "screened",
-    bench_verdict: null,
-    terminal: "screened",
+    latest_state: "round_assigned",
+    terminal: "round_assigned",
+    round: {
+      round_id: MOCK_ROUND_3,
+      ordinal: 3,
+      status: "pending",
+      score: null,
+      disqualify_reason: null,
+    },
   },
 ];
 
@@ -280,10 +299,8 @@ function rowFromSpec(spec: SeedSpec): SubmissionRow {
     campaign_id: MOCK_CAMPAIGN_ID,
     hotkey: spec.hotkey,
     committed_at: hoursAgo(spec.hours_ago),
-    // Mock rows are static snapshots; a live phase belongs to a running job.
-    bench_phase: null,
     latest_state: spec.latest_state,
-    bench_verdict: spec.bench_verdict,
+    round: spec.round ?? null,
   };
 }
 
@@ -291,7 +308,7 @@ const EXTRA_SPECS: SeedSpec[] = Array.from(
   { length: EXTRA_SUBMISSION_COUNT },
   (_, i) => {
     const variant = EXTRA_VARIANTS[i % EXTRA_VARIANTS.length];
-    const n = i + 16; // keep clear of handcrafted a/b/c/d hashes
+    const n = i + 16;
     return {
       id: mockId(n),
       patch_hash: mockHash(n),
@@ -327,8 +344,7 @@ function baseSubmission(
 
 function pipelineEvents(
   committedAt: string,
-  terminal: PipelineTerminal,
-  rejectReason?: string
+  terminal: PipelineTerminal
 ): SubmissionDetail["events"] {
   const steps: Array<{
     state: SubmissionDetail["events"][number]["state"];
@@ -353,14 +369,18 @@ function pipelineEvents(
     );
   }
 
-  if (terminal === "benched") {
+  if (terminal === "scored") {
     steps.push(
-      { state: "correct", at: 140 },
-      { state: "screened", at: 155 },
-      { state: "benched", at: 210 }
+      { state: "round_assigned", at: 140 },
+      { state: "scored", at: 210 }
     );
-  } else if (terminal === "screened") {
-    steps.push({ state: "correct", at: 140 }, { state: "screened", at: 155 });
+  } else if (terminal === "round_assigned") {
+    steps.push({ state: "round_assigned", at: 140 });
+  } else if (terminal === "disqualified") {
+    steps.push(
+      { state: "round_assigned", at: 140 },
+      { state: "disqualified", at: 180 }
+    );
   } else if (terminal === "rejected") {
     steps.push({ state: "rejected", at: 150 });
   }
@@ -368,115 +388,13 @@ function pipelineEvents(
   return steps.map(({ state, at }) => ({
     state,
     created_at: minutesAfter(committedAt, at),
-    detail:
-      state === "rejected" && rejectReason ? { reason: rejectReason } : {},
+    detail: {},
     evidence_ref: null,
   }));
 }
 
-function round(value: number, digits = 1): number {
-  const factor = 10 ** digits;
-  return Math.round(value * factor) / factor;
-}
-
-type Percentiles = { p50: number; p95: number; p99: number };
-
-/**
- * Baseline engine metrics every candidate is scored against.
- *
- * Shapes mirror `bench/schemas.py` in the backend repo (`EngineSlaMetrics`,
- * `CorrectnessReport`, `PerfScreenReport`), so the dashboard readers see the
- * payload they will get in production.
- */
-const SLA_BASELINE = {
-  ttft_ms: { p50: 62.4, p95: 98.1, p99: 112.7 },
-  itl_ms: { p50: 12.4, p95: 18.9, p99: 22.6 },
-  e2e_ms: { p50: 812.4, p95: 1184.2, p99: 1327.6 },
-  output_tokens_per_s: 2140.5,
-  requests_per_s: 8.42,
-  sla_goodput_ratio: 0.96,
-};
-
-function scalePercentiles(source: Percentiles, factor: number): Percentiles {
+function settledJob(status: string): SubmissionDetail["jobs"][number] {
   return {
-    p50: round(source.p50 * factor),
-    p95: round(source.p95 * factor),
-    p99: round(source.p99 * factor),
-  };
-}
-
-function correctnessReport(pass: boolean): Record<string, unknown> {
-  return {
-    verdict: pass ? "pass" : "fail_correctness",
-    num_prompts: 64,
-    num_positions_compared: 8192,
-    mean_abs_logprob_diff: pass ? 0.0012 : 0.0421,
-    max_abs_logprob_diff: pass ? 0.0081 : 0.6134,
-    argmax_mismatch_rate: pass ? 0.0004 : 0.0312,
-    evidence: "evidence/correctness/logprob_diffs.jsonl",
-  };
-}
-
-function perfScreenReport(ratio: number): Record<string, unknown> {
-  const baseline = SLA_BASELINE.output_tokens_per_s;
-  return {
-    verdict:
-      ratio >= MOCK_CAMPAIGN.bench.cross_env.min_speedup_each
-        ? "pass"
-        : "fail_perf_screen",
-    baseline_output_tokens_per_s: baseline,
-    candidate_output_tokens_per_s: round(baseline * ratio),
-    throughput_ratio: ratio,
-    evidence: "evidence/perf_screen/perf_screen.jsonl",
-  };
-}
-
-/** Candidate derived from the baseline: throughput scales up, latency down. */
-function slaBenchReport(opts: {
-  verdict: string;
-  speedup: number;
-  latency: number;
-  goodput: number;
-}): Record<string, unknown> {
-  // Latency ratios are baseline/candidate, so faster reads above 1 like
-  // throughput does.
-  const latencyRatio = round(1 / opts.latency, 4);
-  return {
-    verdict: opts.verdict,
-    repetitions: 3,
-    baseline: SLA_BASELINE,
-    candidate: {
-      ttft_ms: scalePercentiles(SLA_BASELINE.ttft_ms, opts.latency),
-      itl_ms: scalePercentiles(SLA_BASELINE.itl_ms, opts.latency),
-      e2e_ms: scalePercentiles(SLA_BASELINE.e2e_ms, opts.latency),
-      output_tokens_per_s: round(
-        SLA_BASELINE.output_tokens_per_s * opts.speedup
-      ),
-      requests_per_s: round(SLA_BASELINE.requests_per_s * opts.speedup, 2),
-      sla_goodput_ratio: opts.goodput,
-    },
-    speedup: {
-      output_tokens_per_s_ratio: opts.speedup,
-      requests_per_s_ratio: opts.speedup,
-      p99_ttft_ratio: latencyRatio,
-      p99_itl_ratio: latencyRatio,
-      p99_e2e_ratio: latencyRatio,
-    },
-    cross_rep_variance: {
-      p99_ttft_ms_rel_range: 0.031,
-      p99_itl_ms_rel_range: 0.024,
-      p99_e2e_ms_rel_range: 0.018,
-    },
-    evidence: "evidence/sla_bench",
-  };
-}
-
-function settledJob(
-  kind: string,
-  status: string
-): SubmissionDetail["jobs"][number] {
-  return {
-    kind,
     status,
     last_error: null,
     phase: null,
@@ -488,167 +406,31 @@ function settledJob(
 
 function jobsFor(terminal: PipelineTerminal): SubmissionDetail["jobs"] {
   if (terminal === "building") {
-    return [settledJob("gates", "running"), settledJob("bench", "pending")];
-  }
-  if (terminal === "bench_queued" || terminal === "screened") {
     return [
-      settledJob("gates", "done"),
       {
-        ...settledJob("bench", "running"),
-        phase: terminal === "bench_queued" ? "downloading_model" : "sla_bench",
+        ...settledJob("running"),
+        phase: "bootstrapping",
+        phase_started_at: minutesAfter(hoursAgo(1), 20),
+        heartbeat_at: hoursAgo(0),
+        progress: null,
+      },
+    ];
+  }
+  if (terminal === "bench_queued") {
+    return [settledJob("done")];
+  }
+  if (terminal === "round_assigned") {
+    return [
+      {
+        ...settledJob("running"),
+        phase: "sla_bench",
         phase_started_at: minutesAfter(hoursAgo(1), 22),
         heartbeat_at: hoursAgo(0),
         progress: { gpu_sku: "A100_80GB" },
       },
     ];
   }
-  return [settledJob("gates", "done"), settledJob("bench", "done")];
-}
-
-type ReportSeed = {
-  stage: string;
-  verdict: string;
-  report: Record<string, unknown>;
-  gpu_sku: string;
-  minutes: number;
-  task_id?: string;
-};
-
-/** Per-verdict report set, so each mock submission tells a coherent story. */
-function reportSeeds(spec: SeedSpec): ReportSeed[] {
-  const correctnessPass: ReportSeed = {
-    stage: "correctness",
-    verdict: "pass",
-    report: correctnessReport(true),
-    gpu_sku: "A100_80GB",
-    minutes: 140,
-  };
-
-  if (spec.terminal === "benched") {
-    return [
-      correctnessPass,
-      {
-        stage: "perf_screen",
-        verdict: "pass",
-        report: perfScreenReport(1.18),
-        gpu_sku: "A100_80GB",
-        minutes: 155,
-      },
-      {
-        stage: "sla_bench",
-        verdict: "pass",
-        report: slaBenchReport({
-          verdict: "pass",
-          speedup: 1.18,
-          latency: 0.8,
-          goodput: 0.99,
-        }),
-        gpu_sku: "A100_80GB",
-        minutes: 205,
-      },
-      // Second SKU: `worst` cross-env aggregate is what the campaign gates on.
-      {
-        stage: "sla_bench",
-        verdict: "pass",
-        report: slaBenchReport({
-          verdict: "pass",
-          speedup: 1.11,
-          latency: 0.87,
-          goodput: 0.98,
-        }),
-        gpu_sku: "H100_80GB",
-        minutes: 210,
-      },
-    ];
-  }
-
-  if (spec.terminal !== "rejected" || !spec.reject_reason) return [];
-
-  if (spec.reject_reason === "fail_correctness") {
-    return [
-      {
-        stage: "correctness",
-        verdict: "fail_correctness",
-        report: correctnessReport(false),
-        gpu_sku: "A100_80GB",
-        minutes: 145,
-      },
-    ];
-  }
-
-  if (spec.reject_reason === "fail_perf_screen") {
-    return [
-      correctnessPass,
-      {
-        stage: "perf_screen",
-        verdict: "fail_perf_screen",
-        report: perfScreenReport(0.93),
-        gpu_sku: "A100_80GB",
-        minutes: 150,
-      },
-    ];
-  }
-
-  if (spec.reject_reason === "fail_cross_env_speedup") {
-    return [
-      correctnessPass,
-      {
-        stage: "perf_screen",
-        verdict: "pass",
-        report: perfScreenReport(1.12),
-        gpu_sku: "A100_80GB",
-        minutes: 150,
-      },
-      {
-        stage: "sla_bench",
-        verdict: "pass",
-        report: slaBenchReport({
-          verdict: "pass",
-          speedup: 1.12,
-          latency: 0.84,
-          goodput: 0.98,
-        }),
-        gpu_sku: "A100_80GB",
-        minutes: 195,
-      },
-      {
-        stage: "sla_bench",
-        verdict: "fail_cross_env_speedup",
-        report: slaBenchReport({
-          verdict: "fail_cross_env_speedup",
-          speedup: 0.97,
-          latency: 1.04,
-          goodput: 0.94,
-        }),
-        gpu_sku: "H100_80GB",
-        minutes: 205,
-      },
-    ];
-  }
-
-  // fail_sla: throughput cleared, but p99 latency blew past the campaign gate.
-  return [
-    correctnessPass,
-    {
-      stage: "perf_screen",
-      verdict: "pass",
-      report: perfScreenReport(1.15),
-      gpu_sku: "A100_80GB",
-      minutes: 150,
-    },
-    {
-      stage: "sla_bench",
-      verdict: "fail_sla",
-      report: slaBenchReport({
-        verdict: "fail_sla",
-        speedup: 1.15,
-        latency: 1.34,
-        goodput: 0.71,
-      }),
-      gpu_sku: "A100_80GB",
-      minutes: 200,
-    },
-  ];
+  return [settledJob("done")];
 }
 
 function detailFromSpec(spec: SeedSpec): SubmissionDetail {
@@ -658,25 +440,11 @@ function detailFromSpec(spec: SeedSpec): SubmissionDetail {
       ? { engine_image_ref: null as string | null }
       : undefined;
 
-  const bench_reports: SubmissionDetail["bench_reports"] = reportSeeds(
-    spec
-  ).map((seed) => ({
-    task_id: seed.task_id ?? `${seed.stage}_${seed.gpu_sku.toLowerCase()}`,
-    stage: seed.stage,
-    verdict: seed.verdict,
-    report: seed.report,
-    evidence_s3_url: null,
-    gpu_sku: seed.gpu_sku,
-    mock: true,
-    created_at: minutesAfter(row.committed_at, seed.minutes),
-  }));
-
   return {
     submission: baseSubmission(row, extras),
-    events: pipelineEvents(row.committed_at, spec.terminal, spec.reject_reason),
+    events: pipelineEvents(row.committed_at, spec.terminal),
     jobs: jobsFor(spec.terminal),
-    bench_reports,
-    bench_verdict: spec.bench_verdict,
+    round: spec.round ?? null,
     latest_state: spec.latest_state,
   };
 }
@@ -693,6 +461,229 @@ const MOCK_BUILD_LOG = `=> [builder 1/4] FROM docker.io/library/ubuntu:22.04
 => => naming to ghcr.io/pareton-ai/pareton-engine:mock
 build finished
 `;
+
+const MOCK_LEADER: Leader = {
+  campaign_id: MOCK_CAMPAIGN_ID,
+  submission_id: SEED_SPECS[0].id,
+  patch_hash: SCORED_HASH,
+  hotkey: HOTKEYS[0],
+  engine_image_ref:
+    "ghcr.io/pareton-ai/pareton-engine@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  won_at_round_id: MOCK_ROUND_3,
+  won_at_ordinal: 3,
+  last_score: 0.31,
+  last_scored_round_id: MOCK_ROUND_3,
+  updated_at: hoursAgo(4),
+};
+
+function mockRoundSummary(
+  id: string,
+  ordinal: number,
+  status: Round["status"],
+  over: Partial<Round> = {}
+): Round {
+  return {
+    id,
+    ordinal,
+    status,
+    void_reason: null,
+    gpu_sku: "H200",
+    seed_block: 1000 + ordinal,
+    seed_block_hash: "0x" + ordinal.toString(16).padStart(64, "0"),
+    entry_count: 7,
+    leader_changed: false,
+    created_at: hoursAgo(24 - ordinal),
+    completed_at:
+      status === "running" || status === "pending"
+        ? null
+        : hoursAgo(20 - ordinal),
+    ...over,
+  };
+}
+
+const MOCK_ROUNDS: Round[] = [
+  mockRoundSummary(MOCK_ROUND_3, 3, "complete", {
+    leader_changed: true,
+    entry_count: 6,
+  }),
+  mockRoundSummary(MOCK_ROUND_2, 2, "void", {
+    void_reason: "baseline_drift",
+    leader_changed: null,
+    entry_count: 4,
+  }),
+  mockRoundSummary(MOCK_ROUND_1, 1, "complete", { entry_count: 5 }),
+];
+
+function mockEntry(
+  id: number,
+  over: Partial<RoundEntry> & Pick<RoundEntry, "role" | "status">
+): RoundEntry {
+  return {
+    id,
+    submission_id: null,
+    patch_hash: null,
+    hotkey: null,
+    engine_image_ref:
+      "ghcr.io/pareton-ai/pareton-engine@sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    score: null,
+    disqualify_reason: null,
+    started_at: null,
+    completed_at: null,
+    ...over,
+  };
+}
+
+const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
+  [MOCK_ROUND_3]: {
+    id: MOCK_ROUND_3,
+    campaign_id: MOCK_CAMPAIGN_ID,
+    ordinal: 3,
+    status: "complete",
+    void_reason: null,
+    gpu_sku: "H200",
+    seed_block: 1003,
+    seed_block_hash: "0x" + "3".padStart(64, "0"),
+    seed_hex: "b".repeat(64),
+    sampled_trace_sha256: "sha256:" + "c".repeat(64),
+    scoring_rule: { name: "median_e2e_speedup" },
+    incumbent_submission_id: null,
+    winner_submission_id: SEED_SPECS[0].id,
+    leader_changed: true,
+    baseline_drift: 0.004,
+    phase: null,
+    phase_started_at: null,
+    heartbeat_at: null,
+    progress: null,
+    created_at: hoursAgo(21),
+    started_at: hoursAgo(20),
+    completed_at: hoursAgo(4),
+    entries: [
+      mockEntry(1, { role: "baseline", status: "scored", score: 0.0 }),
+      mockEntry(2, {
+        role: "challenger",
+        status: "scored",
+        score: 0.31,
+        submission_id: SEED_SPECS[0].id,
+        patch_hash: SCORED_HASH,
+        hotkey: HOTKEYS[0],
+      }),
+    ],
+  },
+  [MOCK_ROUND_2]: {
+    id: MOCK_ROUND_2,
+    campaign_id: MOCK_CAMPAIGN_ID,
+    ordinal: 2,
+    status: "void",
+    void_reason: "baseline_drift",
+    gpu_sku: "H200",
+    seed_block: 1002,
+    seed_block_hash: "0x" + "2".padStart(64, "0"),
+    seed_hex: "d".repeat(64),
+    sampled_trace_sha256: "sha256:" + "e".repeat(64),
+    scoring_rule: { name: "median_e2e_speedup" },
+    incumbent_submission_id: SEED_SPECS[0].id,
+    winner_submission_id: null,
+    leader_changed: null,
+    baseline_drift: 0.12,
+    phase: null,
+    phase_started_at: null,
+    heartbeat_at: null,
+    progress: null,
+    created_at: hoursAgo(22),
+    started_at: hoursAgo(22),
+    completed_at: hoursAgo(18),
+    entries: [
+      mockEntry(1, { role: "baseline", status: "scored", score: 0.0 }),
+      mockEntry(2, {
+        role: "leader",
+        status: "infra_failed",
+        score: null,
+        submission_id: SEED_SPECS[0].id,
+        patch_hash: SCORED_HASH,
+        hotkey: HOTKEYS[0],
+      }),
+    ],
+  },
+  [MOCK_ROUND_1]: {
+    id: MOCK_ROUND_1,
+    campaign_id: MOCK_CAMPAIGN_ID,
+    ordinal: 1,
+    status: "running",
+    void_reason: null,
+    gpu_sku: "H200",
+    seed_block: 1001,
+    seed_block_hash: "0x" + "1".padStart(64, "0"),
+    seed_hex: "a".repeat(64),
+    sampled_trace_sha256: "sha256:" + "b".repeat(64),
+    scoring_rule: { name: "median_e2e_speedup" },
+    incumbent_submission_id: null,
+    winner_submission_id: null,
+    leader_changed: null,
+    baseline_drift: null,
+    phase: "sla_bench",
+    phase_started_at: hoursAgo(1),
+    heartbeat_at: hoursAgo(0),
+    progress: { entry: 2 },
+    created_at: hoursAgo(23),
+    started_at: hoursAgo(1),
+    completed_at: null,
+    entries: [
+      mockEntry(1, { role: "baseline", status: "scored", score: 0.0 }),
+      mockEntry(2, {
+        role: "challenger",
+        status: "disqualified",
+        score: null,
+        disqualify_reason: "fail_correctness",
+        submission_id: SEED_SPECS[1].id,
+        patch_hash: DISQUALIFIED_HASH,
+        hotkey: HOTKEYS[1],
+      }),
+      mockEntry(3, {
+        role: "challenger",
+        status: "running",
+        score: null,
+        submission_id: SEED_SPECS[0].id,
+        patch_hash: SCORED_HASH,
+        hotkey: HOTKEYS[0],
+      }),
+    ],
+  },
+};
+
+const MOCK_SCORE_PROGRESS: ScoreProgressSeries = {
+  campaign_id: MOCK_CAMPAIGN_ID,
+  points: [
+    {
+      round_id: MOCK_ROUND_1,
+      ordinal: 1,
+      status: "complete",
+      leader_score: 0.31,
+      entries: [
+        {
+          submission_id: SEED_SPECS[1].id,
+          hotkey: HOTKEYS[1].slice(0, 16),
+          role: "challenger",
+          status: "disqualified",
+          score: null,
+        },
+      ],
+    },
+    {
+      round_id: MOCK_ROUND_2,
+      ordinal: 2,
+      status: "void",
+      leader_score: null,
+      entries: [],
+    },
+    {
+      round_id: MOCK_ROUND_3,
+      ordinal: 3,
+      status: "complete",
+      leader_score: 0.4,
+      entries: [],
+    },
+  ],
+};
 
 export function apiMocksEnabled(): boolean {
   return process.env.PARETON_USE_MOCKS === "1";
@@ -769,7 +760,9 @@ export function mockGetSubmissionBuildLog(
       state === "image_pushed" ||
       state === "built" ||
       state === "bench_queued" ||
-      state === "benched" ||
+      state === "round_assigned" ||
+      state === "scored" ||
+      state === "disqualified" ||
       state === "rejected"
   );
   if (!reached) {
@@ -780,4 +773,47 @@ export function mockGetSubmissionBuildLog(
     });
   }
   return MOCK_BUILD_LOG;
+}
+
+export function mockGetLeader(campaignId: string): Leader | null {
+  mockGetCampaign(campaignId);
+  if (campaignId !== MOCK_CAMPAIGN_ID) return null;
+  return MOCK_LEADER;
+}
+
+export function mockListRounds(
+  campaignId: string,
+  opts?: { limit?: number; offset?: number }
+): RoundsPage {
+  mockGetCampaign(campaignId);
+  const limit = opts?.limit ?? 50;
+  const offset = opts?.offset ?? 0;
+  const rows = campaignId === MOCK_CAMPAIGN_ID ? MOCK_ROUNDS : [];
+  return {
+    campaign_id: campaignId,
+    total: rows.length,
+    limit,
+    offset,
+    rounds: rows.slice(offset, offset + limit),
+  };
+}
+
+export function mockGetRound(roundId: string): RoundDetail {
+  const detail = MOCK_ROUND_DETAILS[roundId];
+  if (!detail) {
+    throw new ApiError({
+      status: 404,
+      path: `/v1/rounds/${roundId}`,
+      detail: "round not found",
+    });
+  }
+  return detail;
+}
+
+export function mockGetScoreProgress(campaignId: string): ScoreProgressSeries {
+  mockGetCampaign(campaignId);
+  if (campaignId !== MOCK_CAMPAIGN_ID) {
+    return { campaign_id: campaignId, points: [] };
+  }
+  return MOCK_SCORE_PROGRESS;
 }

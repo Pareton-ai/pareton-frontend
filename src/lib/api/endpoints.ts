@@ -1,17 +1,26 @@
 import "server-only";
 
 import { apiFetch, apiFetchText } from "@/lib/api/client";
+import { isLeaderVacant } from "@/lib/api/errors";
 import {
   apiMocksEnabled,
   mockGetCampaign,
+  mockGetLeader,
+  mockGetRound,
+  mockGetScoreProgress,
   mockGetSubmission,
   mockGetSubmissionBuildLog,
   mockListCampaigns,
+  mockListRounds,
   mockListSubmissions,
 } from "@/lib/api/mocks";
 import {
   parseCampaign,
   parseCampaigns,
+  parseLeader,
+  parseRoundDetail,
+  parseRoundsPage,
+  parseScoreProgress,
   parseSubmissionDetail,
   parseSubmissionsPage,
 } from "@/lib/api/parse";
@@ -19,6 +28,10 @@ import type {
   Campaign,
   CampaignsResponse,
   CampaignStatus,
+  Leader,
+  RoundDetail,
+  RoundsPage,
+  ScoreProgressSeries,
   SubmissionDetail,
   SubmissionsPage,
 } from "@/lib/api/types";
@@ -28,7 +41,7 @@ const SHORT_REVALIDATE = 30;
 /**
  * Detail + build-log must not sit in the Next data cache: the page polls while
  * the submission is non-terminal (PAR-44), and the API returns no-store for
- * those responses.
+ * those responses. Same rule for a pending or running round.
  */
 const LIVE_REVALIDATE = 0;
 
@@ -109,6 +122,81 @@ export async function getSubmission(
     }
   );
   return parseSubmissionDetail(data);
+}
+
+/**
+ * Current crown holder, or `null` when the crown is vacant.
+ *
+ * A vacant leader is HTTP 404 with detail "leader is vacant". That is a
+ * normal state. A missing campaign is a different 404 and still throws.
+ */
+export async function getLeader(campaignId: string): Promise<Leader | null> {
+  if (apiMocksEnabled()) return mockGetLeader(campaignId);
+
+  try {
+    const data = await apiFetch<unknown>(
+      `/v1/campaigns/${encodeURIComponent(campaignId)}/leader`,
+      {
+        revalidate: SHORT_REVALIDATE,
+        tags: ["leader", `campaign-leader:${campaignId}`],
+      }
+    );
+    return parseLeader(data);
+  } catch (error) {
+    if (isLeaderVacant(error)) return null;
+    throw error;
+  }
+}
+
+export async function getRounds(
+  campaignId: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<RoundsPage> {
+  if (apiMocksEnabled()) return mockListRounds(campaignId, opts);
+
+  const limit = opts?.limit ?? 50;
+  const offset = opts?.offset ?? 0;
+  const data = await apiFetch<unknown>(
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/rounds`,
+    {
+      revalidate: LIVE_REVALIDATE,
+      tags: ["rounds", `campaign-rounds:${campaignId}`],
+      searchParams: { limit, offset },
+    }
+  );
+  return parseRoundsPage(data, {
+    campaign_id: campaignId,
+    limit,
+    offset,
+  });
+}
+
+export async function getRound(roundId: string): Promise<RoundDetail> {
+  if (apiMocksEnabled()) return mockGetRound(roundId);
+
+  const data = await apiFetch<unknown>(
+    `/v1/rounds/${encodeURIComponent(roundId)}`,
+    {
+      revalidate: LIVE_REVALIDATE,
+      tags: ["rounds", `round:${roundId}`],
+    }
+  );
+  return parseRoundDetail(data);
+}
+
+export async function getScoreProgress(
+  campaignId: string
+): Promise<ScoreProgressSeries> {
+  if (apiMocksEnabled()) return mockGetScoreProgress(campaignId);
+
+  const data = await apiFetch<unknown>(
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/score-progress`,
+    {
+      revalidate: LIVE_REVALIDATE,
+      tags: ["score-progress", `campaign-score-progress:${campaignId}`],
+    }
+  );
+  return parseScoreProgress(data, campaignId);
 }
 
 /**

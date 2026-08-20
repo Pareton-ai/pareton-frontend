@@ -1,0 +1,46 @@
+{
+  "submission": {
+    "id": "24ef7556-a741-423d-8626-074afe078183",
+    "campaign_id": "c02a40b0-6eb3-4853-827e-22d4794b814e",
+    "patch_hash": "sha256:cfb333aa266d0521c38c5595960f1676cf9a457d54f8ceb61e23ab4895afc0ea",
+    "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
+    "baseline_commit": "ee0da84ab9e04ac7610e28580af62c365e898389",
+    "retrieval_url": "https://pareton-s3.s3.us-east-2.amazonaws.com/stage0/campaigns/c02a40b0-6eb3-4853-827e-22d4794b814e/patches/5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy/c628ca24-ddad-47e9-9786-26b4ef7b9894.diff",
+    "commit_block": 8792568,
+    "committed_at": "2026-08-07T12:58:57.556191+00:00",
+    "engine_image_ref": null,
+    "created_at": "2026-08-07T12:58:57.556191+00:00"
+  },
+  "latest_state": "rejected",
+  "jobs": [
+    {
+      "status": "done",
+      "last_error": null,
+      "phase": null,
+      "phase_started_at": null,
+      "heartbeat_at": null,
+      "progress": null
+    }
+  ],
+  "events": [
+    {
+      "state": "committed",
+      "evidence_ref": null,
+      "detail": {},
+      "created_at": "2026-08-07T12:58:57.556191+00:00"
+    },
+    {
+      "state": "picked_up",
+      "evidence_ref": null,
+      "detail": {},
+      "created_at": "2026-08-07T12:59:01.000000+00:00"
+    },
+    {
+      "state": "rejected",
+      "evidence_ref": null,
+      "detail": { "reason": "path_denied" },
+      "created_at": "2026-08-07T12:59:10.000000+00:00"
+    }
+  ],
+  "round": null
+}

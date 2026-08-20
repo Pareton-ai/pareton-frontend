@@ -1,40 +1,57 @@
 /**
- * Contract tests for the submission data layer.
+ * Contract tests for the submission and round data layer.
  *
- * Fixtures are verbatim responses from https://api.pareton.ai (campaign
- * c02a40b0, 2026-08-10). Re-capture rather than editing by hand when the
- * backend changes.
+ * Round fixtures follow `tests/test_api.py` in the backend repo (PAR-80).
  */
 
 import { describe, expect, it } from "vitest";
+import { ApiError, isLeaderVacant, isNotFound } from "@/lib/api/errors";
+import { hasScore } from "@/lib/api/bench";
 import {
-  parseBenchVerdict,
+  MOCK_CAMPAIGN_ID,
+  MOCK_CLOSED_CAMPAIGN_ID,
+  MOCK_DRAFT_CAMPAIGN_ID,
+  mockGetLeader,
+} from "@/lib/api/mocks";
+import {
   parseCampaign,
+  parseLeader,
+  parseRoundDetail,
+  parseRoundsPage,
+  parseScore,
+  parseScoreProgress,
   parseSubmissionDetail,
   parseSubmissionRow,
   parseSubmissionsPage,
   parseSubmissionState,
 } from "@/lib/api/parse";
 import {
-  BENCH_FAIL_REASONS,
   BENCH_PHASE_META,
   BENCH_PHASES,
-  getBenchVerdictMeta,
+  ENTRY_ROLES,
+  ENTRY_STATUSES,
   getFailedSubmissionJob,
   getLiveActivity,
   getRunningSubmissionJob,
-  getSubmissionJob,
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
+  isFailedState,
   isStalled,
+  ROUND_STATUSES,
   SUBMISSION_STAGE_ORDER,
   SUBMISSION_STATE_META,
+  VOID_REASONS,
   type SubmissionJob,
 } from "@/lib/api/types";
 import submissionsList from "./fixtures/campaign-submissions.json";
+import leader from "./fixtures/leader.json";
+import leaderVacant from "./fixtures/leader-vacant.json";
+import roundRunning from "./fixtures/round-running.json";
+import roundVoid from "./fixtures/round-void.json";
+import roundsList from "./fixtures/rounds.json";
+import scoreProgress from "./fixtures/score-progress.json";
 import benchJobFailed from "./fixtures/submission-bench-job-failed.json";
-import rejectedCrossEnv from "./fixtures/submission-rejected-cross-env.json";
-import rejectedPerfScreen from "./fixtures/submission-rejected-perf-screen.json";
+import rejected from "./fixtures/submission-rejected.json";
 
 function without(body: object, key: string): Record<string, unknown> {
   const copy: Record<string, unknown> = { ...body };
@@ -43,7 +60,6 @@ function without(body: object, key: string): Record<string, unknown> {
 }
 
 function settled(job: {
-  kind: string;
   status: string;
   last_error: string | null;
 }): SubmissionJob {
@@ -56,9 +72,8 @@ function settled(job: {
   };
 }
 
-function runningBench(overrides: Partial<SubmissionJob> = {}): SubmissionJob {
+function runningJob(overrides: Partial<SubmissionJob> = {}): SubmissionJob {
   return {
-    kind: "bench",
     status: "running",
     last_error: null,
     phase: "downloading_model",
@@ -69,22 +84,20 @@ function runningBench(overrides: Partial<SubmissionJob> = {}): SubmissionJob {
   };
 }
 
-describe("parseSubmissionDetail against live responses", () => {
+describe("parseSubmissionDetail", () => {
   it("reads the API's top-level latest_state rather than re-deriving it", () => {
     const detail = parseSubmissionDetail(benchJobFailed);
     expect(detail.latest_state).toBe("bench_queued");
-    expect(parseSubmissionDetail(rejectedCrossEnv).latest_state).toBe(
-      "rejected"
-    );
+    expect(parseSubmissionDetail(rejected).latest_state).toBe("rejected");
   });
 
   it("keeps latest_state when it runs ahead of the last event", () => {
     const detail = parseSubmissionDetail({
       ...benchJobFailed,
-      latest_state: "benched",
+      latest_state: "scored",
     });
     expect(detail.events.at(-1)?.state).toBe("bench_queued");
-    expect(detail.latest_state).toBe("benched");
+    expect(detail.latest_state).toBe("scored");
   });
 
   it("falls back to the last event when latest_state is absent or null", () => {
@@ -105,10 +118,8 @@ describe("parseSubmissionDetail against live responses", () => {
   });
 
   it("unwraps the nested submission object", () => {
-    const { submission } = parseSubmissionDetail(rejectedPerfScreen);
-    expect(submission.patch_hash).toBe(
-      rejectedPerfScreen.submission.patch_hash
-    );
+    const { submission } = parseSubmissionDetail(rejected);
+    expect(submission.patch_hash).toBe(rejected.submission.patch_hash);
     expect(submission.campaign_id).toBe("c02a40b0-6eb3-4853-827e-22d4794b814e");
     expect(submission.hotkey).not.toBe("");
     expect(submission.committed_at).not.toBe("");
@@ -122,7 +133,7 @@ describe("parseSubmissionDetail against live responses", () => {
   });
 
   it("returns events in created_at order", () => {
-    const { events } = parseSubmissionDetail(rejectedCrossEnv);
+    const { events } = parseSubmissionDetail(rejected);
     const times = events.map((event) => event.created_at);
     expect(times).toStrictEqual([...times].sort());
   });
@@ -154,46 +165,31 @@ describe("parseSubmissionDetail against live responses", () => {
       "bench_queued",
     ]);
   });
+
+  it("parses a null round on a submission that never sat in one", () => {
+    expect(parseSubmissionDetail(rejected).round).toBeNull();
+    expect(parseSubmissionDetail(benchJobFailed).round).toBeNull();
+  });
 });
 
 describe("submission jobs", () => {
-  it("parses kind, status and last_error", () => {
+  it("parses status and last_error without a kind field", () => {
     const { jobs } = parseSubmissionDetail(benchJobFailed);
     expect(jobs).toStrictEqual([
-      settled({ kind: "gates", status: "done", last_error: null }),
       settled({
-        kind: "bench",
         status: "failed",
         last_error: "bench_engine_baseline_or_unknown",
       }),
     ]);
   });
 
-  it("reorders the API's alphabetical jobs into pipeline order", () => {
-    expect(benchJobFailed.jobs.map((job) => job.kind)).toStrictEqual([
-      "bench",
-      "gates",
-    ]);
-    expect(
-      parseSubmissionDetail(benchJobFailed).jobs.map((job) => job.kind)
-    ).toStrictEqual(["gates", "bench"]);
-  });
-
-  it("keeps unknown job kinds, sorted after the known ones", () => {
-    const jobs = parseSubmissionDetail({
-      ...benchJobFailed,
-      jobs: [{ kind: "score", status: "pending", last_error: null }],
-    }).jobs;
-    expect(jobs.map((job) => job.kind)).toStrictEqual(["score"]);
-  });
-
   it("tolerates an API build with no phase fields", () => {
     const jobs = parseSubmissionDetail({
       ...benchJobFailed,
-      jobs: [{ kind: "bench", status: "running", last_error: null }],
+      jobs: [{ status: "running", last_error: null }],
     }).jobs;
     expect(jobs[0]).toStrictEqual(
-      settled({ kind: "bench", status: "running", last_error: null })
+      settled({ status: "running", last_error: null })
     );
   });
 
@@ -203,44 +199,38 @@ describe("submission jobs", () => {
     ).toStrictEqual([]);
   });
 
-  it("surfaces a bench failure that the event trail hides", () => {
+  it("surfaces a job failure that the event trail hides", () => {
     const detail = parseSubmissionDetail(benchJobFailed);
     expect(detail.latest_state).toBe("bench_queued");
-    expect(detail.bench_verdict).toBeNull();
+    expect(detail.round).toBeNull();
 
     const failed = getFailedSubmissionJob(detail.jobs);
-    expect(failed?.kind).toBe("bench");
     expect(failed?.last_error).toBe("bench_engine_baseline_or_unknown");
     expect(isStalled(detail.latest_state, detail.jobs)).toBe(true);
   });
 
   it("does not report a stall when every job succeeded", () => {
-    const detail = parseSubmissionDetail(rejectedCrossEnv);
+    const detail = parseSubmissionDetail(rejected);
     expect(getFailedSubmissionJob(detail.jobs)).toBeNull();
     expect(isStalled(detail.latest_state, detail.jobs)).toBe(false);
-    expect(getSubmissionJob(detail.jobs, "bench")?.status).toBe("done");
-    expect(getSubmissionJob(detail.jobs, "nope")).toBeNull();
   });
 });
 
 describe("live bench activity", () => {
-  const jobsWith = (job: SubmissionJob) => [
-    settled({ kind: "gates", status: "done", last_error: null }),
-    job,
-  ];
+  const jobsWith = (job: SubmissionJob) => [job];
 
   it("parses the phase, its start, and the heartbeat off a running job", () => {
     const { jobs } = parseSubmissionDetail({
       ...benchJobFailed,
-      jobs: [runningBench()],
+      jobs: [runningJob()],
     });
-    expect(jobs[0]).toStrictEqual(runningBench());
+    expect(jobs[0]).toStrictEqual(runningJob());
   });
 
   it("drops phase text outside the fixed vocabulary", () => {
     const { jobs } = parseSubmissionDetail({
       ...benchJobFailed,
-      jobs: [runningBench({ phase: "rm -rf /" as never })],
+      jobs: [runningJob({ phase: "rm -rf /" as never })],
     });
     expect(jobs[0].phase).toBeNull();
     expect(jobs[0].phase_started_at).toBeNull();
@@ -250,7 +240,7 @@ describe("live bench activity", () => {
 
   it("describes what the bench is doing now", () => {
     const activity = getLiveActivity(
-      jobsWith(runningBench()),
+      jobsWith(runningJob()),
       "2026-08-17T12:20:30+00:00"
     );
     expect(activity?.phase).toBe("downloading_model");
@@ -262,7 +252,7 @@ describe("live bench activity", () => {
 
   it("reports a dead worker as stale rather than as active work", () => {
     const activity = getLiveActivity(
-      jobsWith(runningBench()),
+      jobsWith(runningJob()),
       "2026-08-17T13:20:00+00:00"
     );
     expect(activity?.stale).toBe(true);
@@ -271,7 +261,7 @@ describe("live bench activity", () => {
 
   it("treats a missing heartbeat as stale", () => {
     const activity = getLiveActivity(
-      jobsWith(runningBench({ heartbeat_at: null })),
+      jobsWith(runningJob({ heartbeat_at: null })),
       "2026-08-17T12:20:30+00:00"
     );
     expect(activity?.stale).toBe(true);
@@ -284,22 +274,19 @@ describe("live bench activity", () => {
         HEARTBEAT_STALE_AFTER_MS -
         1_000
     ).toISOString();
-    expect(getLiveActivity(jobsWith(runningBench()), nearly)?.stale).toBe(
-      false
-    );
+    expect(getLiveActivity(jobsWith(runningJob()), nearly)?.stale).toBe(false);
   });
 
   it("shows nothing for a settled or unstarted job", () => {
     expect(
       getLiveActivity(
-        jobsWith(settled({ kind: "bench", status: "done", last_error: null })),
+        jobsWith(settled({ status: "done", last_error: null })),
         "2026-08-17T12:20:30+00:00"
       )
     ).toBeNull();
-    // Claimed but not yet reporting: the stage list already says bench_queued.
     expect(
       getLiveActivity(
-        jobsWith(runningBench({ phase: null })),
+        jobsWith(runningJob({ phase: null })),
         "2026-08-17T12:20:30+00:00"
       )
     ).toBeNull();
@@ -315,37 +302,9 @@ describe("live bench activity", () => {
   });
 
   it("keeps phases out of the pipeline stage vocabulary", () => {
-    // Two vocabularies on purpose: a phase is what is happening now, a state is
-    // a milestone that was reached and recorded.
     for (const phase of BENCH_PHASES) {
       expect(SUBMISSION_STAGE_ORDER).not.toContain(phase);
     }
-  });
-});
-
-describe("bench verdicts", () => {
-  it("keeps every fail_* reason the API can return", () => {
-    for (const reason of BENCH_FAIL_REASONS) {
-      expect(parseBenchVerdict(reason)).toBe(reason);
-      expect(getBenchVerdictMeta(reason)?.tone).toBe("danger");
-    }
-  });
-
-  it("parses the live fail_* verdicts instead of dropping them", () => {
-    expect(parseSubmissionDetail(rejectedCrossEnv).bench_verdict).toBe(
-      "fail_cross_env_speedup"
-    );
-    expect(parseSubmissionDetail(rejectedPerfScreen).bench_verdict).toBe(
-      "fail_perf_screen"
-    );
-  });
-
-  it("treats a pending or unrecognised verdict as null", () => {
-    expect(parseBenchVerdict(null)).toBeNull();
-    expect(parseBenchVerdict("pending")).toBeNull();
-    expect(parseBenchVerdict("fail")).toBeNull();
-    expect(parseBenchVerdict("error")).toBeNull();
-    expect(parseBenchVerdict("pass")).toBe("pass");
   });
 });
 
@@ -355,7 +314,10 @@ describe("pipeline state vocabulary", () => {
       "picked_up",
       "image_pushed",
       "bench_queued",
-      "sampled",
+      "round_assigned",
+      "scored",
+      "disqualified",
+      "infra_failed",
     ]) {
       expect(SUBMISSION_STATE_META).toHaveProperty(state);
       expect(getSubmissionStateMeta(state).label).not.toBe("Committed");
@@ -374,32 +336,18 @@ describe("pipeline state vocabulary", () => {
       "image_pushed",
       "built",
       "bench_queued",
-      "sampled",
-      "correct",
-      "screened",
-      "benched",
+      "round_assigned",
+      "infra_failed",
+      "scored",
+      "disqualified",
     ]);
-  });
-
-  it("keeps a live bench phase on a row and rejects anything else", () => {
-    // A run in progress and one that died hours ago share latest_state, so this
-    // is the only thing on the row that separates them.
-    expect(
-      parseSubmissionRow({ id: "1", bench_phase: "downloading_model" })
-        .bench_phase
-    ).toBe("downloading_model");
-    for (const bad of [null, undefined, "", "not_a_phase", 3]) {
-      expect(
-        parseSubmissionRow({ id: "1", bench_phase: bad }).bench_phase
-      ).toBeNull();
-    }
   });
 
   it("renders an unknown state verbatim instead of collapsing to committed", () => {
     expect(parseSubmissionState("scored")).toBe("scored");
-    const meta = getSubmissionStateMeta("scored");
-    expect(meta.state).toBe("scored");
-    expect(meta.label).toBe("scored");
+    const meta = getSubmissionStateMeta("unknown_state");
+    expect(meta.state).toBe("unknown_state");
+    expect(meta.label).toBe("unknown state");
   });
 
   it("only falls back to committed for a missing state", () => {
@@ -416,14 +364,14 @@ describe("parseSubmissionsPage", () => {
       offset: 0,
     });
     expect(page.total).toBe(3);
-    expect(page.campaign_id).toBe("c02a40b0-6eb3-4853-827e-22d4794b814e");
+    expect(page.campaign_id).toBe("cccccccc-cccc-cccc-cccc-cccccccccccc");
     expect(page.submissions.every((row) => row.committed_at !== "")).toBe(true);
     expect(page.submissions[0].committed_at).toBe(
       submissionsList.submissions[0].committed_at
     );
   });
 
-  it("carries live states and fail_* verdicts through to the table", () => {
+  it("carries live states and round entries through to the table", () => {
     const page = parseSubmissionsPage(submissionsList, {
       campaign_id: "fallback",
       limit: 50,
@@ -431,14 +379,18 @@ describe("parseSubmissionsPage", () => {
     });
     expect(page.submissions.map((row) => row.latest_state)).toStrictEqual([
       "bench_queued",
-      "rejected",
+      "disqualified",
       "rejected",
     ]);
-    expect(page.submissions.map((row) => row.bench_verdict)).toStrictEqual([
-      null,
-      "fail_cross_env_speedup",
-      "fail_perf_screen",
-    ]);
+    expect(page.submissions[0].round).toBeNull();
+    expect(page.submissions[1].round).toEqual({
+      round_id: "11111111-1111-1111-1111-111111111111",
+      ordinal: 1,
+      status: "disqualified",
+      score: null,
+      disqualify_reason: "fail_correctness",
+    });
+    expect(page.submissions[2].round).toBeNull();
   });
 
   it("ignores a legacy submitted_at field", () => {
@@ -466,31 +418,164 @@ describe("parseSubmissionsPage", () => {
   });
 });
 
-/** Thresholds as returned by the live campaign in PAR-68, plus extra fields
- *  the parser must ignore (`calibration`, `num_prompts`, …). */
+describe("parseScore", () => {
+  it("keeps 0.0 as a real score and leaves null alone", () => {
+    expect(parseScore(0)).toBe(0);
+    expect(parseScore(0.0)).toBe(0);
+    expect(parseScore(null)).toBeNull();
+    expect(parseScore(undefined)).toBeNull();
+    expect(parseScore("0")).toBeNull();
+  });
+});
+
+describe("leader", () => {
+  it("parses a seated crown with the full hotkey", () => {
+    const parsed = parseLeader(leader);
+    expect(parsed.hotkey).toBe(
+      "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy"
+    );
+    expect(parsed.last_score).toBe(0.31);
+    expect(parsed.won_at_ordinal).toBe(2);
+    expect(parsed.campaign_id).toBe("cccccccc-cccc-cccc-cccc-cccccccccccc");
+  });
+
+  it("treats a vacant crown as distinct from a missing campaign", () => {
+    const vacant = new ApiError({
+      status: 404,
+      path: "/v1/campaigns/cccccccc-cccc-cccc-cccc-cccccccccccc/leader",
+      detail: leaderVacant.detail,
+    });
+    const missing = new ApiError({
+      status: 404,
+      path: "/v1/campaigns/cccccccc-cccc-cccc-cccc-cccccccccccc/leader",
+      detail: "campaign not found",
+    });
+    expect(isNotFound(vacant)).toBe(true);
+    expect(isLeaderVacant(vacant)).toBe(true);
+    expect(isNotFound(missing)).toBe(true);
+    expect(isLeaderVacant(missing)).toBe(false);
+  });
+});
+
+describe("rounds", () => {
+  it("keeps void ordinals instead of compacting the list", () => {
+    const page = parseRoundsPage(roundsList, {
+      campaign_id: "fallback",
+      limit: 50,
+      offset: 0,
+    });
+    expect(page.rounds.map((row) => row.ordinal)).toStrictEqual([3, 2, 1]);
+    expect(page.rounds[1].status).toBe("void");
+    expect(page.rounds[1].void_reason).toBe("baseline_drift");
+    expect(VOID_REASONS).toContain("baseline_drift");
+    expect(ROUND_STATUSES).toContain("void");
+  });
+
+  it("parses a round mid-flight, including a null-score entry", () => {
+    const detail = parseRoundDetail(roundRunning);
+    expect(detail.status).toBe("running");
+    expect(detail.phase).toBe("sla_bench");
+    expect(detail.progress).toEqual({ entry: 2 });
+    expect(detail.entries.map((e) => e.role)).toEqual([
+      "baseline",
+      "challenger",
+      "challenger",
+    ]);
+    expect(new Set(detail.entries.map((e) => e.role))).toEqual(
+      new Set(ENTRY_ROLES.filter((role) => role !== "leader"))
+    );
+    expect(ENTRY_STATUSES).toContain("disqualified");
+    const baseline = detail.entries[0];
+    const disqualified = detail.entries[1];
+    expect(baseline.score).toBe(0);
+    expect(hasScore(baseline)).toBe(true);
+    expect(disqualified.score).toBeNull();
+    expect(hasScore(disqualified)).toBe(false);
+    expect(disqualified.disqualify_reason).toBe("fail_correctness");
+    expect(disqualified.hotkey).toBe(
+      "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy"
+    );
+  });
+
+  it("parses a void round without inventing a winner or a zero score", () => {
+    const detail = parseRoundDetail(roundVoid);
+    expect(detail.status).toBe("void");
+    expect(detail.void_reason).toBe("baseline_drift");
+    expect(detail.ordinal).toBe(2);
+    expect(detail.winner_submission_id).toBeNull();
+    expect(detail.leader_changed).toBeNull();
+    expect(detail.phase).toBeNull();
+  });
+
+  it("drops phase text outside the vocabulary on round detail", () => {
+    const detail = parseRoundDetail({
+      ...roundRunning,
+      phase: "<script>",
+      progress: { entry: 2 },
+    });
+    expect(detail.phase).toBeNull();
+    expect(detail.progress).toBeNull();
+  });
+
+  it("keeps heartbeat_at when a claimed round has no phase yet", () => {
+    const detail = parseRoundDetail({
+      ...roundRunning,
+      phase: null,
+      phase_started_at: null,
+      progress: null,
+    });
+    expect(detail.phase).toBeNull();
+    expect(detail.heartbeat_at).toBe("2026-08-20T00:01:00+00:00");
+  });
+});
+
+describe("isFailedState", () => {
+  it("treats disqualified and rejected as failure, not infra_failed", () => {
+    expect(isFailedState("disqualified")).toBe(true);
+    expect(isFailedState("rejected")).toBe(true);
+    expect(isFailedState("infra_failed")).toBe(false);
+    expect(isFailedState("scored")).toBe(false);
+  });
+});
+
+describe("mockGetLeader", () => {
+  it("returns null for a vacant mock campaign instead of throwing", () => {
+    expect(mockGetLeader(MOCK_DRAFT_CAMPAIGN_ID)).toBeNull();
+    expect(mockGetLeader(MOCK_CLOSED_CAMPAIGN_ID)).toBeNull();
+    expect(mockGetLeader(MOCK_CAMPAIGN_ID)?.patch_hash).toBeTruthy();
+  });
+});
+
+describe("score progress", () => {
+  it("keeps void ordinals as gaps and leaves null scores as null", () => {
+    const series = parseScoreProgress(scoreProgress);
+    expect(series.points.map((p) => p.ordinal)).toStrictEqual([1, 2, 3]);
+    expect(series.points.map((p) => p.leader_score)).toStrictEqual([
+      0.31,
+      null,
+      0.4,
+    ]);
+    expect(series.points[0].entries[0].score).toBeNull();
+    expect(hasScore(series.points[0].entries[0])).toBe(false);
+    expect(series.points[1].status).toBe("void");
+    expect(series.points[1].entries).toEqual([]);
+  });
+});
+
 const LIVE_CORRECTNESS = {
   thresholds: {
     argmax_mismatch_rate: 0.001,
     max_abs_logprob_diff: 0.164,
     mean_abs_logprob_diff: 0.0246,
   },
-  calibration: {
-    calibrated_at: "2026-08-17T11:23:46Z",
-    safety_factor: 2.0,
-  },
   num_prompts: 32,
 };
 
-const LIVE_CROSS_ENV = {
-  aggregate: "min",
-  speedup_metric: "output_tokens_per_s_ratio",
-  min_speedup_each: 1.1111,
-};
-
 describe("parseCampaign correctness thresholds", () => {
-  it("keeps the three enforced numbers and drops calibration", () => {
+  it("keeps the three enforced numbers and drops extra keys", () => {
     const campaign = parseCampaign({
-      bench: { correctness: LIVE_CORRECTNESS, cross_env: LIVE_CROSS_ENV },
+      bench: { correctness: LIVE_CORRECTNESS },
+      scoring_rule: { name: "median_e2e_speedup" },
     });
     expect(campaign.bench.correctness).toStrictEqual({
       thresholds: {
@@ -499,7 +584,8 @@ describe("parseCampaign correctness thresholds", () => {
         max_abs_logprob_diff: 0.164,
       },
     });
-    expect(campaign.bench.correctness).not.toHaveProperty("calibration");
+    expect(campaign.scoring_rule).toEqual({ name: "median_e2e_speedup" });
+    expect(campaign.bench.correctness).not.toHaveProperty("num_prompts");
   });
 
   it("prints the live numbers exactly, without rounding or percents", () => {
@@ -513,17 +599,6 @@ describe("parseCampaign correctness thresholds", () => {
     expect(String(thresholds.argmax_mismatch_rate)).toBe("0.001");
     expect(String(thresholds.mean_abs_logprob_diff)).toBe("0.0246");
     expect(String(thresholds.max_abs_logprob_diff)).toBe("0.164");
-  });
-
-  it("always keeps the speedup floor, including four decimal places", () => {
-    const { cross_env } = parseCampaign({
-      bench: { cross_env: LIVE_CROSS_ENV },
-    }).bench;
-    expect(cross_env.min_speedup_each).toBe(1.1111);
-    expect(cross_env.min_speedup_each.toFixed(4)).toBe("1.1111");
-    expect(
-      `${cross_env.min_speedup_each.toFixed(4)}× ${cross_env.speedup_metric.replaceAll("_", " ")}`
-    ).toBe("1.1111× output tokens per s ratio");
   });
 
   it("falls back to null when correctness is missing", () => {

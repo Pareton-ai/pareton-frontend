@@ -149,7 +149,7 @@ async function SubmissionSections({
 
       {/* Verdict evidence outranks provenance: these numbers are why the page
           gets opened, so they must not sit below a 13-row timeline. */}
-      <BenchReports reports={detail.bench_reports} campaign={campaign} />
+      <BenchReports round={detail.round} />
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
         <div className="min-w-0">
