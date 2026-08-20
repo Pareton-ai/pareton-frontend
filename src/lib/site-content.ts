@@ -6,10 +6,10 @@
 
 export const siteContent = {
   name: "Pareton",
-  eyebrow: "Inference optimization infrastructure",
-  title: "Verified speedups for your inference",
+  eyebrow: "Inference optimization",
+  title: "Faster. Cheaper. Verified on yours.",
   /** Substring of `title` rendered italic on the page. */
-  titleEmphasis: "your",
+  titleEmphasis: "yours",
   heroDescription:
     "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving configuration space until a better engine holds on the workload you already run.",
   buildStatus: "Coming Soon · Bittensor Subnet 10",
@@ -147,7 +147,7 @@ export const siteContent = {
     secondary: { label: "Open the dashboard", href: "/dashboard" },
   },
 
-  tagline: "Verified speedups for your inference",
+  tagline: "Faster. Cheaper. Verified on yours.",
 } as const;
 
 export type SiteContent = typeof siteContent;

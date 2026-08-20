@@ -168,6 +168,7 @@ html:has(.landing) body {
 
 .landing .hero .kicker {
   color: var(--blue-deep);
+  font-size: 0.8125rem;
 }
 
 .landing .hero h1 {
