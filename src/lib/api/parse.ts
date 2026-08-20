@@ -378,7 +378,7 @@ export function parseRoundDetail(value: unknown): RoundDetail {
     phase,
     phase_started_at:
       phase === null ? null : asNullableString(o.phase_started_at),
-    heartbeat_at: phase === null ? null : asNullableString(o.heartbeat_at),
+    heartbeat_at: asNullableString(o.heartbeat_at),
     progress:
       phase !== null && o.progress !== null && typeof o.progress === "object"
         ? asRecord(o.progress)

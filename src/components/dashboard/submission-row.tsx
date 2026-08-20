@@ -9,6 +9,7 @@ import {
   truncateMiddle,
 } from "@/lib/api/format";
 import {
+  isFailedState,
   stageIndex,
   SUBMISSION_PHASES,
   type SubmissionRow as SubmissionRowData,
@@ -19,7 +20,7 @@ import {
  * Pipeline progress as three segments: intake, build, round.
  */
 function PhaseMeter({ state }: { state: SubmissionStateName }) {
-  const failed = state === "rejected" || state === "disqualified";
+  const failed = isFailedState(state);
   const reached = stageIndex(state);
   if (reached < 0) return <span className="w-12 shrink-0" aria-hidden />;
 

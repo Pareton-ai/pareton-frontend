@@ -777,13 +777,7 @@ export function mockGetSubmissionBuildLog(
 
 export function mockGetLeader(campaignId: string): Leader | null {
   mockGetCampaign(campaignId);
-  if (campaignId !== MOCK_CAMPAIGN_ID) {
-    throw new ApiError({
-      status: 404,
-      path: `/v1/campaigns/${campaignId}/leader`,
-      detail: "leader is vacant",
-    });
-  }
+  if (campaignId !== MOCK_CAMPAIGN_ID) return null;
   return MOCK_LEADER;
 }
 

@@ -29,6 +29,7 @@ import { campaignHref, minerExplorerHref } from "@/lib/routes";
 import {
   firstEventByState,
   getSubmissionStateMeta,
+  isFailedState,
   isStalled,
   isTerminalState,
   stageIndex,
@@ -247,7 +248,7 @@ export function SubmissionStats({
   const { submission, events, latest_state: latestState } = detail;
   const stateMeta = getSubmissionStateMeta(latestState);
   const stalled = isStalled(latestState, detail.jobs);
-  const halted = latestState === "rejected" || stalled;
+  const halted = isFailedState(latestState) || stalled;
   const active = !isTerminalState(latestState) && !stalled;
 
   const reached = Math.max(

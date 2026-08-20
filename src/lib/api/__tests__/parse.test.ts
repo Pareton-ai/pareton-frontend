@@ -8,6 +8,12 @@ import { describe, expect, it } from "vitest";
 import { ApiError, isLeaderVacant, isNotFound } from "@/lib/api/errors";
 import { hasScore } from "@/lib/api/bench";
 import {
+  MOCK_CAMPAIGN_ID,
+  MOCK_CLOSED_CAMPAIGN_ID,
+  MOCK_DRAFT_CAMPAIGN_ID,
+  mockGetLeader,
+} from "@/lib/api/mocks";
+import {
   parseCampaign,
   parseLeader,
   parseRoundDetail,
@@ -29,6 +35,7 @@ import {
   getRunningSubmissionJob,
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
+  isFailedState,
   isStalled,
   ROUND_STATUSES,
   SUBMISSION_STAGE_ORDER,
@@ -508,6 +515,34 @@ describe("rounds", () => {
     });
     expect(detail.phase).toBeNull();
     expect(detail.progress).toBeNull();
+  });
+
+  it("keeps heartbeat_at when a claimed round has no phase yet", () => {
+    const detail = parseRoundDetail({
+      ...roundRunning,
+      phase: null,
+      phase_started_at: null,
+      progress: null,
+    });
+    expect(detail.phase).toBeNull();
+    expect(detail.heartbeat_at).toBe("2026-08-20T00:01:00+00:00");
+  });
+});
+
+describe("isFailedState", () => {
+  it("treats disqualified and rejected as failure, not infra_failed", () => {
+    expect(isFailedState("disqualified")).toBe(true);
+    expect(isFailedState("rejected")).toBe(true);
+    expect(isFailedState("infra_failed")).toBe(false);
+    expect(isFailedState("scored")).toBe(false);
+  });
+});
+
+describe("mockGetLeader", () => {
+  it("returns null for a vacant mock campaign instead of throwing", () => {
+    expect(mockGetLeader(MOCK_DRAFT_CAMPAIGN_ID)).toBeNull();
+    expect(mockGetLeader(MOCK_CLOSED_CAMPAIGN_ID)).toBeNull();
+    expect(mockGetLeader(MOCK_CAMPAIGN_ID)?.patch_hash).toBeTruthy();
   });
 });
 

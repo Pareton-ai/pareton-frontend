@@ -537,6 +537,14 @@ export function isTerminalState(state: string): boolean {
   return state === "scored" || state === "disqualified" || state === "rejected";
 }
 
+/**
+ * Terminal failure. `infra_failed` is not included: that state requeues once
+ * and must not paint as a red halt.
+ */
+export function isFailedState(state: string): boolean {
+  return state === "disqualified" || state === "rejected";
+}
+
 /** Whether the pipeline got far enough for a build log to exist. */
 export function reachedBuild(states: readonly string[]): boolean {
   const buildIndex = stageIndex("building");
