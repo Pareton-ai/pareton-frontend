@@ -39,6 +39,15 @@ export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
+/** Vacant crown: HTTP 404 with detail "leader is vacant", not "campaign not found". */
+export function isLeaderVacant(error: unknown): boolean {
+  return (
+    isNotFound(error) &&
+    error instanceof ApiError &&
+    error.detail === "leader is vacant"
+  );
+}
+
 /** True when the API reports DB/backend unavailable (typically HTTP 503). */
 export function isUnavailable(error: unknown): boolean {
   return error instanceof ApiError && error.status === 503;

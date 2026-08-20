@@ -1,7 +1,6 @@
 import { Cpu, Layers, Timer, TrendingUp } from "lucide-react";
 import { gpuIconFor, shortSku } from "@/components/dashboard/gpu";
 import { StatStrip, StatTile } from "@/components/dashboard/panel";
-import { formatRatio } from "@/lib/api/format";
 import type { Campaign, SubmissionsPage } from "@/lib/api/types";
 
 /** Pass / rejected / in-flight split of the submissions listed below. */
@@ -72,9 +71,10 @@ function SubmissionsTile({ data }: { data: SubmissionsPage | null }) {
   }
 
   const rows = data.submissions;
-  const pass = rows.filter((row) => row.bench_verdict === "pass").length;
+  const pass = rows.filter((row) => row.latest_state === "scored").length;
   const fail = rows.filter(
-    (row) => row.bench_verdict !== null && row.bench_verdict !== "pass"
+    (row) =>
+      row.latest_state === "disqualified" || row.latest_state === "rejected"
   ).length;
   const pending = rows.length - pass - fail;
   // Only the loaded page is available; a bar next to the campaign total would
@@ -113,8 +113,8 @@ export function CampaignStats({
   campaign: Campaign;
   submissions: SubmissionsPage | null;
 }) {
-  const { cross_env } = campaign.bench;
   const skuCount = campaign.gpu_skus.length;
+  const scoringName = campaign.scoring_rule.name.replaceAll("_", " ");
 
   return (
     <StatStrip label="Campaign summary" className="grid-cols-2 lg:grid-cols-4">
@@ -122,13 +122,9 @@ export function CampaignStats({
       <SubmissionsTile data={submissions} />
       <StatTile
         icon={TrendingUp}
-        label="Speedup floor"
-        value={`≥ ${formatRatio(cross_env.min_speedup_each)}`}
-        hint={
-          skuCount > 1
-            ? `${cross_env.aggregate} of ${skuCount} GPU SKUs`
-            : cross_env.speedup_metric.replaceAll("_", " ")
-        }
+        label="Scoring rule"
+        value={scoringName || "—"}
+        hint={skuCount > 1 ? `${skuCount} GPU SKUs` : campaign.gpu_skus[0]}
       />
       <StatTile
         icon={Timer}

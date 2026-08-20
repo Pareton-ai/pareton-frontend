@@ -2,22 +2,27 @@
 
 import {
   isBenchPhase,
-  isBenchVerdict,
-  SUBMISSION_JOB_KINDS,
-  type BenchReport,
-  type BenchVerdict,
   type Campaign,
   type CampaignBench,
   type CampaignBenchCorrectness,
-  type CampaignBenchCrossEnv,
   type CampaignBenchModel,
   type CampaignSla,
   type CampaignStatus,
   type CustomerSignoff,
+  type Leader,
+  type Round,
+  type RoundDetail,
+  type RoundEntry,
+  type RoundsPage,
+  type ScoreProgressEntry,
+  type ScoreProgressPoint,
+  type ScoreProgressSeries,
+  type ScoringRule,
   type Submission,
   type SubmissionDetail,
   type SubmissionEvent,
   type SubmissionJob,
+  type SubmissionRound,
   type SubmissionRow,
   type SubmissionsPage,
   type SubmissionStateName,
@@ -51,8 +56,20 @@ function asNullableNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function asNullableBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Score on the wire. 0.0 is a real score (baseline speed). null stays null;
+ * do not coerce missing or invalid values to 0.
+ */
+export function parseScore(value: unknown): number | null {
+  return asNullableNumber(value);
 }
 
 function parseStatus(value: unknown): CampaignStatus {
@@ -80,15 +97,6 @@ function parseBenchModel(value: unknown): CampaignBenchModel {
   };
 }
 
-function parseCrossEnv(value: unknown): CampaignBenchCrossEnv {
-  const o = asRecord(value);
-  return {
-    aggregate: asString(o.aggregate),
-    speedup_metric: asString(o.speedup_metric),
-    min_speedup_each: asNumber(o.min_speedup_each, 1),
-  };
-}
-
 function parseCorrectness(value: unknown): CampaignBenchCorrectness | null {
   if (value == null) return null;
   const t = asRecord(asRecord(value).thresholds);
@@ -111,17 +119,19 @@ function parseCorrectness(value: unknown): CampaignBenchCorrectness | null {
   };
 }
 
+function parseScoringRule(value: unknown): ScoringRule {
+  return { name: asString(asRecord(value).name) };
+}
+
 function parseBench(value: unknown): CampaignBench {
   const o = asRecord(value);
   return {
     model: parseBenchModel(o.model),
-    cross_env: parseCrossEnv(o.cross_env),
     gpu_count: asNumber(o.gpu_count, 1),
     serve_args: Array.isArray(o.serve_args)
       ? o.serve_args.filter((a): a is string => typeof a === "string")
       : null,
     correctness: parseCorrectness(o.correctness),
-    perf_screen: o.perf_screen ?? null,
     baseline_engine_image_digest: asString(o.baseline_engine_image_digest),
   };
 }
@@ -159,6 +169,7 @@ export function parseCampaign(value: unknown): Campaign {
     priority_metric: asString(o.priority_metric),
     success_threshold: asString(o.success_threshold),
     bench: parseBench(o.bench),
+    scoring_rule: parseScoringRule(o.scoring_rule),
   };
 }
 
@@ -166,13 +177,23 @@ export function parseCampaigns(value: unknown): Campaign[] {
   return asArray(asRecord(value).campaigns).map(parseCampaign);
 }
 
-export function parseBenchVerdict(value: unknown): BenchVerdict {
-  return isBenchVerdict(value) ? value : null;
-}
-
 /** Preserve unknown states; do not coerce them to `committed`. */
 export function parseSubmissionState(value: unknown): SubmissionStateName {
   return typeof value === "string" && value ? value : "committed";
+}
+
+export function parseSubmissionRound(value: unknown): SubmissionRound | null {
+  if (value == null) return null;
+  const o = asRecord(value);
+  const round_id = asString(o.round_id);
+  if (!round_id) return null;
+  return {
+    round_id,
+    ordinal: asNumber(o.ordinal),
+    status: asString(o.status),
+    score: parseScore(o.score),
+    disqualify_reason: asNullableString(o.disqualify_reason),
+  };
 }
 
 export function parseSubmissionRow(value: unknown): SubmissionRow {
@@ -184,8 +205,7 @@ export function parseSubmissionRow(value: unknown): SubmissionRow {
     hotkey: asString(o.hotkey),
     committed_at: asString(o.committed_at),
     latest_state: parseSubmissionState(o.latest_state),
-    bench_verdict: parseBenchVerdict(o.bench_verdict),
-    bench_phase: isBenchPhase(o.bench_phase) ? o.bench_phase : null,
+    round: parseSubmissionRound(o.round),
   };
 }
 
@@ -229,26 +249,11 @@ function parseSubmission(value: unknown): Submission {
   };
 }
 
-function parseBenchReport(value: unknown): BenchReport {
-  const o = asRecord(value);
-  return {
-    task_id: asString(o.task_id),
-    stage: asString(o.stage),
-    verdict: asString(o.verdict),
-    report: asRecord(o.report),
-    evidence_s3_url: asNullableString(o.evidence_s3_url),
-    gpu_sku: asNullableString(o.gpu_sku),
-    mock: o.mock === true,
-    created_at: asString(o.created_at),
-  };
-}
-
 export function parseSubmissionJob(value: unknown): SubmissionJob {
   const o = asRecord(value);
   // Unknown phase names have no label; drop the live block with them.
   const phase = isBenchPhase(o.phase) ? o.phase : null;
   return {
-    kind: asString(o.kind),
     status: asString(o.status),
     last_error: asNullableString(o.last_error),
     phase,
@@ -260,20 +265,6 @@ export function parseSubmissionJob(value: unknown): SubmissionJob {
         ? asRecord(o.progress)
         : null,
   };
-}
-
-/** Sort into pipeline order; the API returns jobs alphabetically by kind. */
-function parseSubmissionJobs(value: unknown): SubmissionJob[] {
-  const known: readonly string[] = SUBMISSION_JOB_KINDS;
-  const rank = (kind: string) => {
-    const index = known.indexOf(kind);
-    return index === -1 ? known.length : index;
-  };
-  return asArray(value)
-    .map(parseSubmissionJob)
-    .sort(
-      (a, b) => rank(a.kind) - rank(b.kind) || a.kind.localeCompare(b.kind)
-    );
 }
 
 /** Prefer API `latest_state`; fall back to the last event. */
@@ -295,9 +286,139 @@ export function parseSubmissionDetail(value: unknown): SubmissionDetail {
   return {
     submission: parseSubmission(o.submission),
     events,
-    jobs: parseSubmissionJobs(o.jobs),
-    bench_reports: asArray(o.bench_reports).map(parseBenchReport),
-    bench_verdict: parseBenchVerdict(o.bench_verdict),
+    jobs: asArray(o.jobs).map(parseSubmissionJob),
+    round: parseSubmissionRound(o.round),
     latest_state: resolveLatestState(o.latest_state, events),
+  };
+}
+
+export function parseLeader(value: unknown): Leader {
+  const o = asRecord(value);
+  return {
+    campaign_id: asString(o.campaign_id),
+    submission_id: asString(o.submission_id),
+    patch_hash: asString(o.patch_hash),
+    hotkey: asString(o.hotkey),
+    engine_image_ref: asString(o.engine_image_ref),
+    won_at_round_id: asString(o.won_at_round_id),
+    won_at_ordinal: asNumber(o.won_at_ordinal),
+    last_score: asNumber(o.last_score),
+    last_scored_round_id: asNullableString(o.last_scored_round_id),
+    updated_at: asString(o.updated_at),
+  };
+}
+
+function parseRoundSummary(value: unknown): Round {
+  const o = asRecord(value);
+  return {
+    id: asString(o.id),
+    ordinal: asNumber(o.ordinal),
+    status: asString(o.status),
+    void_reason: asNullableString(o.void_reason),
+    gpu_sku: asString(o.gpu_sku),
+    seed_block: asNumber(o.seed_block),
+    seed_block_hash: asString(o.seed_block_hash),
+    entry_count: asNumber(o.entry_count),
+    leader_changed: asNullableBoolean(o.leader_changed),
+    created_at: asString(o.created_at),
+    completed_at: asNullableString(o.completed_at),
+  };
+}
+
+export function parseRoundsPage(
+  value: unknown,
+  fallback: { campaign_id: string; limit: number; offset: number }
+): RoundsPage {
+  const o = asRecord(value);
+  return {
+    campaign_id: asString(o.campaign_id, fallback.campaign_id),
+    total: asNumber(o.total),
+    limit: asNumber(o.limit, fallback.limit),
+    offset: asNumber(o.offset, fallback.offset),
+    rounds: asArray(o.rounds).map(parseRoundSummary),
+  };
+}
+
+export function parseRoundEntry(value: unknown): RoundEntry {
+  const o = asRecord(value);
+  return {
+    id: asNumber(o.id),
+    submission_id: asNullableString(o.submission_id),
+    patch_hash: asNullableString(o.patch_hash),
+    hotkey: asNullableString(o.hotkey),
+    role: asString(o.role),
+    engine_image_ref: asString(o.engine_image_ref),
+    status: asString(o.status),
+    score: parseScore(o.score),
+    disqualify_reason: asNullableString(o.disqualify_reason),
+    started_at: asNullableString(o.started_at),
+    completed_at: asNullableString(o.completed_at),
+  };
+}
+
+export function parseRoundDetail(value: unknown): RoundDetail {
+  const o = asRecord(value);
+  const phase = isBenchPhase(o.phase) ? o.phase : null;
+  return {
+    id: asString(o.id),
+    campaign_id: asString(o.campaign_id),
+    ordinal: asNumber(o.ordinal),
+    status: asString(o.status),
+    void_reason: asNullableString(o.void_reason),
+    gpu_sku: asString(o.gpu_sku),
+    seed_block: asNumber(o.seed_block),
+    seed_block_hash: asString(o.seed_block_hash),
+    seed_hex: asString(o.seed_hex),
+    sampled_trace_sha256: asString(o.sampled_trace_sha256),
+    scoring_rule: asRecord(o.scoring_rule),
+    incumbent_submission_id: asNullableString(o.incumbent_submission_id),
+    winner_submission_id: asNullableString(o.winner_submission_id),
+    leader_changed: asNullableBoolean(o.leader_changed),
+    baseline_drift: asNullableNumber(o.baseline_drift),
+    phase,
+    phase_started_at:
+      phase === null ? null : asNullableString(o.phase_started_at),
+    heartbeat_at: phase === null ? null : asNullableString(o.heartbeat_at),
+    progress:
+      phase !== null && o.progress !== null && typeof o.progress === "object"
+        ? asRecord(o.progress)
+        : null,
+    created_at: asString(o.created_at),
+    started_at: asNullableString(o.started_at),
+    completed_at: asNullableString(o.completed_at),
+    entries: asArray(o.entries).map(parseRoundEntry),
+  };
+}
+
+function parseScoreProgressEntry(value: unknown): ScoreProgressEntry {
+  const o = asRecord(value);
+  return {
+    submission_id: asString(o.submission_id),
+    hotkey: asNullableString(o.hotkey),
+    role: asString(o.role),
+    status: asString(o.status),
+    score: parseScore(o.score),
+  };
+}
+
+function parseScoreProgressPoint(value: unknown): ScoreProgressPoint {
+  const o = asRecord(value);
+  return {
+    round_id: asString(o.round_id),
+    ordinal: asNumber(o.ordinal),
+    status: asString(o.status),
+    leader_score: parseScore(o.leader_score),
+    entries: asArray(o.entries).map(parseScoreProgressEntry),
+  };
+}
+
+export function parseScoreProgress(
+  value: unknown,
+  fallbackCampaignId = ""
+): ScoreProgressSeries {
+  const o = asRecord(value);
+  return {
+    campaign_id: asString(o.campaign_id, fallbackCampaignId),
+    points: asArray(o.points).map(parseScoreProgressPoint),
   };
 }

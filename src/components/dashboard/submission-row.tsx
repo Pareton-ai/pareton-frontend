@@ -1,10 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
-import {
-  BenchVerdictChip,
-  PipelineChip,
-} from "@/components/dashboard/status-chip";
+import { PipelineChip } from "@/components/dashboard/status-chip";
 import {
   formatUtc,
   formatUtcShort,
@@ -14,29 +11,16 @@ import {
 import {
   stageIndex,
   SUBMISSION_PHASES,
-  type BenchVerdict,
   type SubmissionRow as SubmissionRowData,
   type SubmissionStateName,
 } from "@/lib/api/types";
 
 /**
- * Pipeline progress as three segments: intake, build, bench.
- *
- * A rejected row carries no stage of its own, so a bench verdict stands in for
- * one: reaching a verdict means intake and build cleared and the run died in the
- * bench phase. Rejections without a verdict failed an earlier gate at an unknown
- * point, so those draw nothing and leave the chip to report it.
+ * Pipeline progress as three segments: intake, build, round.
  */
-function PhaseMeter({
-  state,
-  verdict,
-}: {
-  state: SubmissionStateName;
-  verdict: BenchVerdict;
-}) {
-  const failed = state === "rejected";
-  const reached =
-    failed && verdict !== null ? stageIndex("bench_queued") : stageIndex(state);
+function PhaseMeter({ state }: { state: SubmissionStateName }) {
+  const failed = state === "rejected" || state === "disqualified";
+  const reached = stageIndex(state);
   if (reached < 0) return <span className="w-12 shrink-0" aria-hidden />;
 
   return (
@@ -101,12 +85,22 @@ export function SubmissionRow({
       </td>
       <td className="whitespace-nowrap px-3 py-3.5">
         <span className="flex items-center gap-2.5">
-          <PhaseMeter state={row.latest_state} verdict={row.bench_verdict} />
-          <PipelineChip state={row.latest_state} benchPhase={row.bench_phase} />
+          <PhaseMeter state={row.latest_state} />
+          <PipelineChip state={row.latest_state} />
         </span>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5">
-        <BenchVerdictChip verdict={row.bench_verdict} />
+        {row.round == null ? (
+          <span className="font-mono text-body text-muted">—</span>
+        ) : row.round.score === null ? (
+          <span className="font-mono text-body text-muted">
+            {row.round.status.replaceAll("_", " ")}
+          </span>
+        ) : (
+          <span className="font-mono text-body tabular-nums">
+            {row.round.score}
+          </span>
+        )}
       </td>
       <td
         aria-hidden

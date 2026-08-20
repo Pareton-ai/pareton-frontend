@@ -1,0 +1,47 @@
+{
+  "campaign_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "total": 3,
+  "limit": 50,
+  "offset": 0,
+  "rounds": [
+    {
+      "id": "cccccccc-cccc-cccc-cccc-000000000003",
+      "ordinal": 3,
+      "status": "complete",
+      "void_reason": null,
+      "gpu_sku": "H200",
+      "seed_block": 1003,
+      "seed_block_hash": "0x0000000000000000000000000000000000000000000000000000000000000003",
+      "leader_changed": true,
+      "created_at": "2026-08-20T00:00:00+00:00",
+      "completed_at": "2026-08-20T04:00:00+00:00",
+      "entry_count": 7
+    },
+    {
+      "id": "cccccccc-cccc-cccc-cccc-000000000002",
+      "ordinal": 2,
+      "status": "void",
+      "void_reason": "baseline_drift",
+      "gpu_sku": "H200",
+      "seed_block": 1002,
+      "seed_block_hash": "0x0000000000000000000000000000000000000000000000000000000000000002",
+      "leader_changed": null,
+      "created_at": "2026-08-19T00:00:00+00:00",
+      "completed_at": "2026-08-19T01:00:00+00:00",
+      "entry_count": 4
+    },
+    {
+      "id": "cccccccc-cccc-cccc-cccc-000000000001",
+      "ordinal": 1,
+      "status": "complete",
+      "void_reason": null,
+      "gpu_sku": "H200",
+      "seed_block": 1001,
+      "seed_block_hash": "0x0000000000000000000000000000000000000000000000000000000000000001",
+      "leader_changed": false,
+      "created_at": "2026-08-18T00:00:00+00:00",
+      "completed_at": "2026-08-18T06:00:00+00:00",
+      "entry_count": 5
+    }
+  ]
+}

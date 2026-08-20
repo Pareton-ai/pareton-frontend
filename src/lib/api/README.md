@@ -29,9 +29,9 @@ host directly.
    npm run api:types   # reads the deployed API
    ```
 
-   Before the backend deploys, generate from the local app instead — otherwise
-   you overwrite `schema.d.ts` with a version that lacks `SubmissionState` and
-   break the build:
+   Before the backend deploys, generate from the local app instead. Otherwise
+   you overwrite `schema.d.ts` with a version that lacks the new routes and
+   the current `SubmissionState` union, and break the build:
 
    ```bash
    (cd ../pareton && .venv/bin/python -c \

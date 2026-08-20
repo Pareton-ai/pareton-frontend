@@ -14,14 +14,12 @@
   "latest_state": "bench_queued",
   "jobs": [
     {
-      "kind": "bench",
       "status": "failed",
-      "last_error": "bench_engine_baseline_or_unknown"
-    },
-    {
-      "kind": "gates",
-      "status": "done",
-      "last_error": null
+      "last_error": "bench_engine_baseline_or_unknown",
+      "phase": null,
+      "phase_started_at": null,
+      "heartbeat_at": null,
+      "progress": null
     }
   ],
   "events": [
@@ -109,6 +107,5 @@
       "created_at": "2026-08-09T16:53:24.089462+00:00"
     }
   ],
-  "bench_reports": [],
-  "bench_verdict": null
+  "round": null
 }
