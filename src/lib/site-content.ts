@@ -31,10 +31,8 @@ export const siteContent = {
 
   nav: [
     { label: "Method", href: "#method" },
-    { label: "Why it holds", href: "#laws" },
-    { label: "Dashboard", href: "/dashboard" },
     { label: "Docs", href: "/docs" },
-    { label: "View a campaign", href: "/dashboard", end: true },
+    { label: "Dashboard", href: "/dashboard", end: true },
   ],
 
   /** Agent Markdown link list. Broader than the visible nav. */
@@ -44,6 +42,19 @@ export const siteContent = {
     { label: "X", href: "https://x.com/pareton_ai" },
     { label: "GitHub", href: "https://github.com/pareton-ai" },
     { label: "Contact", href: "mailto:xavier@pareton.ai" },
+  ],
+
+  /** Icon buttons in the close banner. `id` maps to an icon in socials.tsx. */
+  socials: [
+    { id: "x", label: "X / Twitter", href: "https://x.com/pareton_ai" },
+    {
+      id: "linkedin",
+      label: "LinkedIn",
+      href: "https://www.linkedin.com/company/pareton",
+    },
+    { id: "discord", label: "Discord", href: "https://discord.gg/bittensor" },
+    { id: "github", label: "GitHub", href: "https://github.com/pareton-ai" },
+    { id: "email", label: "Email", href: "mailto:xavier@pareton.ai" },
   ],
 
   heroCta: { label: "Talk to us", href: "mailto:xavier@pareton.ai" },
