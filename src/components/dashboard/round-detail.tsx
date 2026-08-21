@@ -111,13 +111,16 @@ export function RoundVoidNotice({ round }: { round: RoundDetail }) {
 /**
  * Best challenger score in the round.
  *
- * Baseline is excluded: its 0.0 is the reference every other entry is measured
- * against, so counting it would report a top score for a round nobody scored
- * in. A null score means disqualified or infra-failed, never zero.
+ * Baseline and the incumbent leader are excluded. Baseline's 0.0 is the
+ * reference line, and the leader already holds the crown: counting either
+ * would report a top score for a round no challenger scored in. A null score
+ * means disqualified or infra-failed, never zero.
  */
-function topChallengerScore(entries: readonly RoundEntry[]): number | null {
+export function topChallengerScore(
+  entries: readonly RoundEntry[]
+): number | null {
   const scores = entries.flatMap((entry) =>
-    entry.role === "baseline" || entry.score === null ? [] : [entry.score]
+    entry.role === "challenger" && entry.score !== null ? [entry.score] : []
   );
   return scores.length === 0 ? null : Math.max(...scores);
 }
