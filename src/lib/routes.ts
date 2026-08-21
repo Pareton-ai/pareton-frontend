@@ -6,6 +6,33 @@ export function campaignHref(campaignId: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}`;
 }
 
+/**
+ * Campaign page with independent paginators.
+ *
+ * `page` is the rounds table (the primary listing). `submissions` is the
+ * flat outcome list underneath. Page 1 is omitted so the bare campaign URL
+ * stays the first page of both.
+ */
+export function campaignListHref(
+  campaignId: string,
+  query: { page?: number; submissions?: number } = {}
+): string {
+  const params = new URLSearchParams();
+  if (query.page != null && query.page > 1) {
+    params.set("page", String(query.page));
+  }
+  if (query.submissions != null && query.submissions > 1) {
+    params.set("submissions", String(query.submissions));
+  }
+  const qs = params.toString();
+  const base = campaignHref(campaignId);
+  return qs ? `${base}?${qs}` : base;
+}
+
+export function roundHref(campaignId: string, ordinal: number): string {
+  return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/rounds/${ordinal}`;
+}
+
 export function submissionHref(campaignId: string, patchHash: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`;
 }

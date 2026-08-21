@@ -27,7 +27,7 @@ const MOCK_ROUND_1 = "11111111-1111-1111-1111-111111111111";
 const MOCK_ROUND_2 = "22222222-2222-2222-2222-222222222222";
 const MOCK_ROUND_3 = "33333333-3333-3333-3333-333333333333";
 
-/** Enough rows to exercise pagination (PAGE_SIZE = 25). */
+/** Enough rows to exercise pagination (`PAGE_SIZE = 10` in submissions-table). */
 const EXTRA_SUBMISSION_COUNT = 36;
 
 const HOTKEYS = [
@@ -501,7 +501,103 @@ function mockRoundSummary(
   };
 }
 
+/** Newest first. Extra rows exist so the campaign table paginates. */
+const EXTRA_ROUND_SPECS: Array<{
+  ordinal: number;
+  status: Round["status"];
+  over?: Partial<Round>;
+}> = [
+  {
+    ordinal: 14,
+    status: "pending",
+    over: {
+      leader_changed: null,
+      entry_count: 3,
+      created_at: hoursAgo(0.4),
+      completed_at: null,
+    },
+  },
+  {
+    ordinal: 13,
+    status: "running",
+    over: {
+      leader_changed: null,
+      entry_count: 8,
+      created_at: hoursAgo(2),
+      completed_at: null,
+    },
+  },
+  {
+    ordinal: 12,
+    status: "complete",
+    over: { leader_changed: true, entry_count: 7 },
+  },
+  {
+    ordinal: 11,
+    status: "void",
+    over: {
+      void_reason: "heartbeat_stale",
+      leader_changed: null,
+      entry_count: 5,
+    },
+  },
+  {
+    ordinal: 10,
+    status: "complete",
+    over: { leader_changed: false, entry_count: 6 },
+  },
+  {
+    ordinal: 9,
+    status: "void",
+    over: {
+      void_reason: "baseline_failed",
+      leader_changed: null,
+      entry_count: 2,
+    },
+  },
+  {
+    ordinal: 8,
+    status: "complete",
+    over: { leader_changed: true, entry_count: 9 },
+  },
+  {
+    ordinal: 7,
+    status: "void",
+    over: {
+      void_reason: "no_surviving_challenger",
+      leader_changed: null,
+      entry_count: 4,
+    },
+  },
+  {
+    ordinal: 6,
+    status: "complete",
+    over: { leader_changed: false, entry_count: 5 },
+  },
+  {
+    ordinal: 5,
+    status: "void",
+    over: {
+      void_reason: "leader_infra_failed",
+      leader_changed: null,
+      entry_count: 3,
+    },
+  },
+  {
+    ordinal: 4,
+    status: "void",
+    over: {
+      void_reason: "pod_failed",
+      leader_changed: null,
+      entry_count: 6,
+    },
+  },
+];
+
 const MOCK_ROUNDS: Round[] = [
+  ...EXTRA_ROUND_SPECS.map(({ ordinal, status, over }) =>
+    mockRoundSummary(mockId(2000 + ordinal), ordinal, status, over)
+  ),
   mockRoundSummary(MOCK_ROUND_3, 3, "complete", {
     leader_changed: true,
     entry_count: 6,

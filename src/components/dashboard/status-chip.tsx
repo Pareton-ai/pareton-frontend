@@ -1,4 +1,4 @@
-import type { CampaignStatus } from "@/lib/api/types";
+import type { CampaignStatus, RoundStatus } from "@/lib/api/types";
 import {
   BENCH_PHASE_META,
   getSubmissionStateMeta,
@@ -22,6 +22,24 @@ export function CampaignStatusChip({ status }: { status: CampaignStatus }) {
       className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass[tone]}`}
     >
       {status}
+    </span>
+  );
+}
+
+export function RoundStatusChip({ status }: { status: RoundStatus }) {
+  const tone =
+    status === "running"
+      ? "progress"
+      : status === "complete"
+        ? "success"
+        : status === "void"
+          ? "danger"
+          : "neutral";
+  return (
+    <span
+      className={`inline-flex border px-2 py-0.5 font-mono text-caption uppercase tracking-caps ${toneClass[tone]}`}
+    >
+      {status.replaceAll("_", " ")}
     </span>
   );
 }
