@@ -33,6 +33,19 @@ export function roundHref(campaignId: string, ordinal: number): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/rounds/${ordinal}`;
 }
 
+/**
+ * Read a `rounds/[ordinal]` route param back into an ordinal.
+ *
+ * Ordinals count from 1, so anything that is not a plain decimal integer
+ * (`01`, `-1`, `1e3`, `12abc`, a float) names no round and must 404 rather
+ * than reach the API.
+ */
+export function parseRoundOrdinal(param: string): number | null {
+  if (!/^[1-9][0-9]*$/.test(param)) return null;
+  const ordinal = Number.parseInt(param, 10);
+  return Number.isSafeInteger(ordinal) ? ordinal : null;
+}
+
 export function submissionHref(campaignId: string, patchHash: string): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`;
 }

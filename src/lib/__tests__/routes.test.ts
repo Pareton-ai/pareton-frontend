@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   campaignHref,
   campaignListHref,
+  parseRoundOrdinal,
   roundHref,
   submissionHref,
 } from "@/lib/routes";
@@ -34,6 +35,19 @@ describe("roundHref", () => {
     expect(roundHref("mock-campaign", 12)).toBe(
       "/dashboard/campaigns/mock-campaign/rounds/12"
     );
+  });
+});
+
+describe("parseRoundOrdinal", () => {
+  it("round-trips the ordinal roundHref wrote", () => {
+    expect(parseRoundOrdinal("12")).toBe(12);
+    expect(parseRoundOrdinal("1")).toBe(1);
+  });
+
+  it("rejects anything that is not a plain 1-based integer", () => {
+    for (const param of ["0", "01", "-1", "1.5", "1e3", "12abc", "", " 1"]) {
+      expect(parseRoundOrdinal(param)).toBeNull();
+    }
   });
 });
 

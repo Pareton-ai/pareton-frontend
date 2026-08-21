@@ -5,10 +5,7 @@ import { BackLink } from "@/components/dashboard/back-link";
 import { BenchReports } from "@/components/dashboard/bench-reports";
 import { BuildLog } from "@/components/dashboard/build-log";
 import { LiveActivityLine } from "@/components/dashboard/live-activity";
-import {
-  LiveSubmissionPoll,
-  LiveSubmissionPollHost,
-} from "@/components/dashboard/live-submission-poll";
+import { LivePoll, LivePollHost } from "@/components/dashboard/live-poll";
 import { PipelineTimeline } from "@/components/dashboard/pipeline-timeline";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
@@ -104,7 +101,7 @@ async function SubmissionSections({
     if (result.kind === "not_found") notFound();
     return (
       <div className="space-y-8">
-        <LiveSubmissionPoll enabled />
+        <LivePoll enabled />
         <TitleRow campaignId={campaignId}>
           <h1 className="break-all font-mono text-display-section font-medium leading-display tracking-tight text-foreground">
             {truncateDigest(patchHash, 8, 6)}
@@ -137,7 +134,7 @@ async function SubmissionSections({
 
   return (
     <div className="space-y-8">
-      <LiveSubmissionPoll enabled={live} />
+      <LivePoll enabled={live} />
 
       <TitleRow campaignId={campaignId}>
         <SubmissionTitle detail={detail} campaign={campaign} />
@@ -209,7 +206,7 @@ export default async function SubmissionPage({ params }: PageProps) {
   if (!isPatchHash(patchHash)) notFound();
 
   return (
-    <LiveSubmissionPollHost>
+    <LivePollHost>
       <Suspense
         fallback={
           <SubmissionFallback campaignId={campaignId} patchHash={patchHash} />
@@ -217,6 +214,6 @@ export default async function SubmissionPage({ params }: PageProps) {
       >
         <SubmissionSections campaignId={campaignId} patchHash={patchHash} />
       </Suspense>
-    </LiveSubmissionPollHost>
+    </LivePollHost>
   );
 }

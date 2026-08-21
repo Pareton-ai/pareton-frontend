@@ -7,6 +7,7 @@
 import { ApiError } from "@/lib/api/errors";
 import type {
   Campaign,
+  EntryStatus,
   Leader,
   Round,
   RoundDetail,
@@ -598,16 +599,18 @@ const MOCK_ROUNDS: Round[] = [
   ...EXTRA_ROUND_SPECS.map(({ ordinal, status, over }) =>
     mockRoundSummary(mockId(2000 + ordinal), ordinal, status, over)
   ),
+  /* Entry counts match the hand-written details below: the table and the round
+     page read the same round, so they must not disagree on how many ran. */
   mockRoundSummary(MOCK_ROUND_3, 3, "complete", {
     leader_changed: true,
-    entry_count: 6,
+    entry_count: 2,
   }),
   mockRoundSummary(MOCK_ROUND_2, 2, "void", {
     void_reason: "baseline_drift",
     leader_changed: null,
-    entry_count: 4,
+    entry_count: 2,
   }),
-  mockRoundSummary(MOCK_ROUND_1, 1, "complete", { entry_count: 5 }),
+  mockRoundSummary(MOCK_ROUND_1, 1, "complete", { entry_count: 3 }),
 ];
 
 function mockEntry(
@@ -629,7 +632,7 @@ function mockEntry(
   };
 }
 
-const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
+const HAND_WRITTEN_ROUND_DETAILS: Record<string, RoundDetail> = {
   [MOCK_ROUND_3]: {
     id: MOCK_ROUND_3,
     campaign_id: MOCK_CAMPAIGN_ID,
@@ -654,7 +657,13 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
     started_at: hoursAgo(20),
     completed_at: hoursAgo(4),
     entries: [
-      mockEntry(1, { role: "baseline", status: "scored", score: 0.0 }),
+      mockEntry(1, {
+        role: "baseline",
+        status: "scored",
+        score: 0.0,
+        started_at: hoursAgo(20),
+        completed_at: hoursAgo(12),
+      }),
       mockEntry(2, {
         role: "challenger",
         status: "scored",
@@ -662,6 +671,8 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
         submission_id: SEED_SPECS[0].id,
         patch_hash: SCORED_HASH,
         hotkey: HOTKEYS[0],
+        started_at: hoursAgo(12),
+        completed_at: hoursAgo(4),
       }),
     ],
   },
@@ -689,7 +700,13 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
     started_at: hoursAgo(22),
     completed_at: hoursAgo(18),
     entries: [
-      mockEntry(1, { role: "baseline", status: "scored", score: 0.0 }),
+      mockEntry(1, {
+        role: "baseline",
+        status: "scored",
+        score: 0.0,
+        started_at: hoursAgo(22),
+        completed_at: hoursAgo(20),
+      }),
       mockEntry(2, {
         role: "leader",
         status: "infra_failed",
@@ -697,14 +714,18 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
         submission_id: SEED_SPECS[0].id,
         patch_hash: SCORED_HASH,
         hotkey: HOTKEYS[0],
+        started_at: hoursAgo(20),
+        completed_at: hoursAgo(18),
       }),
     ],
   },
+  /* The campaign's first round: settled long ago, so it carries no live phase.
+     Round 13 is the one still on a pod. */
   [MOCK_ROUND_1]: {
     id: MOCK_ROUND_1,
     campaign_id: MOCK_CAMPAIGN_ID,
     ordinal: 1,
-    status: "running",
+    status: "complete",
     void_reason: null,
     gpu_sku: "H200",
     seed_block: 1001,
@@ -714,17 +735,23 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
     scoring_rule: { name: "median_e2e_speedup" },
     incumbent_submission_id: null,
     winner_submission_id: null,
-    leader_changed: null,
-    baseline_drift: null,
-    phase: "sla_bench",
-    phase_started_at: hoursAgo(1),
-    heartbeat_at: hoursAgo(0),
-    progress: { entry: 2 },
+    leader_changed: false,
+    baseline_drift: 0.002,
+    phase: null,
+    phase_started_at: null,
+    heartbeat_at: null,
+    progress: null,
     created_at: hoursAgo(23),
-    started_at: hoursAgo(1),
-    completed_at: null,
+    started_at: hoursAgo(23),
+    completed_at: hoursAgo(19),
     entries: [
-      mockEntry(1, { role: "baseline", status: "scored", score: 0.0 }),
+      mockEntry(1, {
+        role: "baseline",
+        status: "scored",
+        score: 0.0,
+        started_at: hoursAgo(23),
+        completed_at: hoursAgo(22),
+      }),
       mockEntry(2, {
         role: "challenger",
         status: "disqualified",
@@ -733,17 +760,143 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
         submission_id: SEED_SPECS[1].id,
         patch_hash: DISQUALIFIED_HASH,
         hotkey: HOTKEYS[1],
+        started_at: hoursAgo(22),
+        completed_at: hoursAgo(21),
       }),
       mockEntry(3, {
         role: "challenger",
-        status: "running",
-        score: null,
+        status: "scored",
+        score: 0.08,
         submission_id: SEED_SPECS[0].id,
         patch_hash: SCORED_HASH,
         hotkey: HOTKEYS[0],
+        started_at: hoursAgo(21),
+        completed_at: hoursAgo(19),
       }),
     ],
   },
+};
+
+function derivedChallengerStatus(row: Round, index: number): EntryStatus {
+  if (row.status === "pending") return "pending";
+  if (row.status === "running") {
+    if (index === 1) return "running";
+    return index === 2 ? "pending" : "scored";
+  }
+  if (row.status === "void") {
+    return row.void_reason === "no_surviving_challenger"
+      ? "disqualified"
+      : "infra_failed";
+  }
+  return index % 3 === 0 ? "disqualified" : "scored";
+}
+
+/** Baseline plus `entry_count - 1` challengers, all agreeing with the round's
+ *  own status so a void round shows no winner and a pending one shows no work. */
+function derivedEntries(row: Round): RoundEntry[] {
+  const baselineStatus =
+    row.status === "pending"
+      ? "pending"
+      : row.void_reason === "baseline_failed"
+        ? "infra_failed"
+        : "scored";
+
+  const startedAt = row.status === "pending" ? null : row.created_at;
+
+  /* Entries that finished inside a round still on a pod need an end of their
+     own, or the page would tick their duration up as if they were running. */
+  const settledAt = row.completed_at ?? hoursAgo(1);
+
+  const entries: RoundEntry[] = [
+    mockEntry(1, {
+      role: "baseline",
+      status: baselineStatus,
+      score: baselineStatus === "scored" ? 0.0 : null,
+      started_at: startedAt,
+      completed_at: baselineStatus === "pending" ? null : settledAt,
+    }),
+  ];
+
+  for (let index = 1; index < row.entry_count; index += 1) {
+    const status = derivedChallengerStatus(row, index);
+    const settled = status !== "running" && status !== "pending";
+
+    entries.push(
+      mockEntry(index + 1, {
+        role: "challenger",
+        status,
+        score:
+          status === "scored"
+            ? Number((row.ordinal / 100 + index * 0.05).toFixed(3))
+            : null,
+        disqualify_reason:
+          status === "disqualified" ? "fail_correctness" : null,
+        submission_id: mockId(4000 + row.ordinal * 20 + index),
+        patch_hash: mockHash(5000 + row.ordinal * 20 + index),
+        hotkey: HOTKEYS[index % HOTKEYS.length],
+        started_at: status === "pending" ? null : startedAt,
+        completed_at: settled ? settledAt : null,
+      })
+    );
+  }
+
+  return entries;
+}
+
+/**
+ * Detail derived from a listed round.
+ *
+ * The summary row is the source of truth for every field the two shapes share,
+ * so opening a row can never contradict the table it was opened from.
+ */
+function derivedRoundDetail(row: Round): RoundDetail {
+  const entries = derivedEntries(row);
+  const winner =
+    row.leader_changed === true
+      ? (entries.find(
+          (entry) => entry.role === "challenger" && entry.status === "scored"
+        )?.submission_id ?? null)
+      : null;
+  const running = row.status === "running";
+
+  return {
+    id: row.id,
+    campaign_id: MOCK_CAMPAIGN_ID,
+    ordinal: row.ordinal,
+    status: row.status,
+    void_reason: row.void_reason,
+    gpu_sku: row.gpu_sku,
+    seed_block: row.seed_block,
+    seed_block_hash: row.seed_block_hash,
+    seed_hex: padHex(row.ordinal, 64),
+    sampled_trace_sha256: mockHash(3000 + row.ordinal),
+    scoring_rule: { name: "median_e2e_speedup" },
+    incumbent_submission_id: SEED_SPECS[0].id,
+    winner_submission_id: winner,
+    leader_changed: row.leader_changed,
+    baseline_drift:
+      row.status === "pending"
+        ? null
+        : row.void_reason === "baseline_drift"
+          ? 0.12
+          : 0.003,
+    phase: running ? "correctness" : null,
+    phase_started_at: running ? hoursAgo(0.2) : null,
+    heartbeat_at: running ? hoursAgo(0) : null,
+    progress: running ? { entry: 2 } : null,
+    created_at: row.created_at,
+    started_at: row.status === "pending" ? null : row.created_at,
+    completed_at: row.completed_at,
+    entries,
+  };
+}
+
+/** Every listed round resolves, so no row in the campaign table opens a 404. */
+const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
+  ...Object.fromEntries(
+    MOCK_ROUNDS.map((row) => [row.id, derivedRoundDetail(row)])
+  ),
+  ...HAND_WRITTEN_ROUND_DETAILS,
 };
 
 const MOCK_SCORE_PROGRESS: ScoreProgressSeries = {
