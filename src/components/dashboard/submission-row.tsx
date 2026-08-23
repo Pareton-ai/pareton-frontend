@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { PipelineChip } from "@/components/dashboard/status-chip";
 import {
+  formatScore,
   formatUtc,
   formatUtcShort,
   truncateDigest,
@@ -99,7 +100,7 @@ export function SubmissionRow({
           </span>
         ) : (
           <span className="font-mono text-body tabular-nums">
-            {row.round.score}
+            {formatScore(row.round.score)}
           </span>
         )}
       </td>
