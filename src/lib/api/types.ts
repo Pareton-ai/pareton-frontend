@@ -73,6 +73,22 @@ export const SUBMISSION_PHASES = [
 
 export type SubmissionPhase = (typeof SUBMISSION_PHASES)[number];
 
+/**
+ * The 12 happy-path stages, flattened from `SUBMISSION_PHASES`.
+ *
+ * `SUBMISSION_STAGE_ORDER` orders every state, including off-path ones like
+ * `infra_failed` and the alternative terminal `disqualified`; this list is
+ * what progress counters count, so a scored submission reads 12 of 12.
+ */
+export const SUBMISSION_HAPPY_PATH = SUBMISSION_PHASES.flatMap(
+  (phase) => phase.states
+);
+
+/** Position on the happy path, or -1 for off-path states. */
+export function happyPathIndex(state: string): number {
+  return (SUBMISSION_HAPPY_PATH as readonly string[]).indexOf(state);
+}
+
 /** `rounds.status`. From `db/schema.sql`. */
 export const ROUND_STATUSES = [
   "pending",

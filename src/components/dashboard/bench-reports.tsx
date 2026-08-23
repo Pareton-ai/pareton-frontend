@@ -1,5 +1,6 @@
 import { FlaskConical } from "lucide-react";
 import { Panel } from "@/components/dashboard/panel";
+import { formatScore } from "@/lib/api/format";
 import type { SubmissionRound } from "@/lib/api/types";
 
 /**
@@ -16,7 +17,8 @@ export function BenchReports({ round }: { round: SubmissionRound | null }) {
     );
   }
 
-  const scoreLabel = round.score === null ? "no score" : String(round.score);
+  const scoreLabel =
+    round.score === null ? "no score" : formatScore(round.score);
 
   return (
     <Panel icon={FlaskConical} title="Round">

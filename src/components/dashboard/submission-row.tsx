@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { PipelineChip } from "@/components/dashboard/status-chip";
 import {
+  formatScore,
   formatUtc,
   formatUtcShort,
   truncateDigest,
@@ -13,10 +14,9 @@ import type { SubmissionRow as SubmissionRowData } from "@/lib/api/types";
 /**
  * One submission on the campaign page.
  *
- * Scores stay off this list: they are per-round and not comparable across
- * rounds (PAR-87 option 2). Outcome is `scored` / `disqualified` / `rejected`
- * (or the in-flight pipeline state). The round ordinal is how a miner finds
- * which cohort their patch landed in.
+ * Shows the score from the submission's newest non-void round entry. Scores
+ * are per-round and not comparable across rounds; a null score (disqualified
+ * or infra-failed entry) renders as a dash.
  */
 export function SubmissionRow({
   href,
@@ -56,10 +56,12 @@ export function SubmissionRow({
         {formatUtcShort(row.committed_at)}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
-        {row.round == null ? (
+        {row.round == null || row.round.score == null ? (
           <span className="text-muted">—</span>
         ) : (
-          `#${row.round.ordinal}`
+          <span className="font-mono text-body tabular-nums">
+            {formatScore(row.round.score)}
+          </span>
         )}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5">
