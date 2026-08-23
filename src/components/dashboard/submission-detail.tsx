@@ -11,7 +11,12 @@ import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark } from "@/components/dashboard/gpu";
 import { LiveElapsed } from "@/components/dashboard/live-elapsed";
-import { Panel, StatStrip, StatTile } from "@/components/dashboard/panel";
+import {
+  Panel,
+  PanelRow,
+  StatStrip,
+  StatTile,
+} from "@/components/dashboard/panel";
 import { PipelineChip } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 import { isSafeArtifactUrl } from "@/lib/api/artifacts";
@@ -310,25 +315,6 @@ export function SubmissionStats({
   );
 }
 
-function Row({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="px-4 py-3">
-      <p className="font-mono text-caption uppercase tracking-caps text-muted">
-        {label}
-      </p>
-      <div className="mt-1.5 font-mono text-body text-foreground">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function PatchArtifact({ url }: { url: string }) {
   if (!url) {
     return <span className="text-muted">—</span>;
@@ -370,15 +356,15 @@ export function SubmissionMetadata({
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
       <Panel icon={User} title="Miner">
-        <Row label="Hotkey">
+        <PanelRow label="Hotkey">
           <CopyableMono
             value={submission.hotkey}
             display={truncateMiddle(submission.hotkey, 12, 8)}
             href={minerExplorerHref(submission.hotkey)}
             hint="Open taomarketcap and copy miner hotkey"
           />
-        </Row>
-        <Row label="Committed">
+        </PanelRow>
+        <PanelRow label="Committed">
           <span className="text-secondary">
             {formatUtc(submission.committed_at)}
           </span>
@@ -387,26 +373,26 @@ export function SubmissionMetadata({
               block {submission.commit_block.toLocaleString("en-US")}
             </p>
           ) : null}
-        </Row>
-        <Row label="Submission id">
+        </PanelRow>
+        <PanelRow label="Submission id">
           <CopyableMono
             value={submission.id}
             display={truncateMiddle(submission.id, 10, 8)}
           />
-        </Row>
+        </PanelRow>
       </Panel>
 
       <Panel icon={GitBranch} title="Build inputs">
-        <Row label="Patch artifact">
+        <PanelRow label="Patch artifact">
           <PatchArtifact url={submission.retrieval_url} />
-        </Row>
-        <Row label="Baseline commit">
+        </PanelRow>
+        <PanelRow label="Baseline commit">
           <CopyableMono
             value={submission.baseline_commit}
             display={truncateMiddle(submission.baseline_commit, 10, 8)}
           />
-        </Row>
-        <Row label="Engine image">
+        </PanelRow>
+        <PanelRow label="Engine image">
           {submission.engine_image_ref ? (
             <CopyableMono
               value={submission.engine_image_ref}
@@ -415,9 +401,9 @@ export function SubmissionMetadata({
           ) : (
             <span className="text-muted">Not built yet</span>
           )}
-        </Row>
+        </PanelRow>
         {campaign && campaign.gpu_skus.length > 0 ? (
-          <Row label="Target GPUs">
+          <PanelRow label="Target GPUs">
             <span
               className="inline-flex items-center gap-1.5 text-secondary"
               title={campaign.gpu_skus.join(", ")}
@@ -428,7 +414,7 @@ export function SubmissionMetadata({
               />
               {campaign.gpu_skus.join(" · ")}
             </span>
-          </Row>
+          </PanelRow>
         ) : null}
       </Panel>
     </aside>

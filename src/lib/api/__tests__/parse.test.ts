@@ -12,6 +12,8 @@ import {
   MOCK_CLOSED_CAMPAIGN_ID,
   MOCK_DRAFT_CAMPAIGN_ID,
   mockGetLeader,
+  mockGetRound,
+  mockListRounds,
 } from "@/lib/api/mocks";
 import {
   parseCampaign,
@@ -32,6 +34,7 @@ import {
   ENTRY_STATUSES,
   getFailedSubmissionJob,
   getLiveActivity,
+  getRoundActivity,
   getRunningSubmissionJob,
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
@@ -527,6 +530,24 @@ describe("rounds", () => {
     expect(detail.phase).toBeNull();
     expect(detail.heartbeat_at).toBe("2026-08-20T00:01:00+00:00");
   });
+
+  it("shows no live activity once a round settles, even with a stale phase", () => {
+    // The backend settle paths leave the phase column populated, so a
+    // completed round can still carry phase='teardown'.
+    const settled = parseRoundDetail({
+      ...roundRunning,
+      status: "complete",
+      phase: "teardown",
+    });
+    expect(settled.phase).toBe("teardown");
+    expect(getRoundActivity(settled, "2026-08-20T00:10:00+00:00")).toBeNull();
+    expect(
+      getRoundActivity(
+        parseRoundDetail(roundRunning),
+        "2026-08-20T00:10:00+00:00"
+      )
+    ).not.toBeNull();
+  });
 });
 
 describe("isFailedState", () => {
@@ -535,6 +556,35 @@ describe("isFailedState", () => {
     expect(isFailedState("rejected")).toBe(true);
     expect(isFailedState("infra_failed")).toBe(false);
     expect(isFailedState("scored")).toBe(false);
+  });
+});
+
+describe("mock rounds", () => {
+  it("resolves a detail for every listed round, so no row links to a 404", () => {
+    const { rounds, total } = mockListRounds(MOCK_CAMPAIGN_ID, { limit: 500 });
+    expect(rounds).toHaveLength(total);
+
+    for (const row of rounds) {
+      const detail = mockGetRound(row.id);
+      expect(detail.ordinal).toBe(row.ordinal);
+      expect(detail.status).toBe(row.status);
+      expect(detail.void_reason).toBe(row.void_reason);
+      expect(detail.entries).toHaveLength(row.entry_count);
+    }
+  });
+
+  it("never invents a winner or a zero score for a void round", () => {
+    const { rounds } = mockListRounds(MOCK_CAMPAIGN_ID, { limit: 500 });
+    const voided = rounds.filter((row) => row.status === "void");
+    expect(voided.length).toBeGreaterThan(0);
+
+    for (const row of voided) {
+      const detail = mockGetRound(row.id);
+      expect(detail.winner_submission_id).toBeNull();
+      for (const entry of detail.entries) {
+        if (entry.status !== "scored") expect(entry.score).toBeNull();
+      }
+    }
   });
 });
 

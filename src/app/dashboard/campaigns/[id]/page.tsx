@@ -7,21 +7,31 @@ import {
   CampaignRequirements,
 } from "@/components/dashboard/campaign-spec";
 import { CampaignStats } from "@/components/dashboard/campaign-stats";
+import { EmptyRounds, RoundsTable } from "@/components/dashboard/rounds-table";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
   EmptySubmissions,
   PAGE_SIZE,
   SubmissionsTable,
 } from "@/components/dashboard/submissions-table";
-import { getCampaign, getCampaignSubmissions } from "@/lib/api/endpoints";
+import {
+  getCampaign,
+  getCampaignSubmissions,
+  getRounds,
+} from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
-import { campaignHref } from "@/lib/routes";
-import type { Campaign, SubmissionsPage } from "@/lib/api/types";
+import { campaignListHref } from "@/lib/routes";
+import type { Campaign, RoundsPage, SubmissionsPage } from "@/lib/api/types";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; submissions?: string }>;
 };
+
+function parsePage(value: string | undefined): number {
+  const n = Number.parseInt(value ?? "1", 10);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
 
 async function loadCampaign(
   id: string
@@ -64,7 +74,15 @@ async function CampaignHeading({ id }: { id: string }) {
   return <CampaignTitle campaign={result.campaign} />;
 }
 
-async function CampaignBody({ id, page }: { id: string; page: number }) {
+async function CampaignBody({
+  id,
+  page,
+  submissionsPage,
+}: {
+  id: string;
+  page: number;
+  submissionsPage: number;
+}) {
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
@@ -72,28 +90,82 @@ async function CampaignBody({ id, page }: { id: string; page: number }) {
   }
   const { campaign } = result;
 
-  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-  let data: SubmissionsPage | null = null;
-  let submissionsError: unknown = null;
-  try {
-    data = await getCampaignSubmissions(id, {
+  const safePage = page > 0 && Number.isFinite(page) ? Math.floor(page) : 1;
+  const safeSubmissionsPage =
+    submissionsPage > 0 && Number.isFinite(submissionsPage)
+      ? Math.floor(submissionsPage)
+      : 1;
+
+  const [roundsSettled, submissionsSettled] = await Promise.allSettled([
+    getRounds(id, {
       limit: PAGE_SIZE,
       offset: (safePage - 1) * PAGE_SIZE,
-    });
-  } catch (error) {
-    submissionsError = error;
-  }
+    }),
+    getCampaignSubmissions(id, {
+      limit: PAGE_SIZE,
+      offset: (safeSubmissionsPage - 1) * PAGE_SIZE,
+    }),
+  ]);
 
+  const rounds: RoundsPage | null =
+    roundsSettled.status === "fulfilled" ? roundsSettled.value : null;
+  const roundsError =
+    roundsSettled.status === "rejected" ? roundsSettled.reason : null;
+  const data: SubmissionsPage | null =
+    submissionsSettled.status === "fulfilled" ? submissionsSettled.value : null;
+  const submissionsError =
+    submissionsSettled.status === "rejected" ? submissionsSettled.reason : null;
+
+  if (rounds) {
+    const totalPages = Math.max(1, Math.ceil(rounds.total / PAGE_SIZE));
+    if (safePage > totalPages) {
+      redirect(
+        campaignListHref(id, {
+          page: totalPages,
+          submissions: safeSubmissionsPage,
+        })
+      );
+    }
+  }
   if (data) {
     const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-    if (safePage > totalPages) {
-      redirect(`${campaignHref(id)}?page=${totalPages}`);
+    if (safeSubmissionsPage > totalPages) {
+      redirect(
+        campaignListHref(id, {
+          page: safePage,
+          submissions: totalPages,
+        })
+      );
     }
   }
 
   return (
     <div className="space-y-8">
       <CampaignStats campaign={campaign} submissions={data} />
+
+      {rounds === null ? (
+        <SectionUnavailable
+          message={
+            isUnavailable(roundsError)
+              ? "Rounds are temporarily unavailable (API/DB)."
+              : "Could not load rounds."
+          }
+        />
+      ) : rounds.total === 0 ? (
+        <EmptyRounds status={campaign.status} />
+      ) : (
+        <RoundsTable
+          campaignId={id}
+          page={safePage}
+          data={rounds}
+          pageHref={(next) =>
+            campaignListHref(id, {
+              page: next,
+              submissions: safeSubmissionsPage,
+            })
+          }
+        />
+      )}
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
         <div className="min-w-0">
@@ -108,7 +180,17 @@ async function CampaignBody({ id, page }: { id: string; page: number }) {
           ) : data.total === 0 ? (
             <EmptySubmissions status={campaign.status} />
           ) : (
-            <SubmissionsTable campaignId={id} page={safePage} data={data} />
+            <SubmissionsTable
+              campaignId={id}
+              page={safeSubmissionsPage}
+              data={data}
+              pageHref={(next) =>
+                campaignListHref(id, {
+                  page: safePage,
+                  submissions: next,
+                })
+              }
+            />
           )}
         </div>
 
@@ -126,7 +208,8 @@ export default async function CampaignPage({
 }: PageProps) {
   const { id } = await params;
   const sp = await searchParams;
-  const page = Number.parseInt(sp.page ?? "1", 10);
+  const page = parsePage(sp.page);
+  const submissionsPage = parsePage(sp.submissions);
 
   return (
     <div className="space-y-8">
@@ -148,6 +231,7 @@ export default async function CampaignPage({
         fallback={
           <div className="space-y-8">
             <div className="h-28 animate-pulse border border-border bg-border/10" />
+            <div className="h-72 animate-pulse border border-border bg-border/10" />
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
               <div className="h-72 animate-pulse border border-border bg-border/10" />
               <div className="h-72 animate-pulse border border-border bg-border/10" />
@@ -155,7 +239,7 @@ export default async function CampaignPage({
           </div>
         }
       >
-        <CampaignBody id={id} page={page} />
+        <CampaignBody id={id} page={page} submissionsPage={submissionsPage} />
       </Suspense>
     </div>
   );

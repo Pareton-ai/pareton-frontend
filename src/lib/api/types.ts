@@ -553,6 +553,11 @@ export function isTerminalState(state: string): boolean {
   return state === "scored" || state === "disqualified" || state === "rejected";
 }
 
+/** A round still moving: waiting to be seated on a pod, or running on one. */
+export function isLiveRound(status: RoundStatus): boolean {
+  return status === "pending" || status === "running";
+}
+
 /**
  * Terminal failure. `infra_failed` is not included: that state requeues once
  * and must not paint as a red halt.
@@ -642,7 +647,6 @@ export const BENCH_PHASE_META: Record<
 export const HEARTBEAT_STALE_AFTER_MS = 60_000;
 
 export type LiveActivity = {
-  job: SubmissionJob;
   phase: BenchPhase;
   label: string;
   description: string;
@@ -652,6 +656,36 @@ export type LiveActivity = {
   /** Worker stopped proving it is alive; the phase is history, not now. */
   stale: boolean;
 };
+
+/**
+ * The phase columns a worker writes while it runs. A submission reads them off
+ * its job row; a round carries them itself.
+ */
+type PhaseColumns = Pick<
+  SubmissionJob,
+  "phase" | "phase_started_at" | "heartbeat_at"
+>;
+
+function toLiveActivity(
+  source: PhaseColumns,
+  now: string
+): LiveActivity | null {
+  if (source.phase === null) return null;
+
+  const meta = BENCH_PHASE_META[source.phase];
+  const heartbeatAgeMs = source.heartbeat_at
+    ? elapsedBetween(source.heartbeat_at, now)
+    : null;
+
+  return {
+    phase: source.phase,
+    label: meta.label,
+    description: meta.description,
+    since: source.phase_started_at,
+    heartbeatAgeMs,
+    stale: heartbeatAgeMs === null || heartbeatAgeMs > HEARTBEAT_STALE_AFTER_MS,
+  };
+}
 
 export function getRunningSubmissionJob(
   jobs: readonly SubmissionJob[]
@@ -667,20 +701,17 @@ export function getLiveActivity(
   now: string
 ): LiveActivity | null {
   const job = getRunningSubmissionJob(jobs);
-  if (!job || job.phase === null) return null;
+  if (!job) return null;
+  return toLiveActivity(job, now);
+}
 
-  const meta = BENCH_PHASE_META[job.phase];
-  const heartbeatAgeMs = job.heartbeat_at
-    ? elapsedBetween(job.heartbeat_at, now)
-    : null;
-
-  return {
-    job,
-    phase: job.phase,
-    label: meta.label,
-    description: meta.description,
-    since: job.phase_started_at,
-    heartbeatAgeMs,
-    stale: heartbeatAgeMs === null || heartbeatAgeMs > HEARTBEAT_STALE_AFTER_MS,
-  };
+/** Live activity for a round mid-flight (PAR-88), or null once it settles. */
+export function getRoundActivity(
+  round: RoundDetail,
+  now: string
+): LiveActivity | null {
+  // The backend settle paths (complete/void/reap) leave the phase column
+  // populated, so a settled round would otherwise paint as live forever.
+  if (!isLiveRound(round.status)) return null;
+  return toLiveActivity(round, now);
 }

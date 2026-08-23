@@ -171,6 +171,41 @@ export async function getRounds(
   });
 }
 
+/**
+ * How many rounds to scan per lookup call in `getRoundByOrdinal`.
+ *
+ * A campaign seats one round per seed block, so this resolves almost every
+ * campaign in a single request while keeping the response small enough to
+ * page through a long one.
+ */
+const ROUND_LOOKUP_LIMIT = 200;
+
+/**
+ * Round detail addressed the way the dashboard addresses it.
+ *
+ * `GET /v1/rounds/{round_id}` takes a UUID, but a round is public by its
+ * campaign-scoped ordinal, so the id has to come from the campaign's round
+ * list first. Returns null when the campaign has no such ordinal.
+ */
+export async function getRoundByOrdinal(
+  campaignId: string,
+  ordinal: number
+): Promise<RoundDetail | null> {
+  let offset = 0;
+
+  for (;;) {
+    const page = await getRounds(campaignId, {
+      limit: ROUND_LOOKUP_LIMIT,
+      offset,
+    });
+    const match = page.rounds.find((row) => row.ordinal === ordinal);
+    if (match) return getRound(match.id);
+
+    offset += page.rounds.length;
+    if (page.rounds.length === 0 || offset >= page.total) return null;
+  }
+}
+
 export async function getRound(roundId: string): Promise<RoundDetail> {
   if (apiMocksEnabled()) return mockGetRound(roundId);
 
