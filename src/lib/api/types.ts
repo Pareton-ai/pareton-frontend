@@ -710,5 +710,8 @@ export function getRoundActivity(
   round: RoundDetail,
   now: string
 ): LiveActivity | null {
+  // The backend settle paths (complete/void/reap) leave the phase column
+  // populated, so a settled round would otherwise paint as live forever.
+  if (!isLiveRound(round.status)) return null;
   return toLiveActivity(round, now);
 }
