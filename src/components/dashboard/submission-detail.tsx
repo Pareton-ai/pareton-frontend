@@ -18,6 +18,7 @@ import { isSafeArtifactUrl } from "@/lib/api/artifacts";
 import {
   elapsedBetween,
   formatDuration,
+  formatScore,
   formatUtc,
   formatUtcShort,
   formatUtcTime,
@@ -209,7 +210,7 @@ function ScoreTile({ score }: { score: number | null }) {
     <StatTile
       icon={TrendingUp}
       label="Round score"
-      value={<span className="tabular-nums">{score}</span>}
+      value={<span className="tabular-nums">{formatScore(score)}</span>}
       hint="0 is baseline speed"
     />
   );
