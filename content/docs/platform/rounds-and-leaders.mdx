@@ -1,0 +1,97 @@
+---
+title: Rounds and leaders
+description: How a round benches a cohort against one prompt set, and how the campaign leader is seated, held, or vacated.
+---
+
+A **round** is the benchmark unit. One GPU pod, one sampled prompt set, the
+current leader (if any) plus up to 5 challengers. Every image in that round
+runs the same prompts.
+
+**Scores are comparable inside one round only.** Every round draws a different
+prompt set, so a number from round 3 is not comparable to a number from round 7. Only the leader carries a score that is re-measured every later round. Do
+not compare your score to a number from a different round.
+
+Rounds and the leader are per campaign. See [Campaigns](/docs/platform/campaigns)
+for what a campaign pins, and [Pipeline stages](/docs/platform/pipeline-stages)
+for the states a submission walks before it sits in a round.
+
+## How a round starts
+
+A submission reaches `bench_queued` only after gates pass and the image is
+built and pushed. A round starts when 5 submissions are queued, or when the
+oldest _current_ `bench_queued` event is 6 hours old. The wait is measured
+from that event, not from the original commit, so a voided entry that returns
+to the queue waits another 6 hours. A round needs at least one challenger.
+
+The cohort is the oldest queued submissions by `commit_block`. Overflow stays
+queued. Byte-identical images collapse to the earliest `commit_block`; the
+rest are rejected as `duplicate_image`.
+
+## Prompts
+
+The seed block is the chain head minus finality depth at the moment the round
+is created. That block is already settled.
+
+Seed = `sha256(block_hash || campaign_id)`. The patch hash is not in the
+material, so every image in the round draws the same rows. The realized trace
+is snapshotted onto the round. Details: [Dynamic workloads](/docs/platform/dynamic-workloads).
+
+## What runs on the pod
+
+1. Baseline SLA run, with the engine compile cache mounted. Its per-prompt
+   timings are the fixed reference. Warmup is one full replay of the request
+   set; those rows are discarded.
+2. Each candidate SLA run (production serve args, no compile-cache mount).
+   Entry order is not randomized. The replay captures the text the engine
+   produced.
+3. One shared scorer (the campaign's pinned baseline image) teacher-forces
+   every captured output and grades it against the campaign's signed
+   correctness thresholds. A fail is `disqualified`: no score, cannot become
+   leader. An output that differs from the baseline but stays plausible can
+   pass.
+4. Closing baseline run (cache mounted). Drift over 0.05 voids the round.
+
+A candidate whose `p99_e2e_ms_rel_range` exceeds 0.335 is `infra_failed` and
+is requeued once. That is a reproducibility check, not a latency SLA fail.
+
+## Score
+
+Rank on median per-prompt end-to-end speedup against the baseline **in this
+round**:
+
+`(baseline_e2e - candidate_e2e) / baseline_e2e`
+
+A score of 0.35 means 35 percent faster. The formula is the campaign's
+`scoring_rule` (name `median_e2e_speedup`). The overtake moat compares
+in-round scores only.
+
+## Leader
+
+One leader per campaign. No runner-up. A vacant crown has no row.
+
+- To **take** the crown, a challenger must beat `leader_score * (1 + 0.01)`.
+- To **hold** the crown, the image must pass correctness and score strictly
+  above 0.
+- If the leader **loses on score**, the challenger takes the crown
+  (`overtaken`).
+- If the leader **fails correctness**, the best passing challenger takes the
+  crown, or the crown is **vacated**.
+- If the leader **fails on infrastructure**, the round voids. The crown does
+  not move.
+
+The leader runs in every later round as a normal entry.
+
+## Startup death
+
+A challenger whose own process exits before it becomes healthy is
+`disqualified` (terminal). A kill from outside the image (SIGKILL, SIGTERM,
+OOM) or a health timeout stays `infra_failed` and gets one requeue. The same
+self-exit on the incumbent is remapped to `infra_failed` and voids the round:
+that image already started and scored on a prior pod.
+
+## Void
+
+A voided round (pod death, baseline failure, leader infrastructure failure,
+no challenger that produced a scored or disqualified verdict, drift over the
+ceiling, stale heartbeat) changes no submission state and no leader. It
+records a `void_reason`, requeues the challengers, and consumes its ordinal.

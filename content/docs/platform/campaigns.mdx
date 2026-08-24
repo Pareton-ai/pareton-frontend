@@ -3,16 +3,26 @@ title: Campaigns
 description: What a campaign pins, how submissions are identified, and the rules for duplicates.
 ---
 
-A campaign is one fixed target. Everything about it is frozen before submissions open, so every patch competes on the same terms.
+A campaign is one fixed target. Everything about it is frozen before submissions open, so every patch competes on the same terms. Rounds and the leader are per campaign. A score from one campaign is not comparable to a score from another.
 
 ## What a campaign pins
 
 - **Baseline:** the exact git commit and base image the patch must apply to.
 - **Model:** the HF repo, exact revision, dtype, quantization, and max context length.
 - **Hardware:** GPU count and SKU.
-- **Workload:** either one fixed trace, or a pinned HuggingFace dataset revision (`sampling_rule`) that each submission draws its prompts from; see [Dynamic workloads](/docs/platform/dynamic-workloads).
-- **SLA gates:** the latency limits the customer will not break.
-- **Correctness thresholds:** measured on that campaign's model and hardware before open; see [Calibration](/docs/platform/calibration).
+- **Workload:** either one fixed trace, or a pinned HuggingFace dataset revision (`sampling_rule`) that each **round** draws its prompts from; see [Dynamic workloads](/docs/platform/dynamic-workloads).
+- **Correctness thresholds:** signed on the campaign at seed time: `min_mean_logprob`, `min_token_logprob`, `min_token_quantile` (default 0.001), `min_coverage_ratio`. The scorer applies `min_token_logprob` to the k-th lowest token, k = ceil(quantile × positions), not to the outright minimum. See [Rounds and leaders](/docs/platform/rounds-and-leaders).
+- **Scoring rule:** the named formula that turns one round's timings into a score. The shipped rule is keyed `name: median_e2e_speedup`. It is fixed once the campaign leaves draft and is part of `manifest_hash`.
+
+Latency targets on the campaign are recorded. They are not a fail verdict. A candidate that is too noisy across repetitions (`p99_e2e_ms_rel_range` over 0.335) is `infra_failed`.
+
+## Rounds and the leader
+
+Rounds and the leader are per campaign. One campaign pins one engine and one baseline, so a score is only meaningful inside that campaign.
+
+A round seats the current leader (if any) and up to 5 challengers on one pod, against one prompt set. Scores are comparable inside one round only. To take the crown, a challenger must beat the incumbent's in-round score by 1 percent. There is no runner-up. A vacant crown has no row.
+
+See [Rounds and leaders](/docs/platform/rounds-and-leaders).
 
 ## One submission is one diff
 
@@ -23,10 +33,12 @@ A submission is a single unified git diff against the campaign's pinned baseline
 A submission is identified by **campaign + patch hash** together, not by the hash alone.
 
 - `campaign_id`: which campaign the patch targets.
-- `patch_hash`: the SHA-256 of the diff bytes.
+- `patch_hash`: the SHA-256 of the exact diff bytes.
 
 The same patch bytes can be submitted to two different campaigns. They are two separate submissions with separate results. This is why the API prefers the campaign-scoped path: the short path `GET /v1/submissions/{patch_hash}` returns **409** when the hash exists in more than one campaign.
 
 ## Dedupe rule
 
-The patch hash is the dedupe key. The first valid commitment of a given patch hash in a campaign wins that slot. Later submissions of the same bytes to the same campaign are skipped, including your own.
+The patch hash is the ingest dedupe key. The first valid commitment of a given patch hash in a campaign wins that slot. Later submissions of the same bytes to the same campaign are skipped, including your own.
+
+At round seeding, images with the same digest also collapse: the earliest `commit_block` keeps the slot, the rest are rejected as `duplicate_image`.

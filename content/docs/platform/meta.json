@@ -1,4 +1,9 @@
 {
   "title": "Platform",
-  "pages": ["pipeline-stages", "campaigns", "calibration", "dynamic-workloads"]
+  "pages": [
+    "pipeline-stages",
+    "campaigns",
+    "rounds-and-leaders",
+    "dynamic-workloads"
+  ]
 }

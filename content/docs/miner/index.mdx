@@ -9,7 +9,7 @@ description: What a Pareton miner does and how a submission moves through the pi
 
 ## Role
 
-A miner proposes focused git patches against a pinned baseline engine. Each campaign freezes the target: model, hardware, workload trace, and the SLA gates the customer will not break. Your patch competes against that fixed target, not against other miners directly.
+A miner proposes focused git patches against a pinned baseline engine. Each campaign freezes the target: model, hardware, workload, scoring rule, and correctness thresholds. Your patch waits for a round, then runs the same prompt set as the current leader and the other challengers in that round. Scores are comparable inside one round only. See [Rounds and leaders](/docs/platform/rounds-and-leaders).
 
 ## What you submit
 
@@ -25,25 +25,30 @@ index 3f4a1b2c9..8d2e7f1a4 100644
 +        max_num_batched_tokens: int = 16384,
 ```
 
-The diff is content-addressed: its SHA-256 hash is the dedupe key. The first valid commitment of a given patch hash wins the slot for that campaign. Later duplicates are skipped, including your own.
+The diff is content-addressed: its SHA-256 hash is the ingest dedupe key. The first valid commitment of a given patch hash wins the slot for that campaign. Later duplicates are skipped, including your own.
 
 ## Pipeline
 
-Every submission walks the same sequence of states:
+Every submission walks the same sequence of states, in this order:
 
-1. **Committed** — your on-chain commitment is seen and recorded.
-2. **Fetched** — the worker retrieves the patch artifact and checks the hash matches your commitment.
-3. **Verified** — identity and eligibility checks pass: registered hotkey, correct baseline pin, hotkey-bound artifact URL.
-4. **Applied** — the diff applies cleanly onto the baseline checkout.
-5. **Surface OK** — path constraints hold: no denied paths, no absolute paths, no traversal, no symlink or binary payloads.
-6. **Building** — the hermetic container build is running. This step can take hours for a full engine compile.
-7. **Built** — the candidate engine image exists and is digest-pinned.
-8. **Correct** — output correctness against the baseline holds.
-9. **Screened** — the performance screen cleared; the full benchmark is queued.
-10. **Benched** — the full benchmark finished and the verdict is recorded.
+1. **Committed** (`committed`) — your on-chain commitment is seen and recorded.
+2. **Picked up** (`picked_up`) — the worker claims the gates job.
+3. **Fetched** (`fetched`) — the worker retrieves the patch artifact and checks the hash matches your commitment.
+4. **Verified** (`verified`) — identity and eligibility checks pass: registered hotkey, correct baseline pin, hotkey-bound artifact URL.
+5. **Applied** (`applied`) — the diff applies cleanly onto the baseline checkout.
+6. **Surface OK** (`surface_ok`) — path constraints hold: no denied paths, no absolute paths, no traversal, no symlink or binary payloads.
+7. **Building** (`building`) — the hermetic container build is running. This step can take hours for a full engine compile.
+8. **Image pushed** (`image_pushed`) — the engine image is pushed to GHCR (ref + digest).
+9. **Built** (`built`) — the candidate engine image exists and is digest-pinned.
+10. **Bench queued** (`bench_queued`) — the image is ready and waiting for a round.
+11. **Round assigned** (`round_assigned`) — seated in a live round with the leader and the other queued challengers.
+12. **Infra failed** (`infra_failed`) — the image never ran because of infrastructure. One requeue.
+13. **Scored** (`scored`) — the round finished and the image holds a speedup score.
+14. **Disqualified** (`disqualified`) — the image ran and failed correctness, or a challenger crashed at startup.
+15. **Rejected** (`rejected`) — the submission never ran (gate or build fail).
 
-A submission that fails a gate ends in **Rejected**. The event log on the dashboard shows which gate rejected it and why.
+`rejected` means the submission never ran. `disqualified` means it ran and was wrong (or a challenger crashed at start). `scored` means it holds a number. The event log on the dashboard shows which gate or round entry produced the verdict.
 
 ## Outcome
 
-Only patches that beat the baseline under the same SLA are promoted. An accepted patch becomes the new floor for the next round, so accepted work compounds. Rejected patches cost you the submission; they change nothing else.
+A scored challenger takes the campaign leader seat only if it beats the incumbent's in-round score by the overtake moat (1 percent). There is no runner-up. The new leader runs again in every later round. Scores from two different rounds are not comparable. See [Pipeline stages](/docs/platform/pipeline-stages) and [Rounds and leaders](/docs/platform/rounds-and-leaders).

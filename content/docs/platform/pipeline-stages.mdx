@@ -1,6 +1,6 @@
 ---
 title: Pipeline stages
-description: How a submission moves from on-chain commit through gates, build, and benchmark to a verdict.
+description: How a submission moves from on-chain commit through gates, build, and a round to a verdict.
 ---
 
 Each submission moves through a fixed set of stages. Track a submission with
@@ -11,41 +11,52 @@ Prefer the campaign-scoped path. The short path returns **409** when the same
 `patch_hash` exists in more than one campaign. Both return **404** when the
 submission is missing. The dashboard pipeline view renders these stages in order.
 
+After `bench_queued`, the submission waits for a **round**. How a round
+benches, scores, and seats a leader is on
+[Rounds and leaders](/docs/platform/rounds-and-leaders). Scores are comparable
+inside one round only.
+
 ## Stages
 
-| Stage        | State          | Emitted when                                         |
-| ------------ | -------------- | ---------------------------------------------------- |
-| Submitted    | `committed`    | Watcher ingests the on-chain commitment              |
-| Picked up    | `picked_up`    | Worker claims the gates job                          |
-| Fetched      | `fetched`      | Patch artifact pulled from object storage            |
-| Verified     | `verified`     | Integrity gate passed (hash, allowlist, hotkey bind) |
-| Applied      | `applied`      | Patch applies onto the pinned baseline               |
-| Surface OK   | `surface_ok`   | Public surface compatibility holds                   |
-| Building     | `building`     | Hermetic docker build started                        |
-| Image pushed | `image_pushed` | Engine image pushed to GHCR (ref + digest)           |
-| Built        | `built`        | Build complete; digest-pinned ref recorded           |
-| Bench queued | `bench_queued` | Bench job row inserted                               |
-| Correct      | `correct`      | Correctness gate passed vs baseline                  |
-| Screened     | `screened`     | Performance screen cleared                           |
-| Benched      | `benched`      | Full benchmark complete; verdict available           |
+| Stage        | State            | Emitted when                                           |
+| ------------ | ---------------- | ------------------------------------------------------ |
+| Submitted    | `committed`      | Watcher ingests the on-chain commitment                |
+| Picked up    | `picked_up`      | Worker claims the gates job                            |
+| Fetched      | `fetched`        | Patch artifact pulled from object storage              |
+| Verified     | `verified`       | Integrity gate passed (hash, allowlist, hotkey bind)   |
+| Applied      | `applied`        | Patch applies onto the pinned baseline                 |
+| Surface OK   | `surface_ok`     | Public surface compatibility holds                     |
+| Building     | `building`       | Hermetic docker build started                          |
+| Image pushed | `image_pushed`   | Engine image pushed to GHCR (ref + digest)             |
+| Built        | `built`          | Build complete; digest-pinned ref recorded             |
+| Bench queued | `bench_queued`   | Image is ready; waiting for a round                    |
+| In a round   | `round_assigned` | Seated in a live round                                 |
+| Infra failed | `infra_failed`   | Image never ran because of infrastructure; one requeue |
+| Scored       | `scored`         | Round finished; the image holds a score                |
+| Disqualified | `disqualified`   | Image ran and failed correctness, or crashed at start  |
+| Rejected     | `rejected`       | The submission never ran (gate or build fail)          |
 
 - **Miner submit:** Hash goes on-chain (Bittensor). Patch goes to S3. Worker finds it by scanning the chain.
 - **Gates:** Worker picks it up, checks the hash, applies the patch, and confirms it only touches allowed files. That is the provenance check.
-- **Building:** Builds a full vLLM Docker image with the patch applied. Hermetic build: pinned baseline commit, fixed base image, no network during compile. If the patch changes CUDA/kernel code, that compiles inside the image too.
-- **Publish and queue:** Image lands in GHCR, build is marked done, bench job is created.
-- **Rent GPU + SSH:** Worker rents a GPU pod and connects over SSH. If the first provider has no capacity, it tries the next one.
-- **Pull 2 images:** Pod downloads baseline (plain vLLM) and candidate (patched image).
-- **Download the model:** Pod downloads one shared model copy used by both engines.
-- **Compare baseline vs candidate:**
-  1. Correctness: same prompts; outputs must match closely. Thresholds are set per campaign by [calibration](/docs/platform/calibration).
-  2. Perf screen: quick check the candidate is not clearly slower.
-  3. SLA bench: full latency run against campaign targets.
-- **Results and score:** Verdict and evidence are saved. On-chain weights and rewards are not wired yet.
-- **Cleanup:** Evidence is pulled back. GPU pod is destroyed.
+- **Building:** Builds a full engine Docker image with the patch applied. Hermetic build: pinned baseline commit, fixed base image, no network during compile. If the patch changes CUDA/kernel code, that compiles inside the image too.
+- **Publish and queue:** Image lands in GHCR, build is marked done, the submission waits at `bench_queued`. Only a built image can enter a round.
+- **Round:** One pod benches the leader plus up to 5 challengers on one prompt set. See [Rounds and leaders](/docs/platform/rounds-and-leaders).
+- **Cleanup:** Evidence is pulled back. The GPU pod is destroyed.
+
+On-chain weights and rewards are not wired yet.
 
 ## Terminal failure
 
-A submission can be rejected after any stage. The rejection detail carries a `reason`. Build failures may also include a sanitized, size-capped build log tail.
+`rejected` means the submission never ran: a gate or the build failed. The
+rejection detail carries a `reason`. Build failures may also include a
+sanitized, size-capped build log tail.
+
+`disqualified` is terminal: the image ran and earned that verdict (wrong
+output, or a challenger crash at startup). `scored` is terminal: the image
+holds a speedup. `infra_failed` is not terminal: that entry is requeued once.
+
+A voided round changes no submission state and no leader. See
+[Rounds and leaders](/docs/platform/rounds-and-leaders).
 
 ## Build log
 

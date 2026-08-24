@@ -1,0 +1,40 @@
+---
+title: This website
+description: What pareton.ai is, what it shows, and what it records.
+---
+
+This page covers the public site and the read-only dashboard. It is not the
+patch-submission page. See [Submitting a patch](/docs/policies/submitting).
+
+## What the site is
+
+[pareton.ai](https://pareton.ai) is a product site and a public window onto
+subnet 10. The dashboard lists campaigns, submissions, and rounds. You do not
+create an account to read it.
+
+The docs at `/docs` describe the pipeline. Miner pages still say submissions
+are not open to the public. A commit you make anyway is still a real
+commitment.
+
+## What is already public
+
+A recorded submission shows a hotkey, a `patch_hash`, pipeline states, round
+status, and a score or a disqualify reason. The patch bytes live at the
+retrieval URL in the commitment. Do not put secrets in a patch or in a
+commit message.
+
+## What the site records
+
+The site loads [Vercel Analytics](https://vercel.com/docs/analytics). That
+product records page views on pareton.ai. It is not used to log you in.
+
+The dashboard reads [api.pareton.ai](https://api.pareton.ai). Those responses
+are the same public campaign and submission records the API already serves.
+
+Pareton does not run a miner account system on this site. Wallet keys never
+leave your machine when you use `python -m miner.commit_patch`.
+
+## Contact
+
+Questions about this page or about a campaign go to the Pareton channels
+linked from the [docs overview](/docs).

@@ -1,9 +1,10 @@
 ---
 title: Dynamic workloads
-description: How workloads are dynamically generated to ensure fair benchmarking
+description: How each round draws a prompt set that the miner could not know at commit time.
 ---
 
-Complements [Calibration](/docs/platform/calibration). This page covers how Pareton picks prompts per submission and how it decides promotion with a z-score.
+This page covers how Pareton picks prompts for a round. Ranking and the
+correctness gate live on [Pipeline stages](/docs/platform/pipeline-stages).
 
 ## Problem
 
@@ -13,45 +14,36 @@ The workload must be:
 
 1. Unknown to the miner at commit time.
 2. Public and checkable after the run (no secret prompts).
-3. Large enough so it's hard to overfit.
+3. The same for every image in one round, so scores in that round are comparable.
 
 ## Idea
 
 1. Pin a HuggingFace dataset on the campaign (`sampling_rule`). The pin includes the dataset name, a git revision, how many rows it has, and how many prompts to draw.
-2. After the miner commits, wait for a later block. That block’s hash was not known at commit time.
-3. Turn that hash, the patch hash, and the campaign id into a **seed** (a hex string that picks which rows to use). Fetch those rows, build a trace, and upload the exact JSON we ran (sha256 + URL). That upload is a receipt, not a published prompt deck.
-4. Run baseline and candidate on that same trace.
-5. Promote with a z-score against the campaign noise distribution. Ranking and speedup stay on other stages.
+2. When a round is created, take a chain block that has already finalized. That block's hash was not known at any miner's commit time.
+3. Turn that hash and the campaign id into a **seed**. Fetch the chosen rows, build a trace, and store the exact JSON the round ran (`sampled_trace_sha256` plus a sampling receipt). That receipt is checkable. It is not a published prompt deck.
+4. Run the baseline, the leader, and every challenger on that same trace.
 
-## Campaign setup / Calibration
+The patch hash is not in the seed. Every image in the round must see the same prompts.
 
-1. **Set `sampling_rule`** — type `hf_rows`, with `dataset`, `revision` (a git SHA, not `main`), `config`, `split`, `n_rows`, `n_prompts`, `max_tokens`, `algo_version` (1), and `seed_block_offset` (default 1).
-2. **Calibrate noise** — generate 20 traces with seeds `sha256(campaign_id || "calib" || i)`, run baseline vs baseline, store mean and std per z-metric. The older max × safety caps still hard-fail alongside z (see [Calibration](/docs/platform/calibration)).
-3. **Set `z_threshold`** — promote when `aggregate_z` is below this value. There is no code default; if it is unset, the worker skips z-promotion.
+## Campaign setup
 
-## Per submission
+Set `sampling_rule` on a draft campaign. Type `hf_rows`, with `dataset`, `revision` (a git SHA, not `main`), `config`, `split`, `n_rows`, `n_prompts`, `max_tokens`, and `algo_version` (1).
 
-1. Wait until `commit_block + seed_block_offset` is finalized.
-2. Seed = `sha256(block_hash || patch_hash || campaign_id)`.
+A campaign with no `sampling_rule` pins one fixed trace. Every round of that campaign draws that same trace.
+
+The sampling rule stays on the campaign. The realized trace is snapshotted onto the round (`sampled_trace_sha256` plus the receipt).
+
+## Per round
+
+1. The seed block is the chain head minus finality depth at the moment the round is created. That block is already settled. The watcher does not seed on the tip and does not wait for a later block.
+2. Seed = `sha256(block_hash || campaign_id)` (64-char lowercase hex, no `sha256:` prefix). The patch hash is not in the material, so every image in the round draws the same rows.
 3. Row index = `sha256(seed + ":" + counter) % n_rows`. Skip empty prompts and prompts longer than 8000 characters. Fetch only the kept rows.
-4. Build the trace, hash it, upload it. Score baseline and candidate on the same prompts.
-5. For each z-metric, `z = (observed - mean) / std`. Positive z means worse than the noise mean. The metrics are:
-   - `mean_abs_logprob_diff` — average gap in per-token confidence vs baseline
-   - `max_abs_logprob_diff` — worst single-token gap
-   - `argmax_mismatch_rate` — how often the top predicted token differs
-   - `neg_throughput_ratio` — candidate tokens/sec divided by baseline, then negated so slower is worse
-6. `aggregate_z = max(z)` across those four.
-7. Promote if the max × safety caps pass, there is no hard engine or infra error, and `aggregate_z < z_threshold`.
+4. Build the trace, hash it, store the hash and the receipt on the round. Every engine in the round scores those prompts.
 
-Absolute p99 latency is not in the z-vector. Each submission draws a different trace, so raw latency would be a lottery.
+Every round draws a different prompt set. Scores are comparable inside one round only.
 
-## What promotion means
+Absolute p99 latency is not a ranking input. Each round draws a different trace, so raw latency would be a lottery. The score is a ratio against the baseline **in that same round**.
 
-A z-pass means the candidate is not unusually worse than baseline noise on that generated workload. It is not a speedup claim.
+## What a score means
 
-## Operator checklist
-
-1. Pin `sampling_rule` (`hf_rows`) and set `z_threshold` on a **draft** campaign.
-2. Run z-calibration (20 generated baseline-vs-baseline samples). Apply it while the campaign is still draft and has zero submissions.
-3. Open the campaign.
-4. Submissions generate traces from the future-block seed.
+A score is median per-prompt end-to-end speedup against the baseline on this round's trace. It is not a claim about any other prompt set. Compare two submissions only when they sat in the same round.
