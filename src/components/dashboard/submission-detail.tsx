@@ -23,6 +23,7 @@ import { isSafeArtifactUrl } from "@/lib/api/artifacts";
 import {
   elapsedBetween,
   formatDuration,
+  formatScore,
   formatUtc,
   formatUtcShort,
   formatUtcTime,
@@ -34,11 +35,11 @@ import { campaignHref, minerExplorerHref } from "@/lib/routes";
 import {
   firstEventByState,
   getSubmissionStateMeta,
+  happyPathIndex,
   isFailedState,
   isStalled,
   isTerminalState,
-  stageIndex,
-  SUBMISSION_STAGE_ORDER,
+  SUBMISSION_HAPPY_PATH,
   type Campaign,
   type SubmissionDetail,
   type SubmissionEvent,
@@ -144,9 +145,9 @@ function StageTrack({
     <div
       className="mt-1.5 flex gap-px"
       role="img"
-      aria-label={`Stage ${reached + 1} of ${SUBMISSION_STAGE_ORDER.length}`}
+      aria-label={`Stage ${reached + 1} of ${SUBMISSION_HAPPY_PATH.length}`}
     >
-      {SUBMISSION_STAGE_ORDER.map((state, index) => {
+      {SUBMISSION_HAPPY_PATH.map((state, index) => {
         const meta = getSubmissionStateMeta(state);
         const event = firstByState.get(state);
         const cleared = index <= reached;
@@ -179,7 +180,7 @@ function StageTrack({
               className={`pointer-events-none absolute bottom-full z-10 mb-1.5 w-max max-w-52 border border-border bg-background px-2 py-1.5 text-left opacity-0 transition-opacity delay-0 duration-75 group-hover/seg:opacity-100 group-hover/seg:delay-150 ${
                 index === 0
                   ? "left-0"
-                  : index === SUBMISSION_STAGE_ORDER.length - 1
+                  : index === SUBMISSION_HAPPY_PATH.length - 1
                     ? "right-0"
                     : "left-1/2 -translate-x-1/2"
               }`}
@@ -214,7 +215,7 @@ function ScoreTile({ score }: { score: number | null }) {
     <StatTile
       icon={TrendingUp}
       label="Round score"
-      value={<span className="tabular-nums">{score}</span>}
+      value={<span className="tabular-nums">{formatScore(score)}</span>}
       hint="0 is baseline speed"
     />
   );
@@ -257,8 +258,8 @@ export function SubmissionStats({
   const active = !isTerminalState(latestState) && !stalled;
 
   const reached = Math.max(
-    stageIndex(latestState),
-    ...events.map((event) => stageIndex(event.state)),
+    happyPathIndex(latestState),
+    ...events.map((event) => happyPathIndex(event.state)),
     0
   );
   const lastEventAt = events.at(-1)?.created_at ?? submission.committed_at;
@@ -280,8 +281,8 @@ export function SubmissionStats({
             {stateMeta.label}
           </span>
         }
-        hint={`${Math.min(reached + 1, SUBMISSION_STAGE_ORDER.length)} of ${
-          SUBMISSION_STAGE_ORDER.length
+        hint={`${Math.min(reached + 1, SUBMISSION_HAPPY_PATH.length)} of ${
+          SUBMISSION_HAPPY_PATH.length
         } stages`}
       >
         <StageTrack events={events} reached={reached} halted={halted} />

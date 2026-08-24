@@ -7,6 +7,10 @@ import {
   CampaignRequirements,
 } from "@/components/dashboard/campaign-spec";
 import { CampaignStats } from "@/components/dashboard/campaign-stats";
+import {
+  LiveCampaignPoll,
+  LiveCampaignPollHost,
+} from "@/components/dashboard/live-campaign-poll";
 import { EmptyRounds, RoundsTable } from "@/components/dashboard/rounds-table";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import {
@@ -21,7 +25,12 @@ import {
 } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
 import { campaignListHref } from "@/lib/routes";
-import type { Campaign, RoundsPage, SubmissionsPage } from "@/lib/api/types";
+import {
+  isLiveSubmissionRow,
+  type Campaign,
+  type RoundsPage,
+  type SubmissionsPage,
+} from "@/lib/api/types";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -86,7 +95,12 @@ async function CampaignBody({
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    return campaignLoadUnavailable(result.kind);
+    return (
+      <div className="space-y-8">
+        <LiveCampaignPoll enabled />
+        {campaignLoadUnavailable(result.kind)}
+      </div>
+    );
   }
   const { campaign } = result;
 
@@ -139,8 +153,16 @@ async function CampaignBody({
     }
   }
 
+  // A submissions blip must not send `enabled={false}`: that would stop the
+  // host. Keep polling while the campaign is open until a successful idle
+  // page proves there is nothing live.
+  const live =
+    campaign.status === "open" &&
+    (data === null || data.submissions.some(isLiveSubmissionRow));
+
   return (
     <div className="space-y-8">
+      <LiveCampaignPoll enabled={live} />
       <CampaignStats campaign={campaign} submissions={data} />
 
       {rounds === null ? (
@@ -212,35 +234,37 @@ export default async function CampaignPage({
   const submissionsPage = parsePage(sp.submissions);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start gap-4">
-        {/* Rendered outside the Suspense boundary so the way back is never
-            gated on the campaign fetch. */}
-        <BackLink href="/dashboard" label="All campaigns" />
+    <LiveCampaignPollHost>
+      <div className="space-y-8">
+        <div className="flex items-start gap-4">
+          {/* Rendered outside the Suspense boundary so the way back is never
+              gated on the campaign fetch. */}
+          <BackLink href="/dashboard" label="All campaigns" />
+
+          <Suspense
+            fallback={
+              <div className="mt-1 h-8 w-72 animate-pulse bg-border/50" />
+            }
+          >
+            <CampaignHeading id={id} />
+          </Suspense>
+        </div>
 
         <Suspense
           fallback={
-            <div className="mt-1 h-8 w-72 animate-pulse bg-border/50" />
+            <div className="space-y-8">
+              <div className="h-28 animate-pulse border border-border bg-border/10" />
+              <div className="h-72 animate-pulse border border-border bg-border/10" />
+              <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
+                <div className="h-72 animate-pulse border border-border bg-border/10" />
+                <div className="h-72 animate-pulse border border-border bg-border/10" />
+              </div>
+            </div>
           }
         >
-          <CampaignHeading id={id} />
+          <CampaignBody id={id} page={page} submissionsPage={submissionsPage} />
         </Suspense>
       </div>
-
-      <Suspense
-        fallback={
-          <div className="space-y-8">
-            <div className="h-28 animate-pulse border border-border bg-border/10" />
-            <div className="h-72 animate-pulse border border-border bg-border/10" />
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
-              <div className="h-72 animate-pulse border border-border bg-border/10" />
-              <div className="h-72 animate-pulse border border-border bg-border/10" />
-            </div>
-          </div>
-        }
-      >
-        <CampaignBody id={id} page={page} submissionsPage={submissionsPage} />
-      </Suspense>
-    </div>
+    </LiveCampaignPollHost>
   );
 }

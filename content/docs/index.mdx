@@ -9,16 +9,16 @@ Models are converging in quality; cost and latency are the real competitive edge
 
 Pareton continuously discovers, validates, and deploys the optimal serving configuration for a workload, across models, hardware, and serving stacks.
 
-It runs on Bittensor Subnet 10. Contributors submit small, reviewable git patches against a pinned baseline engine. Pareton gates those patches, benchmarks them against a frozen customer profile, and promotes only improvements that hold under the same SLA.
+It runs on Bittensor Subnet 10. Contributors submit small, reviewable git patches against a pinned baseline engine. Pareton gates those patches, benches them in rounds against a frozen customer profile, and seats a campaign leader only when a challenger beats the incumbent on the same prompt set.
 
 ## How it works
 
-1. **Customer profile** — You define the production setup (model, hardware, serving configs, workload) and the SLA gates you will not break. One success metric locks the goal.
+1. **Customer profile** — You define the production setup (model, hardware, serving configs, workload) and the correctness and scoring rules. One success metric locks the goal.
 2. **Contributor patches** — Miners propose focused changes against the current baseline.
-3. **Validate** — Candidates must build, preserve output quality and API compatibility, and satisfy customer constraints before any timed benchmark runs.
-4. **Benchmark** — Patched engine and baseline run the same workload trace on identical hardware under the same SLA gates.
-5. **Promote or reject** — Promote on evidence; otherwise discard and try the next candidate. The baseline only moves forward.
-6. **Repeat** — Each accepted patch becomes the floor for the next round, so gains compound.
+3. **Validate** — Candidates must build and satisfy path and API constraints before they enter a round.
+4. **Round** — The leader and up to 5 challengers run the same sampled prompt set on one GPU pod. Scores are comparable inside that round only. See [Rounds and leaders](/docs/platform/rounds-and-leaders).
+5. **Seat or hold** — A challenger takes the crown only if it beats the incumbent by the overtake moat. Otherwise the leader holds, or the crown is vacated.
+6. **Repeat** — The leader runs again in every later round.
 
 ## Links
 

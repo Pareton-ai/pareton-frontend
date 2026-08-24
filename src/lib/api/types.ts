@@ -73,6 +73,22 @@ export const SUBMISSION_PHASES = [
 
 export type SubmissionPhase = (typeof SUBMISSION_PHASES)[number];
 
+/**
+ * The 12 happy-path stages, flattened from `SUBMISSION_PHASES`.
+ *
+ * `SUBMISSION_STAGE_ORDER` orders every state, including off-path ones like
+ * `infra_failed` and the alternative terminal `disqualified`; this list is
+ * what progress counters count, so a scored submission reads 12 of 12.
+ */
+export const SUBMISSION_HAPPY_PATH = SUBMISSION_PHASES.flatMap(
+  (phase) => phase.states
+);
+
+/** Position on the happy path, or -1 for off-path states. */
+export function happyPathIndex(state: string): number {
+  return (SUBMISSION_HAPPY_PATH as readonly string[]).indexOf(state);
+}
+
 /** `rounds.status`. From `db/schema.sql`. */
 export const ROUND_STATUSES = [
   "pending",
@@ -550,6 +566,18 @@ export function isFailedState(state: string): boolean {
   return state === "disqualified" || state === "rejected";
 }
 
+/**
+ * Whether a campaign-list row is still expected to change.
+ *
+ * List payloads have no job array, so a queued wait (`bench_queued` /
+ * `sampled` with no `bench_phase` yet) cannot be told from a stall. Treat
+ * every non-terminal state as live; a stuck row polling once a minute is
+ * cheaper than freezing the table through the GPU wait and the whole bench.
+ */
+export function isLiveSubmissionRow(row: { latest_state: string }): boolean {
+  return !isTerminalState(row.latest_state);
+}
+
 /** Whether the pipeline got far enough for a build log to exist. */
 export function reachedBuild(states: readonly string[]): boolean {
   const buildIndex = stageIndex("building");
@@ -694,5 +722,8 @@ export function getRoundActivity(
   round: RoundDetail,
   now: string
 ): LiveActivity | null {
+  // The backend settle paths (complete/void/reap) leave the phase column
+  // populated, so a settled round would otherwise paint as live forever.
+  if (!isLiveRound(round.status)) return null;
   return toLiveActivity(round, now);
 }
