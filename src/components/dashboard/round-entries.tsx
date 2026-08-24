@@ -46,7 +46,10 @@ function EntryRow({
         {entry.hotkey === null ? (
           <span className="text-muted">—</span>
         ) : (
-          truncateMiddle(entry.hotkey, 6, 4)
+          <CopyableMono
+            value={entry.hotkey}
+            display={truncateMiddle(entry.hotkey, 6, 4)}
+          />
         )}
       </td>
       <td className="px-3 py-3.5">
