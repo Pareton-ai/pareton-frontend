@@ -28,7 +28,7 @@ import {
   truncateHash,
   truncateMiddle,
 } from "@/lib/api/format";
-import { campaignHref, submissionHref } from "@/lib/routes";
+import { campaignHref, submissionHref, blockExplorerHref } from "@/lib/routes";
 import {
   isLiveRound,
   type Campaign,
@@ -300,9 +300,15 @@ export function RoundMetadata({
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
       <Panel icon={Dices} title="Seed">
         <PanelRow label="Seed block">
-          <span className="tabular-nums text-secondary">
+          <a
+            href={blockExplorerHref(round.seed_block)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open block ${round.seed_block} on taomarketcap`}
+            className="tabular-nums text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+          >
             {round.seed_block.toLocaleString("en-US")}
-          </span>
+          </a>
         </PanelRow>
         <PanelRow label="Block hash">
           <CopyableMono

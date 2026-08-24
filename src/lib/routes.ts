@@ -58,6 +58,11 @@ export function minerExplorerHref(hotkey: string): string {
   return `https://taomarketcap.com/subnets/${NETUID}/miners?query=${encodeURIComponent(hotkey)}`;
 }
 
+/** Public explorer page for a Bittensor block. */
+export function blockExplorerHref(block: number): string {
+  return `https://taomarketcap.com/blocks/${block}`;
+}
+
 /** True for a canonical on-chain patch digest (`sha256:` + 64 lowercase hex). */
 export function isPatchHash(value: string): boolean {
   return PATCH_HASH_RE.test(value);
