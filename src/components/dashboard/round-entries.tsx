@@ -5,6 +5,7 @@ import { EntryStatusChip } from "@/components/dashboard/status-chip";
 import {
   elapsedBetween,
   formatDuration,
+  formatScore,
   truncateDigest,
   truncateMiddle,
 } from "@/lib/api/format";
@@ -37,15 +38,29 @@ function EntryRow({
 }) {
   return (
     <tr className="border-t border-border/80">
-      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-body text-foreground sm:px-5">
-        {entry.role.replaceAll("_", " ")}
+      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-body sm:px-5">
+        {entry.patch_hash === null ? (
+          <span className="text-foreground">
+            {entry.role.replaceAll("_", " ")}
+          </span>
+        ) : (
+          <Link
+            href={submissionHref(campaignId, entry.patch_hash)}
+            className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {entry.role.replaceAll("_", " ")}
+          </Link>
+        )}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
         {/* The baseline is the campaign's own image, so it has no miner. */}
         {entry.hotkey === null ? (
           <span className="text-muted">—</span>
         ) : (
-          truncateMiddle(entry.hotkey, 6, 4)
+          <CopyableMono
+            value={entry.hotkey}
+            display={truncateMiddle(entry.hotkey, 6, 4)}
+          />
         )}
       </td>
       <td className="px-3 py-3.5">
@@ -63,12 +78,14 @@ function EntryRow({
           </span>
         )}
       </td>
-      <td className="whitespace-nowrap px-3 py-3.5">
-        <span className="flex items-center gap-2">
-          <EntryStatusChip status={entry.status} />
+      <td className="px-3 py-3.5">
+        <span className="flex w-72 max-w-72 items-center gap-2">
+          <span className="shrink-0">
+            <EntryStatusChip status={entry.status} />
+          </span>
           {entry.disqualify_reason ? (
             <span
-              className="font-mono text-caption text-muted"
+              className="min-w-0 truncate font-mono text-caption text-muted"
               title={entry.disqualify_reason}
             >
               {entry.disqualify_reason.replaceAll("_", " ")}
@@ -82,7 +99,7 @@ function EntryRow({
         {entry.score === null ? (
           <span className="text-muted">—</span>
         ) : (
-          <span className="tabular-nums">{entry.score}</span>
+          <span className="tabular-nums">{formatScore(entry.score)}</span>
         )}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">

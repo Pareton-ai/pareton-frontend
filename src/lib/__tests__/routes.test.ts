@@ -5,6 +5,7 @@ import {
   parseRoundOrdinal,
   roundHref,
   submissionHref,
+  blockExplorerHref,
 } from "@/lib/routes";
 
 describe("campaignListHref", () => {
@@ -59,5 +60,13 @@ describe("submissionHref", () => {
         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       )
     ).toContain("sha256%3A");
+  });
+});
+
+describe("blockExplorerHref", () => {
+  it("points at the taomarketcap block page", () => {
+    expect(blockExplorerHref(8912412)).toBe(
+      "https://taomarketcap.com/blocks/8912412"
+    );
   });
 });

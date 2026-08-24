@@ -74,9 +74,19 @@ export function formatRatio(value: number): string {
   })}×`;
 }
 
-/** Round score, capped at four decimal places. */
+/**
+ * Round score, e.g. `0.31`, `-0.0001`.
+ *
+ * Four decimals is the cap: a measured speedup of `-0.0000777167485470146`
+ * has to print as `-0.0001` instead of running off its tile. Trailing zeros
+ * are dropped so `0.31` stays `0.31`. Values that round to signed zero print
+ * as `0`.
+ */
 export function formatScore(value: number): string {
-  return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  const formatted = value.toLocaleString("en-US", {
+    maximumFractionDigits: 4,
+  });
+  return formatted === "-0" ? "0" : formatted;
 }
 
 /** Compact elapsed span, e.g. `2.8s`, `4m 12s`, `1h 31m`. */

@@ -8,6 +8,7 @@ import {
   formatDuration,
   truncateMiddle,
 } from "@/lib/api/format";
+import { blockExplorerHref } from "@/lib/routes";
 import type { Round } from "@/lib/api/types";
 
 function leaderChangedLabel(value: boolean | null): string {
@@ -47,7 +48,15 @@ export function RoundRow({
         </Link>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body tabular-nums text-secondary">
-        {row.seed_block}
+        <a
+          href={blockExplorerHref(row.seed_block)}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open block ${row.seed_block} on taomarketcap`}
+          className="relative z-10 underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+        >
+          {row.seed_block}
+        </a>
       </td>
       <td className="px-3 py-3.5">
         <CopyableMono
@@ -65,12 +74,14 @@ export function RoundRow({
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
         {leaderChangedLabel(row.leader_changed)}
       </td>
-      <td className="whitespace-nowrap px-3 py-3.5">
-        <span className="flex items-center gap-2">
-          <RoundStatusChip status={row.status} />
+      <td className="px-3 py-3.5">
+        <span className="flex w-72 max-w-72 items-center gap-2">
+          <span className="shrink-0">
+            <RoundStatusChip status={row.status} />
+          </span>
           {row.status === "void" && row.void_reason ? (
             <span
-              className="font-mono text-caption text-muted"
+              className="min-w-0 truncate font-mono text-caption text-muted"
               title={row.void_reason}
             >
               {row.void_reason.replaceAll("_", " ")}
