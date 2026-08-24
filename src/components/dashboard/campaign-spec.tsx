@@ -97,7 +97,7 @@ function ArtifactLink({ href }: { href: string }) {
 
 /** Sidebar column: what a patch has to achieve and what it runs against. */
 export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
-  const { model, cross_env, correctness } = campaign.bench;
+  const { model, correctness } = campaign.bench;
 
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
@@ -110,10 +110,9 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
             {campaign.success_threshold || "—"}
           </p>
         </Row>
-        <Row label="Speedup floor">
-          <span className="text-secondary tabular-nums">
-            {cross_env.min_speedup_each.toFixed(4)}×{" "}
-            {cross_env.speedup_metric.replaceAll("_", " ")}
+        <Row label="Scoring rule">
+          <span className="text-secondary">
+            {campaign.scoring_rule.name.replaceAll("_", " ") || "—"}
           </span>
         </Row>
         <Row label="Quality floor">

@@ -44,6 +44,26 @@ export function Panel({
   );
 }
 
+/** Labelled row inside a stacked `Panel`, used by both detail pages. */
+export function PanelRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="px-4 py-3">
+      <p className="font-mono text-caption uppercase tracking-caps text-muted">
+        {label}
+      </p>
+      <div className="mt-1.5 font-mono text-body text-foreground">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** Row of stat tiles separated by hairlines; `className` sets the columns. */
 export function StatStrip({
   label,

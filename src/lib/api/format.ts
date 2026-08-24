@@ -74,6 +74,11 @@ export function formatRatio(value: number): string {
   })}×`;
 }
 
+/** Round score, capped at four decimal places. */
+export function formatScore(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
 /** Compact elapsed span, e.g. `2.8s`, `4m 12s`, `1h 31m`. */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "—";

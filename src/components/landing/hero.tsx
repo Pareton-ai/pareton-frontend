@@ -50,7 +50,15 @@ export function Hero() {
               )
             )}
           </h1>
-          <p className="lede">{siteContent.heroDescription}</p>
+          <p className="lede">
+            {withEmphasis(
+              siteContent.heroDescription,
+              siteContent.heroDescriptionBold,
+              (part) => (
+                <strong>{part}</strong>
+              )
+            )}
+          </p>
           <div className="actions">
             <NavLink className="btn" href={siteContent.heroCta.href}>
               {siteContent.heroCta.label}

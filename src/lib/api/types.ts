@@ -11,7 +11,8 @@ import type { components } from "@/lib/api/schema";
 
 /**
  * Pipeline states, generated from `SubmissionState` in the backend
- * `gate/types.py`. Regenerate with `npm run api:types` — never edit by hand.
+ * `gate/types.py`. Regenerated from the local FastAPI OpenAPI (PAR-84);
+ * do not edit by hand.
  */
 export type SubmissionState = components["schemas"]["SubmissionState"];
 
@@ -34,14 +35,10 @@ export const SUBMISSION_STAGE_ORDER = [
   "image_pushed",
   "built",
   "bench_queued",
-  // Only sampling campaigns emit this, so it is deliberately absent from
-  // SUBMISSION_PHASES: a phase step that can never fill would leave older
-  // campaigns' finished submissions reading 4/5 forever. Ordered here so
-  // stageIndex resolves and the row meter renders at all.
-  "sampled",
-  "correct",
-  "screened",
-  "benched",
+  "round_assigned",
+  "infra_failed",
+  "scored",
+  "disqualified",
 ] as const satisfies readonly Exclude<SubmissionState, "rejected">[];
 
 /** Happy-path stages grouped into the three phases the timeline renders. */
@@ -65,8 +62,8 @@ export const SUBMISSION_PHASES = [
   },
   {
     id: "bench",
-    label: "Benchmark",
-    states: ["bench_queued", "correct", "screened", "benched"],
+    label: "Round",
+    states: ["bench_queued", "round_assigned", "scored"],
   },
 ] as const satisfies readonly {
   id: string;
@@ -76,19 +73,62 @@ export const SUBMISSION_PHASES = [
 
 export type SubmissionPhase = (typeof SUBMISSION_PHASES)[number];
 
-/** Terminal bench failures the API reports via `bench_verdict`. */
-export const BENCH_FAIL_REASONS = [
-  "fail_correctness",
-  "fail_perf_screen",
-  "fail_sla",
-  "fail_engine_candidate",
-  "fail_cross_env_speedup",
+/**
+ * The 12 happy-path stages, flattened from `SUBMISSION_PHASES`.
+ *
+ * `SUBMISSION_STAGE_ORDER` orders every state, including off-path ones like
+ * `infra_failed` and the alternative terminal `disqualified`; this list is
+ * what progress counters count, so a scored submission reads 12 of 12.
+ */
+export const SUBMISSION_HAPPY_PATH = SUBMISSION_PHASES.flatMap(
+  (phase) => phase.states
+);
+
+/** Position on the happy path, or -1 for off-path states. */
+export function happyPathIndex(state: string): number {
+  return (SUBMISSION_HAPPY_PATH as readonly string[]).indexOf(state);
+}
+
+/** `rounds.status`. From `db/schema.sql`. */
+export const ROUND_STATUSES = [
+  "pending",
+  "running",
+  "complete",
+  "void",
 ] as const;
 
-export type BenchFailReason = (typeof BENCH_FAIL_REASONS)[number];
+export type RoundStatus = (typeof ROUND_STATUSES)[number] | string;
 
-/** `pass`, a specific failure reason, or null while bench is still pending. */
-export type BenchVerdict = "pass" | BenchFailReason | null;
+/** `round_entries.role`. From `round/rank.py` `ENTRY_ROLES`. */
+export const ENTRY_ROLES = ["baseline", "leader", "challenger"] as const;
+
+export type EntryRole = (typeof ENTRY_ROLES)[number] | string;
+
+/** `round_entries.status`. From `round/rank.py` `ENTRY_STATUSES`. */
+export const ENTRY_STATUSES = [
+  "pending",
+  "running",
+  "scored",
+  "disqualified",
+  "infra_failed",
+] as const;
+
+export type EntryStatus = (typeof ENTRY_STATUSES)[number] | string;
+
+/**
+ * Known `rounds.void_reason` values. From `round/rank.py` `VOID_*` plus
+ * `round/store.py` `VOID_HEARTBEAT_STALE`. The runner may write others, so the
+ * field on the wire is `string | null`, not this union.
+ */
+export const VOID_REASONS = [
+  "baseline_failed",
+  "leader_infra_failed",
+  "no_surviving_challenger",
+  "baseline_drift",
+  "heartbeat_stale",
+] as const;
+
+export type VoidReason = (typeof VOID_REASONS)[number] | string;
 
 export type CampaignStatus = "draft" | "open" | "closed";
 
@@ -106,12 +146,6 @@ export type CampaignBenchModel = {
   max_model_len: number;
 };
 
-export type CampaignBenchCrossEnv = {
-  aggregate: string;
-  speedup_metric: string;
-  min_speedup_each: number;
-};
-
 export type CampaignBenchCorrectnessThresholds = {
   argmax_mismatch_rate: number;
   mean_abs_logprob_diff: number;
@@ -124,12 +158,14 @@ export type CampaignBenchCorrectness = {
 
 export type CampaignBench = {
   model: CampaignBenchModel;
-  cross_env: CampaignBenchCrossEnv;
   gpu_count: number;
   serve_args: string[] | null;
   correctness: CampaignBenchCorrectness | null;
-  perf_screen: unknown | null;
   baseline_engine_image_digest: string;
+};
+
+export type ScoringRule = {
+  name: string;
 };
 
 export type CustomerSignoff = {
@@ -163,14 +199,29 @@ export type Campaign = {
   /** Human-readable win condition for the pilot. */
   success_threshold: string;
   bench: CampaignBench;
+  scoring_rule: ScoringRule;
 };
 
 export type CampaignsResponse = {
   campaigns: Campaign[];
 };
 
+/**
+ * A submission's newest non-void round entry.
+ *
+ * `score` is null for a disqualified or infra-failed entry. 0.0 is a real
+ * score and means the image matched baseline speed.
+ */
+export type SubmissionRound = {
+  round_id: string;
+  ordinal: number;
+  status: EntryStatus;
+  score: number | null;
+  disqualify_reason: string | null;
+};
+
 export type SubmissionRow = {
-  /** Submission UUID — secondary support identifier (build logs, Axiom). */
+  /** Submission UUID. Secondary support identifier (build logs, Axiom). */
   id: string;
   patch_hash: string;
   campaign_id: string;
@@ -178,14 +229,7 @@ export type SubmissionRow = {
   /** API field `committed_at`: when the patch hash landed on chain. */
   committed_at: string;
   latest_state: SubmissionStateName;
-  bench_verdict: BenchVerdict;
-  /**
-   * Phase of a bench running right now, else null. Read live from the job row
-   * by the API, so it clears itself when the work stops. The event trail has
-   * nothing between `sampled` and a result, so `latest_state` alone cannot tell
-   * a run in progress from one that died hours ago.
-   */
-  bench_phase: BenchPhase | null;
+  round: SubmissionRound | null;
 };
 
 export type SubmissionsPage = {
@@ -217,11 +261,6 @@ export type SubmissionEvent = {
   evidence_ref: string | null;
 };
 
-/** Work units the worker claims per submission, in pipeline order. */
-export const SUBMISSION_JOB_KINDS = ["gates", "bench"] as const;
-
-export type SubmissionJobKind = (typeof SUBMISSION_JOB_KINDS)[number];
-
 export const SUBMISSION_JOB_STATUSES = [
   "pending",
   "running",
@@ -234,6 +273,7 @@ export type SubmissionJobStatus = (typeof SUBMISSION_JOB_STATUSES)[number];
 /**
  * Live bench operations. Unknown names are dropped at parse time rather than
  * rendered: they originate on a GPU pod running miner-supplied code.
+ * Mirrors `bench/phases.py` `BenchPhase`.
  */
 export const BENCH_PHASES = [
   "provisioning",
@@ -242,7 +282,6 @@ export const BENCH_PHASES = [
   "downloading_model",
   "starting_engine",
   "correctness",
-  "perf_screen",
   "sla_bench",
   "teardown",
 ] as const;
@@ -256,10 +295,9 @@ export function isBenchPhase(value: unknown): value is BenchPhase {
   );
 }
 
-/** A `submission_jobs` row from the detail response. Kind/status are widened
+/** A `submission_jobs` row from the detail response. Status is widened
  *  to `string` so new DB CHECK values still render. */
 export type SubmissionJob = {
-  kind: SubmissionJobKind | string;
   status: SubmissionJobStatus | string;
   /** Machine-readable failure code, e.g. `bench_exit_bad_request`. */
   last_error: string | null;
@@ -271,34 +309,113 @@ export type SubmissionJob = {
   progress: Record<string, unknown> | null;
 };
 
-export const BENCH_STAGES = [
-  "correctness",
-  "perf_screen",
-  "sla_bench",
-] as const;
-
-export type BenchStage = (typeof BENCH_STAGES)[number] | string;
-
-export type BenchReport = {
-  task_id: string;
-  stage: BenchStage;
-  verdict: string;
-  report: Record<string, unknown>;
-  evidence_s3_url: string | null;
-  gpu_sku: string | null;
-  mock: boolean;
-  created_at: string;
-};
-
 export type SubmissionDetail = {
   submission: Submission;
   events: SubmissionEvent[];
-  /** Per-kind worker job status; the only signal for infra-level failures. */
+  /** Worker job status; the only signal for infra-level failures. */
   jobs: SubmissionJob[];
-  bench_reports: BenchReport[];
-  bench_verdict: BenchVerdict;
+  round: SubmissionRound | null;
   /** API-reported furthest state, falling back to the last event. */
   latest_state: SubmissionStateName;
+};
+
+export type Leader = {
+  campaign_id: string;
+  submission_id: string;
+  patch_hash: string;
+  hotkey: string;
+  engine_image_ref: string;
+  won_at_round_id: string;
+  won_at_ordinal: number;
+  last_score: number;
+  last_scored_round_id: string | null;
+  updated_at: string;
+};
+
+/** One row of `GET /v1/campaigns/{id}/rounds`. */
+export type Round = {
+  id: string;
+  ordinal: number;
+  status: RoundStatus;
+  void_reason: string | null;
+  gpu_sku: string;
+  seed_block: number;
+  seed_block_hash: string;
+  entry_count: number;
+  leader_changed: boolean | null;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export type RoundsPage = {
+  campaign_id: string;
+  total: number;
+  limit: number;
+  offset: number;
+  rounds: Round[];
+};
+
+export type RoundEntry = {
+  id: number;
+  submission_id: string | null;
+  patch_hash: string | null;
+  hotkey: string | null;
+  role: EntryRole;
+  engine_image_ref: string;
+  status: EntryStatus;
+  score: number | null;
+  disqualify_reason: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+/** `GET /v1/rounds/{round_id}`. */
+export type RoundDetail = {
+  id: string;
+  campaign_id: string;
+  ordinal: number;
+  status: RoundStatus;
+  void_reason: string | null;
+  gpu_sku: string;
+  seed_block: number;
+  seed_block_hash: string;
+  seed_hex: string;
+  sampled_trace_sha256: string;
+  scoring_rule: Record<string, unknown>;
+  incumbent_submission_id: string | null;
+  winner_submission_id: string | null;
+  leader_changed: boolean | null;
+  baseline_drift: number | null;
+  phase: BenchPhase | null;
+  phase_started_at: string | null;
+  heartbeat_at: string | null;
+  progress: Record<string, unknown> | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  entries: RoundEntry[];
+};
+
+export type ScoreProgressEntry = {
+  submission_id: string;
+  hotkey: string | null;
+  role: EntryRole;
+  status: EntryStatus;
+  score: number | null;
+};
+
+export type ScoreProgressPoint = {
+  round_id: string;
+  ordinal: number;
+  status: RoundStatus;
+  leader_score: number | null;
+  entries: ScoreProgressEntry[];
+};
+
+/** `GET /v1/campaigns/{id}/score-progress`. */
+export type ScoreProgressSeries = {
+  campaign_id: string;
+  points: ScoreProgressPoint[];
 };
 
 export type SubmissionStateMeta = {
@@ -309,16 +426,9 @@ export type SubmissionStateMeta = {
   tone: "neutral" | "progress" | "success" | "danger";
 };
 
-export type BenchVerdictMeta = {
-  verdict: NonNullable<BenchVerdict>;
-  label: string;
-  description: string;
-  tone: "neutral" | "success" | "danger" | "warn";
-};
-
 /**
  * Local presentation metadata: labels, tones, descriptions. Not the wire
- * vocabulary. Partial by design — a state added on the backend needs no edit
+ * vocabulary. Partial by design: a state added on the backend needs no edit
  * here and renders verbatim via `getSubmissionStateMeta` (PAR-46).
  */
 export const SUBMISSION_STATE_META = {
@@ -379,32 +489,32 @@ export const SUBMISSION_STATE_META = {
   bench_queued: {
     state: "bench_queued",
     label: "Bench queued",
-    description: "Waiting for a GPU host to run the benchmark.",
+    description: "Waiting to be seated in a round.",
     tone: "progress",
   },
-  sampled: {
-    state: "sampled",
-    label: "Sampled",
-    description: "Per-submission workload trace drawn for this campaign.",
+  round_assigned: {
+    state: "round_assigned",
+    label: "Round assigned",
+    description: "Seated in a round; waiting to run or running.",
     tone: "progress",
   },
-  correct: {
-    state: "correct",
-    label: "Correct",
-    description: "Correctness gate passed against baseline.",
-    tone: "progress",
+  infra_failed: {
+    state: "infra_failed",
+    label: "Infra failed",
+    description: "The image never ran because of infrastructure; one requeue.",
+    tone: "danger",
   },
-  screened: {
-    state: "screened",
-    label: "Screened",
-    description: "Performance screen cleared; full bench queued.",
-    tone: "progress",
-  },
-  benched: {
-    state: "benched",
-    label: "Benched",
-    description: "Full benchmark complete; verdict available.",
+  scored: {
+    state: "scored",
+    label: "Scored",
+    description: "The image ran and holds a round score.",
     tone: "success",
+  },
+  disqualified: {
+    state: "disqualified",
+    label: "Disqualified",
+    description: "The image ran and produced wrong output.",
+    tone: "danger",
   },
   rejected: {
     state: "rejected",
@@ -413,48 +523,6 @@ export const SUBMISSION_STATE_META = {
     tone: "danger",
   },
 } satisfies Partial<Record<SubmissionState, SubmissionStateMeta>>;
-
-export const BENCH_VERDICT_META: Record<
-  NonNullable<BenchVerdict>,
-  BenchVerdictMeta
-> = {
-  pass: {
-    verdict: "pass",
-    label: "Pass",
-    description: "Cleared correctness, perf screen, and the SLA bench.",
-    tone: "success",
-  },
-  fail_correctness: {
-    verdict: "fail_correctness",
-    label: "Correctness",
-    description: "Output diverged from the baseline engine beyond tolerance.",
-    tone: "danger",
-  },
-  fail_perf_screen: {
-    verdict: "fail_perf_screen",
-    label: "Perf screen",
-    description: "Throughput did not beat the baseline in the cheap screen.",
-    tone: "danger",
-  },
-  fail_sla: {
-    verdict: "fail_sla",
-    label: "SLA",
-    description: "Missed the campaign p99 latency or goodput gates.",
-    tone: "danger",
-  },
-  fail_engine_candidate: {
-    verdict: "fail_engine_candidate",
-    label: "Engine",
-    description: "Candidate engine did not come up cleanly under bench.",
-    tone: "danger",
-  },
-  fail_cross_env_speedup: {
-    verdict: "fail_cross_env_speedup",
-    label: "Cross-env",
-    description: "Speedup did not hold across every target GPU SKU.",
-    tone: "danger",
-  },
-};
 
 /** States that have local presentation metadata. Narrower than `SubmissionState`. */
 type StateWithMeta = keyof typeof SUBMISSION_STATE_META;
@@ -475,34 +543,6 @@ export function getSubmissionStateMeta(state: string): SubmissionStateMeta {
   };
 }
 
-export function isBenchVerdict(
-  value: unknown
-): value is NonNullable<BenchVerdict> {
-  return (
-    value === "pass" ||
-    (typeof value === "string" &&
-      (BENCH_FAIL_REASONS as readonly string[]).includes(value))
-  );
-}
-
-export function getBenchVerdictMeta(
-  verdict: BenchVerdict
-): BenchVerdictMeta | null {
-  if (verdict == null) return null;
-  return BENCH_VERDICT_META[verdict] ?? null;
-}
-
-/** Tone for a per-stage `bench_reports[].verdict`, which is looser than the
- *  submission-level verdict and can carry harness error strings. */
-export function getStageVerdictTone(
-  verdict: string
-): "neutral" | "success" | "danger" | "warn" {
-  if (verdict === "pass") return "success";
-  if (verdict === "error") return "warn";
-  if (verdict.startsWith("fail")) return "danger";
-  return "neutral";
-}
-
 /** Position of a state on the happy path, or -1 for `rejected`/unknown. */
 export function stageIndex(state: string): number {
   return (SUBMISSION_STAGE_ORDER as readonly string[]).indexOf(state);
@@ -510,7 +550,20 @@ export function stageIndex(state: string): number {
 
 /** States after which no further pipeline events are expected. */
 export function isTerminalState(state: string): boolean {
-  return state === "benched" || state === "rejected";
+  return state === "scored" || state === "disqualified" || state === "rejected";
+}
+
+/** A round still moving: waiting to be seated on a pod, or running on one. */
+export function isLiveRound(status: RoundStatus): boolean {
+  return status === "pending" || status === "running";
+}
+
+/**
+ * Terminal failure. `infra_failed` is not included: that state requeues once
+ * and must not paint as a red halt.
+ */
+export function isFailedState(state: string): boolean {
+  return state === "disqualified" || state === "rejected";
 }
 
 /**
@@ -529,13 +582,6 @@ export function isLiveSubmissionRow(row: { latest_state: string }): boolean {
 export function reachedBuild(states: readonly string[]): boolean {
   const buildIndex = stageIndex("building");
   return states.some((state) => stageIndex(state) >= buildIndex);
-}
-
-export function getSubmissionJob(
-  jobs: readonly SubmissionJob[],
-  kind: SubmissionJobKind | string
-): SubmissionJob | null {
-  return jobs.find((job) => job.kind === kind) ?? null;
 }
 
 /**
@@ -599,10 +645,6 @@ export const BENCH_PHASE_META: Record<
     label: "Running correctness",
     description: "Comparing candidate output against the baseline engine.",
   },
-  perf_screen: {
-    label: "Running perf screen",
-    description: "Cheap throughput check before the full bench.",
-  },
   sla_bench: {
     label: "Running the SLA bench",
     description: "Full workload replay against the latency gates.",
@@ -617,7 +659,6 @@ export const BENCH_PHASE_META: Record<
 export const HEARTBEAT_STALE_AFTER_MS = 60_000;
 
 export type LiveActivity = {
-  job: SubmissionJob;
   phase: BenchPhase;
   label: string;
   description: string;
@@ -627,6 +668,36 @@ export type LiveActivity = {
   /** Worker stopped proving it is alive; the phase is history, not now. */
   stale: boolean;
 };
+
+/**
+ * The phase columns a worker writes while it runs. A submission reads them off
+ * its job row; a round carries them itself.
+ */
+type PhaseColumns = Pick<
+  SubmissionJob,
+  "phase" | "phase_started_at" | "heartbeat_at"
+>;
+
+function toLiveActivity(
+  source: PhaseColumns,
+  now: string
+): LiveActivity | null {
+  if (source.phase === null) return null;
+
+  const meta = BENCH_PHASE_META[source.phase];
+  const heartbeatAgeMs = source.heartbeat_at
+    ? elapsedBetween(source.heartbeat_at, now)
+    : null;
+
+  return {
+    phase: source.phase,
+    label: meta.label,
+    description: meta.description,
+    since: source.phase_started_at,
+    heartbeatAgeMs,
+    stale: heartbeatAgeMs === null || heartbeatAgeMs > HEARTBEAT_STALE_AFTER_MS,
+  };
+}
 
 export function getRunningSubmissionJob(
   jobs: readonly SubmissionJob[]
@@ -642,20 +713,17 @@ export function getLiveActivity(
   now: string
 ): LiveActivity | null {
   const job = getRunningSubmissionJob(jobs);
-  if (!job || job.phase === null) return null;
+  if (!job) return null;
+  return toLiveActivity(job, now);
+}
 
-  const meta = BENCH_PHASE_META[job.phase];
-  const heartbeatAgeMs = job.heartbeat_at
-    ? elapsedBetween(job.heartbeat_at, now)
-    : null;
-
-  return {
-    job,
-    phase: job.phase,
-    label: meta.label,
-    description: meta.description,
-    since: job.phase_started_at,
-    heartbeatAgeMs,
-    stale: heartbeatAgeMs === null || heartbeatAgeMs > HEARTBEAT_STALE_AFTER_MS,
-  };
+/** Live activity for a round mid-flight (PAR-88), or null once it settles. */
+export function getRoundActivity(
+  round: RoundDetail,
+  now: string
+): LiveActivity | null {
+  // The backend settle paths (complete/void/reap) leave the phase column
+  // populated, so a settled round would otherwise paint as live forever.
+  if (!isLiveRound(round.status)) return null;
+  return toLiveActivity(round, now);
 }

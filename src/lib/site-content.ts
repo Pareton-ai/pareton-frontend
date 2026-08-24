@@ -6,12 +6,15 @@
 
 export const siteContent = {
   name: "Pareton",
-  eyebrow: "Inference optimization infrastructure",
-  title: "The intelligence layer for your inference.",
+  eyebrow: "Inference optimization",
+  title: "Faster. Cheaper. Verified on yours.",
   /** Substring of `title` rendered italic on the page. */
-  titleEmphasis: "your",
+  titleEmphasis: "yours",
   heroDescription:
-    "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving configuration space until a better engine holds on the workload you already run.",
+    "Models are converging in quality. Cost and latency are the edge. Pareton searches the serving config space until a better engine holds on the workload you already run.",
+  /** Substring of `heroDescription` rendered bold. */
+  heroDescriptionBold:
+    "Pareton searches the serving config space until a better engine holds on the workload you already run.",
   buildStatus: "Coming Soon · Bittensor Subnet 10",
   /** Axes of the search space, cycled around the hero mark. */
   heroAxes: [
@@ -28,10 +31,8 @@ export const siteContent = {
 
   nav: [
     { label: "Method", href: "#method" },
-    { label: "Why it holds", href: "#laws" },
-    { label: "Dashboard", href: "/dashboard" },
     { label: "Docs", href: "/docs" },
-    { label: "View a campaign", href: "/dashboard", end: true },
+    { label: "Dashboard", href: "/dashboard", end: true },
   ],
 
   /** Agent Markdown link list. Broader than the visible nav. */
@@ -41,6 +42,19 @@ export const siteContent = {
     { label: "X", href: "https://x.com/pareton_ai" },
     { label: "GitHub", href: "https://github.com/pareton-ai" },
     { label: "Contact", href: "mailto:xavier@pareton.ai" },
+  ],
+
+  /** Icon buttons in the close banner. `id` maps to an icon in socials.tsx. */
+  socials: [
+    { id: "x", label: "X / Twitter", href: "https://x.com/pareton_ai" },
+    {
+      id: "linkedin",
+      label: "LinkedIn",
+      href: "https://www.linkedin.com/company/pareton",
+    },
+    { id: "discord", label: "Discord", href: "https://discord.gg/bittensor" },
+    { id: "github", label: "GitHub", href: "https://github.com/pareton-ai" },
+    { id: "email", label: "Email", href: "mailto:xavier@pareton.ai" },
   ],
 
   heroCta: { label: "Talk to us", href: "mailto:xavier@pareton.ai" },
@@ -147,7 +161,7 @@ export const siteContent = {
     secondary: { label: "Open the dashboard", href: "/dashboard" },
   },
 
-  tagline: "The intelligence layer for AI inference",
+  tagline: "Faster. Cheaper. Verified on yours",
 } as const;
 
 export type SiteContent = typeof siteContent;

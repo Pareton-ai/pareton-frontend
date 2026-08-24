@@ -1,6 +1,9 @@
 /**
  * Opt-in live check against the deployed API. Skipped unless
  * PARETON_LIVE_API_TESTS is set (`npm run test:live`).
+ *
+ * Do not run this against the currently deployed API: it still serves the
+ * pre-round payload. Re-enable after the PAR-80 API is live.
  */
 
 import { describe, expect, it } from "vitest";
@@ -46,7 +49,7 @@ describe.skipIf(!process.env.PARETON_LIVE_API_TESTS)(
 
         console.log(
           `${row.patch_hash.slice(0, 20)} state=${detail.latest_state} jobs=${detail.jobs
-            .map((j) => `${j.kind}:${j.status}`)
+            .map((j) => j.status)
             .join(" ")} stalled=${isStalled(detail.latest_state, detail.jobs)}${
             failed ? ` err=${failed.last_error}` : ""
           }`
@@ -56,11 +59,11 @@ describe.skipIf(!process.env.PARETON_LIVE_API_TESTS)(
         expect(detail.submission.campaign_id).toBe(CID);
         expect(detail.submission.patch_hash).toBe(row.patch_hash);
         expect(detail.jobs).toHaveLength(body.jobs.length);
-        expect(detail.jobs.every((j) => j.kind !== "" && j.status !== "")).toBe(
-          true
-        );
+        expect(detail.jobs.every((j) => j.status !== "")).toBe(true);
         expect(detail.events.every((e) => e.created_at !== "")).toBe(true);
-        expect(detail.bench_verdict).toBe(body.bench_verdict);
+        expect(
+          detail.round === null || typeof detail.round.ordinal === "number"
+        ).toBe(true);
       }
     }, 60_000);
 
@@ -78,7 +81,7 @@ describe.skipIf(!process.env.PARETON_LIVE_API_TESTS)(
           max_abs_logprob_diff: 0.164,
         },
       });
-      expect(open.bench.cross_env.min_speedup_each.toFixed(4)).toBe("1.1111");
+      expect(open.scoring_rule.name).not.toBe("");
 
       const draft = parseCampaign(
         await (await fetch(`${API}/v1/campaigns/${draftId}`)).json()

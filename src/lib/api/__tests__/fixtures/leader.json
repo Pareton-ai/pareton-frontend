@@ -1,0 +1,12 @@
+{
+  "campaign_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "submission_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "patch_hash": "sha256:lead",
+  "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
+  "engine_image_ref": "ghcr.io/x/e@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "won_at_round_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+  "won_at_ordinal": 2,
+  "last_score": 0.31,
+  "last_scored_round_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+  "updated_at": "2026-08-20T00:00:00+00:00"
+}

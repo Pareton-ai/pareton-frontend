@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Pareton: The Intelligence Layer for AI Inference",
+    name: "Pareton | Better Inference",
     short_name: "Pareton",
     description:
       "Pareton continuously searches, validates, and deploys the optimal inference configuration for your AI workloads.",

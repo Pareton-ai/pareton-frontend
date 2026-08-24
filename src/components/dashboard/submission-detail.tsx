@@ -11,19 +11,19 @@ import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark } from "@/components/dashboard/gpu";
 import { LiveElapsed } from "@/components/dashboard/live-elapsed";
-import { MeterRow } from "@/components/dashboard/meter";
-import { Panel, StatStrip, StatTile } from "@/components/dashboard/panel";
 import {
-  BenchVerdictChip,
-  PipelineChip,
-} from "@/components/dashboard/status-chip";
+  Panel,
+  PanelRow,
+  StatStrip,
+  StatTile,
+} from "@/components/dashboard/panel";
+import { PipelineChip } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 import { isSafeArtifactUrl } from "@/lib/api/artifacts";
-import { summarizeBench, type BenchSummary } from "@/lib/api/bench";
 import {
   elapsedBetween,
   formatDuration,
-  formatRatio,
+  formatScore,
   formatUtc,
   formatUtcShort,
   formatUtcTime,
@@ -35,10 +35,11 @@ import { campaignHref, minerExplorerHref } from "@/lib/routes";
 import {
   firstEventByState,
   getSubmissionStateMeta,
+  happyPathIndex,
+  isFailedState,
   isStalled,
   isTerminalState,
-  stageIndex,
-  SUBMISSION_STAGE_ORDER,
+  SUBMISSION_HAPPY_PATH,
   type Campaign,
   type SubmissionDetail,
   type SubmissionEvent,
@@ -69,9 +70,6 @@ export function SubmissionTitle({
           {truncateDigest(submission.patch_hash, 8, 6)}
         </h1>
         <PipelineChip state={detail.latest_state} />
-        {detail.bench_verdict ? (
-          <BenchVerdictChip verdict={detail.bench_verdict} />
-        ) : null}
       </div>
 
       <div className="mt-2 flex flex-col flex-wrap items-start gap-x-4 gap-y-1 font-mono text-body text-muted">
@@ -109,7 +107,7 @@ export function FailedJobNotice({ job }: { job: SubmissionJob }) {
       className="border border-rust/30 bg-rust/5 px-4 py-4"
     >
       <p className="font-mono text-caption uppercase tracking-caps text-rust">
-        {job.kind} job failed
+        Job failed
       </p>
       <p className="mt-2 break-words font-mono text-body text-rust">
         {job.last_error ?? "No error recorded."}
@@ -147,9 +145,9 @@ function StageTrack({
     <div
       className="mt-1.5 flex gap-px"
       role="img"
-      aria-label={`Stage ${reached + 1} of ${SUBMISSION_STAGE_ORDER.length}`}
+      aria-label={`Stage ${reached + 1} of ${SUBMISSION_HAPPY_PATH.length}`}
     >
-      {SUBMISSION_STAGE_ORDER.map((state, index) => {
+      {SUBMISSION_HAPPY_PATH.map((state, index) => {
         const meta = getSubmissionStateMeta(state);
         const event = firstByState.get(state);
         const cleared = index <= reached;
@@ -182,7 +180,7 @@ function StageTrack({
               className={`pointer-events-none absolute bottom-full z-10 mb-1.5 w-max max-w-52 border border-border bg-background px-2 py-1.5 text-left opacity-0 transition-opacity delay-0 duration-75 group-hover/seg:opacity-100 group-hover/seg:delay-150 ${
                 index === 0
                   ? "left-0"
-                  : index === SUBMISSION_STAGE_ORDER.length - 1
+                  : index === SUBMISSION_HAPPY_PATH.length - 1
                     ? "right-0"
                     : "left-1/2 -translate-x-1/2"
               }`}
@@ -201,153 +199,43 @@ function StageTrack({
   );
 }
 
-function formatMs(value: number): string {
-  return `${value.toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })} ms`;
-}
-
-/** Distance to a ceiling, as a share of the budget used. */
-function headroomLabel(used: number): string {
-  return used > 1
-    ? `${Math.round((used - 1) * 100)}% over`
-    : `${Math.round((1 - used) * 100)}% headroom`;
-}
-
-/** Headline speedup. The SLA floor applies only after the full bench. */
-function SpeedupTile({
-  summary,
-  campaign,
-}: {
-  summary: BenchSummary;
-  campaign: Campaign | null;
-}) {
-  const slaFloor = campaign?.bench.cross_env.min_speedup_each ?? null;
-
-  if (summary.speedup === null) {
+function ScoreTile({ score }: { score: number | null }) {
+  if (score === null) {
     return (
       <StatTile
         icon={TrendingUp}
-        label="Speedup"
+        label="Round score"
         value="—"
-        hint={
-          slaFloor === null
-            ? "awaiting bench"
-            : `floor ≥ ${formatRatio(slaFloor)} · awaiting bench`
-        }
+        hint="awaiting round"
       />
     );
   }
-
-  const floor = summary.speedupFloor;
-  const clears = summary.speedupClears === true;
-  const scope =
-    summary.speedupSource === "perf_screen"
-      ? "perf screen only"
-      : summary.skuCount > 1
-        ? `worst of ${summary.skuCount} GPU SKUs`
-        : (summary.speedupSku ?? "single SKU");
 
   return (
     <StatTile
       icon={TrendingUp}
-      label="Speedup"
-      value={
-        <span className={clears ? "text-foreground" : "text-rust"}>
-          {formatRatio(summary.speedup)}
-        </span>
-      }
-      hint={floor === null ? scope : `floor ≥ ${formatRatio(floor)} · ${scope}`}
+      label="Round score"
+      value={<span className="tabular-nums">{formatScore(score)}</span>}
+      hint="0 is baseline speed"
     />
   );
 }
 
-/** Candidate p99 latency against the two gates the campaign publishes. */
-function LatencyTile({
-  summary,
-  campaign,
-}: {
-  summary: BenchSummary;
-  campaign: Campaign | null;
-}) {
+function LatencyTile({ campaign }: { campaign: Campaign | null }) {
   const ttftCeiling = campaign?.sla.p99_ttft_ms ?? null;
   const itlCeiling = campaign?.sla.p99_itl_ms ?? null;
-
-  if (summary.p99TtftMs === null && summary.p99ItlMs === null) {
-    return (
-      <StatTile
-        icon={Timer}
-        label="p99 latency"
-        value="—"
-        hint={
-          ttftCeiling !== null && itlCeiling !== null
-            ? `ceiling ${ttftCeiling} / ${itlCeiling} ms`
-            : "awaiting bench"
-        }
-      />
-    );
-  }
-
-  const gates = [
-    { label: "TTFT", value: summary.p99TtftMs, ceiling: ttftCeiling },
-    { label: "ITL", value: summary.p99ItlMs, ceiling: itlCeiling },
-  ].filter(
-    (gate): gate is { label: string; value: number; ceiling: number | null } =>
-      gate.value !== null
-  );
-
-  const worst = gates.some(
-    (gate) => gate.ceiling !== null && gate.value > gate.ceiling
-  );
 
   return (
     <StatTile
       icon={Timer}
       label="p99 latency"
-      value={
-        // Whole milliseconds at a glance; the SLA table below carries the
-        // precision, and decimals here wrap the tile on a phone.
-        <span className={worst ? "text-rust" : "text-foreground"}>
-          {gates.map((gate) => Math.round(gate.value)).join(" / ")}
-          <span className="text-muted"> ms</span>
-        </span>
-      }
+      value="—"
       hint={
-        summary.skuCount > 1
-          ? `worst of ${summary.skuCount} GPU SKUs`
-          : undefined
+        ttftCeiling !== null && itlCeiling !== null
+          ? `ceiling ${ttftCeiling} / ${itlCeiling} ms`
+          : "awaiting round"
       }
-    >
-      {/* The tile value already prints both numbers, so the meters carry the
-          reading that is not obvious from them: distance to the ceiling. */}
-      <div className="mt-3 space-y-2.5">
-        {gates.map((gate) => {
-          if (gate.ceiling === null) {
-            return (
-              <MeterRow
-                key={gate.label}
-                label={gate.label}
-                value={formatMs(gate.value)}
-                fraction={0}
-                tone="neutral"
-              />
-            );
-          }
-          const used = gate.value / gate.ceiling;
-          return (
-            <MeterRow
-              key={gate.label}
-              label={gate.label}
-              value={headroomLabel(used)}
-              fraction={used}
-              tone={used > 1 ? "rust" : "accent"}
-              title={`p99 ${gate.label} ${gate.value.toFixed(1)} ms against a ${gate.ceiling} ms ceiling`}
-            />
-          );
-        })}
-      </div>
-    </StatTile>
+    />
   );
 }
 
@@ -364,15 +252,14 @@ export function SubmissionStats({
   campaign: Campaign | null;
 }) {
   const { submission, events, latest_state: latestState } = detail;
-  const summary = summarizeBench(detail.bench_reports, campaign);
   const stateMeta = getSubmissionStateMeta(latestState);
   const stalled = isStalled(latestState, detail.jobs);
-  const halted = latestState === "rejected" || stalled;
+  const halted = isFailedState(latestState) || stalled;
   const active = !isTerminalState(latestState) && !stalled;
 
   const reached = Math.max(
-    stageIndex(latestState),
-    ...events.map((event) => stageIndex(event.state)),
+    happyPathIndex(latestState),
+    ...events.map((event) => happyPathIndex(event.state)),
     0
   );
   const lastEventAt = events.at(-1)?.created_at ?? submission.committed_at;
@@ -394,8 +281,8 @@ export function SubmissionStats({
             {stateMeta.label}
           </span>
         }
-        hint={`${Math.min(reached + 1, SUBMISSION_STAGE_ORDER.length)} of ${
-          SUBMISSION_STAGE_ORDER.length
+        hint={`${Math.min(reached + 1, SUBMISSION_HAPPY_PATH.length)} of ${
+          SUBMISSION_HAPPY_PATH.length
         } stages`}
       >
         <StageTrack events={events} reached={reached} halted={halted} />
@@ -422,28 +309,9 @@ export function SubmissionStats({
         hint={`committed ${formatUtcShort(submission.committed_at)} UTC`}
       />
 
-      <SpeedupTile summary={summary} campaign={campaign} />
-      <LatencyTile summary={summary} campaign={campaign} />
+      <ScoreTile score={detail.round?.score ?? null} />
+      <LatencyTile campaign={campaign} />
     </StatStrip>
-  );
-}
-
-function Row({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="px-4 py-3">
-      <p className="font-mono text-caption uppercase tracking-caps text-muted">
-        {label}
-      </p>
-      <div className="mt-1.5 font-mono text-body text-foreground">
-        {children}
-      </div>
-    </div>
   );
 }
 
@@ -488,15 +356,15 @@ export function SubmissionMetadata({
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
       <Panel icon={User} title="Miner">
-        <Row label="Hotkey">
+        <PanelRow label="Hotkey">
           <CopyableMono
             value={submission.hotkey}
             display={truncateMiddle(submission.hotkey, 12, 8)}
             href={minerExplorerHref(submission.hotkey)}
             hint="Open taomarketcap and copy miner hotkey"
           />
-        </Row>
-        <Row label="Committed">
+        </PanelRow>
+        <PanelRow label="Committed">
           <span className="text-secondary">
             {formatUtc(submission.committed_at)}
           </span>
@@ -505,26 +373,26 @@ export function SubmissionMetadata({
               block {submission.commit_block.toLocaleString("en-US")}
             </p>
           ) : null}
-        </Row>
-        <Row label="Submission id">
+        </PanelRow>
+        <PanelRow label="Submission id">
           <CopyableMono
             value={submission.id}
             display={truncateMiddle(submission.id, 10, 8)}
           />
-        </Row>
+        </PanelRow>
       </Panel>
 
       <Panel icon={GitBranch} title="Build inputs">
-        <Row label="Patch artifact">
+        <PanelRow label="Patch artifact">
           <PatchArtifact url={submission.retrieval_url} />
-        </Row>
-        <Row label="Baseline commit">
+        </PanelRow>
+        <PanelRow label="Baseline commit">
           <CopyableMono
             value={submission.baseline_commit}
             display={truncateMiddle(submission.baseline_commit, 10, 8)}
           />
-        </Row>
-        <Row label="Engine image">
+        </PanelRow>
+        <PanelRow label="Engine image">
           {submission.engine_image_ref ? (
             <CopyableMono
               value={submission.engine_image_ref}
@@ -533,9 +401,9 @@ export function SubmissionMetadata({
           ) : (
             <span className="text-muted">Not built yet</span>
           )}
-        </Row>
+        </PanelRow>
         {campaign && campaign.gpu_skus.length > 0 ? (
-          <Row label="Target GPUs">
+          <PanelRow label="Target GPUs">
             <span
               className="inline-flex items-center gap-1.5 text-secondary"
               title={campaign.gpu_skus.join(", ")}
@@ -546,7 +414,7 @@ export function SubmissionMetadata({
               />
               {campaign.gpu_skus.join(" · ")}
             </span>
-          </Row>
+          </PanelRow>
         ) : null}
       </Panel>
     </aside>

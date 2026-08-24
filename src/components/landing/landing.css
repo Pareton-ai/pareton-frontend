@@ -131,6 +131,7 @@ html:has(.landing) body {
 
 .landing .nav-links a {
   color: var(--quiet);
+  font-size: 0.8rem;
   transition: color 0.15s ease;
 }
 
@@ -168,6 +169,7 @@ html:has(.landing) body {
 
 .landing .hero .kicker {
   color: var(--blue-deep);
+  font-size: 0.9rem;
 }
 
 .landing .hero h1 {
@@ -1043,6 +1045,55 @@ html:has(.landing) body {
 
 .landing .close .text-link {
   color: var(--paper);
+}
+
+.landing .socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 2.6rem;
+}
+
+.landing .socials .social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
+  color: color-mix(in srgb, var(--paper) 72%, transparent);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.landing .socials .social:hover {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 22%, transparent);
+  color: #fff;
+}
+
+.landing .socials .social:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.landing .socials .social svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.landing .socials .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .landing .foot {

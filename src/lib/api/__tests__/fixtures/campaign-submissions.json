@@ -1,12 +1,12 @@
 {
-  "campaign_id": "c02a40b0-6eb3-4853-827e-22d4794b814e",
+  "campaign_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
   "total": 3,
   "limit": 5,
   "offset": 0,
   "submissions": [
     {
       "id": "f0fad817-7069-4b9a-8031-edc9cdf5ab1f",
-      "campaign_id": "c02a40b0-6eb3-4853-827e-22d4794b814e",
+      "campaign_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
       "patch_hash": "sha256:aa5e3435d33816abcaa748a807d54a6e4fcfe52996ae2ff9643470dab687e32e",
       "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
       "baseline_commit": "ee0da84ab9e04ac7610e28580af62c365e898389",
@@ -15,11 +15,11 @@
       "committed_at": "2026-08-09T16:47:29.754855+00:00",
       "engine_image_ref": "ghcr.io/pareton-ai/pareton-engine@sha256:2f8d58d60a25af6e423ea69a369d79440d8196952f4abd24722f0d2877fe3273",
       "latest_state": "bench_queued",
-      "bench_verdict": null
+      "round": null
     },
     {
       "id": "65b03bad-673b-4073-93cf-53d605c20434",
-      "campaign_id": "c02a40b0-6eb3-4853-827e-22d4794b814e",
+      "campaign_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
       "patch_hash": "sha256:a811bb0adec99fa9dd682f6494758e3a1093f3550c3d90e083d91cc9ecb87fa0",
       "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
       "baseline_commit": "ee0da84ab9e04ac7610e28580af62c365e898389",
@@ -27,12 +27,18 @@
       "commit_block": 8798704,
       "committed_at": "2026-08-08T09:25:29.457904+00:00",
       "engine_image_ref": "ghcr.io/pareton-ai/pareton-engine@sha256:ea1339e728c277823e8d378273df1ab968366619916f2b35c7814c322ff51c73",
-      "latest_state": "rejected",
-      "bench_verdict": "fail_cross_env_speedup"
+      "latest_state": "disqualified",
+      "round": {
+        "round_id": "11111111-1111-1111-1111-111111111111",
+        "ordinal": 1,
+        "status": "disqualified",
+        "score": null,
+        "disqualify_reason": "fail_correctness"
+      }
     },
     {
       "id": "24ef7556-a741-423d-8626-074afe078183",
-      "campaign_id": "c02a40b0-6eb3-4853-827e-22d4794b814e",
+      "campaign_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
       "patch_hash": "sha256:cfb333aa266d0521c38c5595960f1676cf9a457d54f8ceb61e23ab4895afc0ea",
       "hotkey": "5Gecn3q1wMRCLddBoztcsE8cRcBMkbLGDJEZA5oanWSX7MHy",
       "baseline_commit": "ee0da84ab9e04ac7610e28580af62c365e898389",
@@ -41,7 +47,7 @@
       "committed_at": "2026-08-07T12:58:57.556191+00:00",
       "engine_image_ref": "ghcr.io/pareton-ai/pareton-engine@sha256:73d77568fdf30853f5ca46ffa7a858cad386647b266c82f87268a50b248088e2",
       "latest_state": "rejected",
-      "bench_verdict": "fail_perf_screen"
+      "round": null
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { NavLink } from "@/components/landing/nav-link";
+import { Socials } from "@/components/landing/socials";
 import { siteContent } from "@/lib/site-content";
 
 export function Close() {
@@ -16,6 +17,7 @@ export function Close() {
             {close.secondary.label}
           </NavLink>
         </div>
+        <Socials />
       </div>
     </section>
   );

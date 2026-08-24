@@ -89,6 +89,80 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/campaigns/{campaign_id}/leader": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Campaign Leader
+     * @description The crown holder. A vacant crown has no row, so it is a 404.
+     */
+    get: operations["campaign_leader_v1_campaigns__campaign_id__leader_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/campaigns/{campaign_id}/rounds": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Campaign Rounds */
+    get: operations["campaign_rounds_v1_campaigns__campaign_id__rounds_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/campaigns/{campaign_id}/score-progress": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Campaign Score Progress
+     * @description Chart series, oldest ordinal first. Void rounds keep their ordinal.
+     */
+    get: operations["campaign_score_progress_v1_campaigns__campaign_id__score_progress_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/rounds/{round_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Round Detail */
+    get: operations["round_detail_v1_rounds__round_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/campaigns/{campaign_id}/submissions/{patch_hash}": {
     parameters: {
       query?: never;
@@ -185,10 +259,50 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /**
+     * BenchPhase
+     * @description Current operation. Multi-SKU runs cycle, so this is not monotonic.
+     * @enum {string}
+     */
+    BenchPhase:
+      | "provisioning"
+      | "bootstrapping"
+      | "pulling_image"
+      | "downloading_model"
+      | "starting_engine"
+      | "correctness"
+      | "sla_bench"
+      | "teardown";
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
       detail?: components["schemas"]["ValidationError"][];
+    };
+    /**
+     * LeaderModel
+     * @description `GET /v1/campaigns/{campaign_id}/leader`. Detail page: full hotkey.
+     */
+    LeaderModel: {
+      /** Campaign Id */
+      campaign_id: string;
+      /** Submission Id */
+      submission_id: string;
+      /** Patch Hash */
+      patch_hash: string;
+      /** Hotkey */
+      hotkey: string;
+      /** Engine Image Ref */
+      engine_image_ref: string;
+      /** Won At Round Id */
+      won_at_round_id: string;
+      /** Won At Ordinal */
+      won_at_ordinal: number;
+      /** Last Score */
+      last_score: number;
+      /** Last Scored Round Id */
+      last_scored_round_id?: string | null;
+      /** Updated At */
+      updated_at: string;
     };
     /** PresignRequest */
     PresignRequest: {
@@ -198,8 +312,176 @@ export interface components {
       hotkey: string;
     };
     /**
+     * RoundDetailModel
+     * @description `GET /v1/rounds/{round_id}`. `phase` is live while the round runs.
+     */
+    RoundDetailModel: {
+      /** Id */
+      id: string;
+      /** Campaign Id */
+      campaign_id: string;
+      /** Ordinal */
+      ordinal: number;
+      /** Status */
+      status: string;
+      /** Void Reason */
+      void_reason?: string | null;
+      /** Gpu Sku */
+      gpu_sku: string;
+      /** Seed Block */
+      seed_block: number;
+      /** Seed Block Hash */
+      seed_block_hash: string;
+      /** Seed Hex */
+      seed_hex: string;
+      /** Sampled Trace Sha256 */
+      sampled_trace_sha256: string;
+      /** Scoring Rule */
+      scoring_rule: {
+        [key: string]: unknown;
+      };
+      /** Incumbent Submission Id */
+      incumbent_submission_id?: string | null;
+      /** Winner Submission Id */
+      winner_submission_id?: string | null;
+      /** Leader Changed */
+      leader_changed?: boolean | null;
+      /** Baseline Drift */
+      baseline_drift?: number | null;
+      /** Phase */
+      phase?: components["schemas"]["BenchPhase"] | string | null;
+      /** Phase Started At */
+      phase_started_at?: string | null;
+      /** Heartbeat At */
+      heartbeat_at?: string | null;
+      /** Progress */
+      progress?: {
+        [key: string]: unknown;
+      } | null;
+      /** Created At */
+      created_at: string;
+      /** Started At */
+      started_at?: string | null;
+      /** Completed At */
+      completed_at?: string | null;
+      /** Entries */
+      entries: components["schemas"]["RoundEntryModel"][];
+    };
+    /**
+     * RoundEntryModel
+     * @description One image run inside a round. Evidence URLs stay behind their gate.
+     *
+     *     `role` and `status` are `round_entries` values; the vocabularies are
+     *     `round.rank.ENTRY_ROLES` and `round.rank.ENTRY_STATUSES`. `score` is null
+     *     for a disqualified or infra-failed entry; 0.0 means baseline speed.
+     */
+    RoundEntryModel: {
+      /** Id */
+      id: number;
+      /** Submission Id */
+      submission_id?: string | null;
+      /** Patch Hash */
+      patch_hash?: string | null;
+      /** Hotkey */
+      hotkey?: string | null;
+      /** Role */
+      role: string;
+      /** Engine Image Ref */
+      engine_image_ref: string;
+      /** Status */
+      status: string;
+      /** Score */
+      score?: number | null;
+      /** Disqualify Reason */
+      disqualify_reason?: string | null;
+      /** Started At */
+      started_at?: string | null;
+      /** Completed At */
+      completed_at?: string | null;
+    };
+    /**
+     * RoundSummaryModel
+     * @description One row of `GET /v1/campaigns/{campaign_id}/rounds`.
+     */
+    RoundSummaryModel: {
+      /** Id */
+      id: string;
+      /** Ordinal */
+      ordinal: number;
+      /** Status */
+      status: string;
+      /** Void Reason */
+      void_reason?: string | null;
+      /** Gpu Sku */
+      gpu_sku: string;
+      /** Seed Block */
+      seed_block: number;
+      /** Seed Block Hash */
+      seed_block_hash: string;
+      /** Entry Count */
+      entry_count: number;
+      /** Leader Changed */
+      leader_changed?: boolean | null;
+      /** Created At */
+      created_at: string;
+      /** Completed At */
+      completed_at?: string | null;
+    };
+    /** RoundsPageModel */
+    RoundsPageModel: {
+      /** Campaign Id */
+      campaign_id: string;
+      /** Total */
+      total: number;
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Rounds */
+      rounds: components["schemas"]["RoundSummaryModel"][];
+    };
+    /**
+     * ScorePointEntryModel
+     * @description One scatter dot. List response, so the hotkey is truncated.
+     */
+    ScorePointEntryModel: {
+      /** Submission Id */
+      submission_id: string;
+      /** Hotkey */
+      hotkey?: string | null;
+      /** Role */
+      role: string;
+      /** Status */
+      status: string;
+      /** Score */
+      score?: number | null;
+    };
+    /**
+     * ScorePointModel
+     * @description One round ordinal on the chart. A void round leaves a gap, not a zero.
+     */
+    ScorePointModel: {
+      /** Round Id */
+      round_id: string;
+      /** Ordinal */
+      ordinal: number;
+      /** Status */
+      status: string;
+      /** Leader Score */
+      leader_score?: number | null;
+      /** Entries */
+      entries: components["schemas"]["ScorePointEntryModel"][];
+    };
+    /** ScoreProgressModel */
+    ScoreProgressModel: {
+      /** Campaign Id */
+      campaign_id: string;
+      /** Points */
+      points: components["schemas"]["ScorePointModel"][];
+    };
+    /**
      * SubmissionDetailModel
-     * @description `submission` and `bench_reports` stay loose: no state field, no payoff.
+     * @description `submission` stays loose: no state field, no payoff.
      */
     SubmissionDetailModel: {
       /** Submission */
@@ -212,12 +494,7 @@ export interface components {
       jobs: components["schemas"]["SubmissionJobModel"][];
       /** Events */
       events: components["schemas"]["SubmissionEventModel"][];
-      /** Bench Reports */
-      bench_reports: {
-        [key: string]: unknown;
-      }[];
-      /** Bench Verdict */
-      bench_verdict?: string | null;
+      round?: components["schemas"]["SubmissionRoundModel"] | null;
     };
     /** SubmissionEventModel */
     SubmissionEventModel: {
@@ -234,12 +511,40 @@ export interface components {
     };
     /** SubmissionJobModel */
     SubmissionJobModel: {
-      /** Kind */
-      kind: string;
       /** Status */
       status: string;
       /** Last Error */
       last_error?: string | null;
+      /** Phase */
+      phase?: components["schemas"]["BenchPhase"] | string | null;
+      /** Phase Started At */
+      phase_started_at?: string | null;
+      /** Heartbeat At */
+      heartbeat_at?: string | null;
+      /** Progress */
+      progress?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    /**
+     * SubmissionRoundModel
+     * @description A submission's newest round entry: where it ran and how it did.
+     *
+     *     `status` is the entry verdict (`round_entries.status`). A submission that
+     *     never reached a round has no model at all, and `rejected` is reported by
+     *     `latest_state`: a rejected submission never got an entry.
+     */
+    SubmissionRoundModel: {
+      /** Round Id */
+      round_id: string;
+      /** Ordinal */
+      ordinal: number;
+      /** Status */
+      status: string;
+      /** Score */
+      score?: number | null;
+      /** Disqualify Reason */
+      disqualify_reason?: string | null;
     };
     /**
      * SubmissionState
@@ -263,10 +568,10 @@ export interface components {
       | "image_pushed"
       | "built"
       | "bench_queued"
-      | "sampled"
-      | "correct"
-      | "screened"
-      | "benched"
+      | "round_assigned"
+      | "infra_failed"
+      | "scored"
+      | "disqualified"
       | "rejected";
     /**
      * SubmissionSummaryModel
@@ -293,8 +598,7 @@ export interface components {
       engine_image_ref?: string | null;
       /** Latest State */
       latest_state?: components["schemas"]["SubmissionState"] | string | null;
-      /** Bench Verdict */
-      bench_verdict?: string | null;
+      round?: components["schemas"]["SubmissionRoundModel"] | null;
     };
     /** SubmissionsPageModel */
     SubmissionsPageModel: {
@@ -463,6 +767,133 @@ export interface operations {
         };
         content: {
           "application/json": unknown;
+        };
+      };
+    };
+  };
+  campaign_leader_v1_campaigns__campaign_id__leader_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        campaign_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["LeaderModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  campaign_rounds_v1_campaigns__campaign_id__rounds_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path: {
+        campaign_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoundsPageModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  campaign_score_progress_v1_campaigns__campaign_id__score_progress_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        campaign_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScoreProgressModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  round_detail_v1_rounds__round_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        round_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoundDetailModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
