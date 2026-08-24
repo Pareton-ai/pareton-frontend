@@ -566,6 +566,18 @@ export function isFailedState(state: string): boolean {
   return state === "disqualified" || state === "rejected";
 }
 
+/**
+ * Whether a campaign-list row is still expected to change.
+ *
+ * List payloads have no job array, so a queued wait (`bench_queued` /
+ * `sampled` with no `bench_phase` yet) cannot be told from a stall. Treat
+ * every non-terminal state as live; a stuck row polling once a minute is
+ * cheaper than freezing the table through the GPU wait and the whole bench.
+ */
+export function isLiveSubmissionRow(row: { latest_state: string }): boolean {
+  return !isTerminalState(row.latest_state);
+}
+
 /** Whether the pipeline got far enough for a build log to exist. */
 export function reachedBuild(states: readonly string[]): boolean {
   const buildIndex = stageIndex("building");

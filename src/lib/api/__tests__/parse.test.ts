@@ -39,6 +39,7 @@ import {
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
   isFailedState,
+  isLiveSubmissionRow,
   isStalled,
   ROUND_STATUSES,
   SUBMISSION_STAGE_ORDER,
@@ -216,6 +217,28 @@ describe("submission jobs", () => {
     const detail = parseSubmissionDetail(rejected);
     expect(getFailedSubmissionJob(detail.jobs)).toBeNull();
     expect(isStalled(detail.latest_state, detail.jobs)).toBe(false);
+  });
+});
+
+describe("isLiveSubmissionRow", () => {
+  it("treats intake and build as live without a bench phase", () => {
+    expect(isLiveSubmissionRow({ latest_state: "building" })).toBe(true);
+  });
+
+  it("stays live through the GPU wait, before a bench phase exists", () => {
+    expect(isLiveSubmissionRow({ latest_state: "bench_queued" })).toBe(true);
+    expect(isLiveSubmissionRow({ latest_state: "sampled" })).toBe(true);
+  });
+
+  it("stays live through the round until the score lands", () => {
+    // benched is not terminal: the entry still goes through scoring.
+    expect(isLiveSubmissionRow({ latest_state: "benched" })).toBe(true);
+  });
+
+  it("stops after a terminal state", () => {
+    expect(isLiveSubmissionRow({ latest_state: "scored" })).toBe(false);
+    expect(isLiveSubmissionRow({ latest_state: "rejected" })).toBe(false);
+    expect(isLiveSubmissionRow({ latest_state: "disqualified" })).toBe(false);
   });
 });
 
