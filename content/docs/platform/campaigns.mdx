@@ -10,7 +10,7 @@ A campaign is one fixed target. Everything about it is frozen before submissions
 - **Baseline:** the exact git commit and base image the patch must apply to.
 - **Model:** the HF repo, exact revision, dtype, quantization, and max context length.
 - **Hardware:** GPU count and SKU.
-- **Workload:** either one fixed trace, or a pinned HuggingFace dataset revision (`sampling_rule`) that each **round** draws its prompts from; see [Dynamic workloads](/docs/platform/dynamic-workloads).
+- **Workload:** a pinned HuggingFace dataset revision (`sampling_rule`, type `hf_rows`) that each **round** draws its prompts from; see [Dynamic workloads](/docs/platform/dynamic-workloads).
 - **Correctness thresholds:** signed on the campaign at seed time: `min_mean_logprob`, `min_token_logprob`, `min_token_quantile` (default 0.001), `min_coverage_ratio`. The scorer applies `min_token_logprob` to the k-th lowest token, k = ceil(quantile × positions), not to the outright minimum. See [Rounds and leaders](/docs/platform/rounds-and-leaders).
 - **Scoring rule:** the named formula that turns one round's timings into a score. The shipped rule is keyed `name: median_e2e_speedup`. It is fixed once the campaign leaves draft and is part of `manifest_hash`.
 

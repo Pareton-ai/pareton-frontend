@@ -27,9 +27,7 @@ The patch hash is not in the seed. Every image in the round must see the same pr
 
 ## Campaign setup
 
-Set `sampling_rule` on a draft campaign. Type `hf_rows`, with `dataset`, `revision` (a git SHA, not `main`), `config`, `split`, `n_rows`, `n_prompts`, `max_tokens`, and `algo_version` (1).
-
-A campaign with no `sampling_rule` pins one fixed trace. Every round of that campaign draws that same trace.
+Set `sampling_rule` on a draft campaign. Type `hf_rows`, with `dataset`, `revision` (a git SHA, not `main`), `config`, `split`, `n_rows`, `n_prompts`, `max_tokens`, and `algo_version` (1). Every campaign pins this rule. There is no campaign-level fixed trace.
 
 The sampling rule stays on the campaign. The realized trace is snapshotted onto the round (`sampled_trace_sha256` plus the receipt).
 

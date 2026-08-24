@@ -79,9 +79,17 @@ export const MOCK_CAMPAIGN: Campaign = {
   base_image_digest:
     "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   gpu_skus: ["A100_80GB", "H100_80GB"],
-  workload_trace_sha256:
-    "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-  workload_trace_url: "https://example.com/trace.jsonl",
+  sampling_rule: {
+    type: "hf_rows",
+    dataset: "nebius/SWE-agent-trajectories",
+    revision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    config: "default",
+    split: "train",
+    n_rows: 1000,
+    n_prompts: 32,
+    max_tokens: 128,
+    algo_version: 1,
+  },
   sla: {
     p99_ttft_ms: 120,
     p99_itl_ms: 25,
