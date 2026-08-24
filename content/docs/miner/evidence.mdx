@@ -8,17 +8,19 @@ Every submission produces artifacts you can inspect after the run. Nothing is th
 ## What is saved and where
 
 - **Patch:** uploaded to S3. This is the exact diff bytes the gates and build used.
-- **Engine image:** the built vLLM image, pushed to GHCR and pinned by digest. This is the artifact the benchmark actually ran.
+- **Engine image:** the built engine image, pushed to GHCR and pinned by digest. This is the artifact the benchmark actually ran.
 - **Build log:** the durable output of the hermetic build. Fetched with the build log endpoint (see below).
-- **Bench evidence bundle:** the harness output, saved to S3. It holds the per-stage results and logs for correctness, perf screen, and SLA bench.
+- **Round evidence bundle:** the harness output for the whole round, saved to S3. It holds correctness grades and SLA timings for every image that ran on that pod. The public API does not return this tarball (`evidence_s3_url` and the per-entry `report` are not selected).
 
 ## Inspect a run
 
 Use the campaign-scoped path (preferred). The short path returns **409** when the hash is in more than one campaign.
 
-- Timeline, verdict, evidence links:
+- Timeline and latest round entry (status, score, disqualify reason):
   `GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}`
 - Build log, last `N` lines (default 200, max 2000, plain text):
   `GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}/build-log?tail=N`
 
 Both return **404** when the submission or its log does not exist.
+
+A `rejected` submission never ran, so it has no round entry. A `disqualified` or `scored` submission ran; the dashboard shows that entry's status and reason.

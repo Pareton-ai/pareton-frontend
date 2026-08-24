@@ -5,6 +5,15 @@ const withMDX = createMDX();
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: "/docs/platform/calibration",
+        destination: "/docs/platform/pipeline-stages",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
