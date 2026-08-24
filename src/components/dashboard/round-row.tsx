@@ -65,12 +65,14 @@ export function RoundRow({
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
         {leaderChangedLabel(row.leader_changed)}
       </td>
-      <td className="whitespace-nowrap px-3 py-3.5">
-        <span className="flex items-center gap-2">
-          <RoundStatusChip status={row.status} />
+      <td className="px-3 py-3.5">
+        <span className="flex w-72 max-w-72 items-center gap-2">
+          <span className="shrink-0">
+            <RoundStatusChip status={row.status} />
+          </span>
           {row.status === "void" && row.void_reason ? (
             <span
-              className="font-mono text-caption text-muted"
+              className="min-w-0 truncate font-mono text-caption text-muted"
               title={row.void_reason}
             >
               {row.void_reason.replaceAll("_", " ")}

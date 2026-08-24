@@ -64,12 +64,14 @@ function EntryRow({
           </span>
         )}
       </td>
-      <td className="whitespace-nowrap px-3 py-3.5">
-        <span className="flex items-center gap-2">
-          <EntryStatusChip status={entry.status} />
+      <td className="px-3 py-3.5">
+        <span className="flex w-72 max-w-72 items-center gap-2">
+          <span className="shrink-0">
+            <EntryStatusChip status={entry.status} />
+          </span>
           {entry.disqualify_reason ? (
             <span
-              className="font-mono text-caption text-muted"
+              className="min-w-0 truncate font-mono text-caption text-muted"
               title={entry.disqualify_reason}
             >
               {entry.disqualify_reason.replaceAll("_", " ")}
