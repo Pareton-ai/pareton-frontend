@@ -38,8 +38,19 @@ function EntryRow({
 }) {
   return (
     <tr className="border-t border-border/80">
-      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-body text-foreground sm:px-5">
-        {entry.role.replaceAll("_", " ")}
+      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-body sm:px-5">
+        {entry.patch_hash === null ? (
+          <span className="text-foreground">
+            {entry.role.replaceAll("_", " ")}
+          </span>
+        ) : (
+          <Link
+            href={submissionHref(campaignId, entry.patch_hash)}
+            className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {entry.role.replaceAll("_", " ")}
+          </Link>
+        )}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
         {/* The baseline is the campaign's own image, so it has no miner. */}
