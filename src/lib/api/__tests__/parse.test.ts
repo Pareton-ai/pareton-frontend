@@ -644,6 +644,45 @@ const LIVE_CORRECTNESS = {
   num_prompts: 32,
 };
 
+const LIVE_SAMPLING_RULE = {
+  type: "hf_rows",
+  dataset: "nebius/SWE-agent-trajectories",
+  revision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  config: "default",
+  split: "train",
+  n_rows: 1000,
+  n_prompts: 32,
+  max_tokens: 128,
+  algo_version: 1,
+};
+
+describe("parseCampaign sampling_rule", () => {
+  it("keeps the hf_rows pin and ignores leftover workload_trace fields", () => {
+    const campaign = parseCampaign({
+      sampling_rule: LIVE_SAMPLING_RULE,
+      workload_trace_url: "file:///Users/xavierlu/Desktop/trace.json",
+      workload_trace_sha256: "sha256:" + "9".repeat(64),
+    });
+    expect(campaign.sampling_rule).toStrictEqual(LIVE_SAMPLING_RULE);
+    expect(campaign).not.toHaveProperty("workload_trace_url");
+    expect(campaign).not.toHaveProperty("workload_trace_sha256");
+  });
+
+  it("returns null when sampling_rule is missing or not hf_rows", () => {
+    expect(parseCampaign({}).sampling_rule).toBeNull();
+    expect(
+      parseCampaign({
+        sampling_rule: { type: "fixed_trace", dataset: "x/y", revision: "a" },
+      }).sampling_rule
+    ).toBeNull();
+    expect(
+      parseCampaign({
+        sampling_rule: { type: "hf_rows", dataset: "", revision: "a" },
+      }).sampling_rule
+    ).toBeNull();
+  });
+});
+
 describe("parseCampaign correctness thresholds", () => {
   it("keeps the three enforced numbers and drops extra keys", () => {
     const campaign = parseCampaign({

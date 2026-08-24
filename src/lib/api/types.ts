@@ -168,6 +168,19 @@ export type ScoringRule = {
   name: string;
 };
 
+/** Campaign pin: each round draws prompts from this HuggingFace dataset. */
+export type SamplingRule = {
+  type: "hf_rows";
+  dataset: string;
+  revision: string;
+  config: string;
+  split: string;
+  n_rows: number;
+  n_prompts: number;
+  max_tokens: number;
+  algo_version: number;
+};
+
 export type CustomerSignoff = {
   approved_manifest_hash: string;
   approver: string;
@@ -182,8 +195,8 @@ export type Campaign = {
   baseline_commit: string;
   base_image_digest: string;
   gpu_skus: string[];
-  workload_trace_sha256: string;
-  workload_trace_url: string;
+  /** HuggingFace row sampler. Null if the API omitted it. */
+  sampling_rule: SamplingRule | null;
   sla: CampaignSla;
   scoring_config_sha256: string | null;
   scoring_config_url: string | null;

@@ -14,6 +14,7 @@ import {
   type RoundDetail,
   type RoundEntry,
   type RoundsPage,
+  type SamplingRule,
   type ScoreProgressEntry,
   type ScoreProgressPoint,
   type ScoreProgressSeries,
@@ -123,6 +124,31 @@ function parseScoringRule(value: unknown): ScoringRule {
   return { name: asString(asRecord(value).name) };
 }
 
+function parseSamplingRule(value: unknown): SamplingRule | null {
+  if (value == null) return null;
+  const o = asRecord(value);
+  const dataset = asString(o.dataset).trim();
+  const revision = asString(o.revision).trim();
+  const n_rows = asNumber(o.n_rows);
+  const n_prompts = asNumber(o.n_prompts);
+  if (asString(o.type) !== "hf_rows" || !dataset || !revision) return null;
+  if (n_rows < 1 || n_prompts < 1 || n_prompts > n_rows) return null;
+  const max_tokens = asNumber(o.max_tokens, 128);
+  const algo_version = asNumber(o.algo_version, 1);
+  if (max_tokens < 1 || algo_version < 1) return null;
+  return {
+    type: "hf_rows",
+    dataset,
+    revision,
+    config: asString(o.config, "default") || "default",
+    split: asString(o.split, "train") || "train",
+    n_rows,
+    n_prompts,
+    max_tokens,
+    algo_version,
+  };
+}
+
 function parseBench(value: unknown): CampaignBench {
   const o = asRecord(value);
   return {
@@ -156,8 +182,7 @@ export function parseCampaign(value: unknown): Campaign {
     baseline_commit: asString(o.baseline_commit),
     base_image_digest: asString(o.base_image_digest),
     gpu_skus: asStringArray(o.gpu_skus),
-    workload_trace_sha256: asString(o.workload_trace_sha256),
-    workload_trace_url: asString(o.workload_trace_url),
+    sampling_rule: parseSamplingRule(o.sampling_rule),
     sla: parseSla(o.sla),
     scoring_config_sha256: asNullableString(o.scoring_config_sha256),
     scoring_config_url: asNullableString(o.scoring_config_url),

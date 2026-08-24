@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import type {
   Campaign,
   CampaignBenchCorrectnessThresholds,
+  SamplingRule,
 } from "@/lib/api/types";
 
 const QUALITY_THRESHOLD_ROWS = [
@@ -92,6 +93,41 @@ function ArtifactLink({ href }: { href: string }) {
       <span className="truncate">{linkLabel(href)}</span>
       <ExternalLink className="size-3 shrink-0" aria-hidden />
     </a>
+  );
+}
+
+const HF_DATASET_RE = /^[\w.-]+\/[\w.-]+$/;
+
+function WorkloadPin({ rule }: { rule: SamplingRule }) {
+  const href = HF_DATASET_RE.test(rule.dataset)
+    ? `https://huggingface.co/datasets/${rule.dataset}`
+    : null;
+  return (
+    <div className="space-y-1.5">
+      <p className="text-secondary">
+        {rule.n_prompts.toLocaleString("en-US")} prompts per round from{" "}
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+          >
+            {rule.dataset}
+          </a>
+        ) : (
+          rule.dataset
+        )}
+      </p>
+      <CopyableMono
+        value={rule.revision}
+        display={truncateMiddle(rule.revision, 12, 8)}
+      />
+      <p className="text-muted">
+        {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
+        · {rule.max_tokens} max tokens
+      </p>
+    </div>
   );
 }
 
@@ -188,14 +224,12 @@ export function CampaignReference({ campaign }: { campaign: Campaign }) {
             display={truncateHash(campaign.bench.baseline_engine_image_digest)}
           />
         </GridRow>
-        <GridRow label="Workload trace">
-          <ArtifactLink href={campaign.workload_trace_url} />
-          <div className="mt-1.5">
-            <CopyableMono
-              value={campaign.workload_trace_sha256}
-              display={truncateHash(campaign.workload_trace_sha256)}
-            />
-          </div>
+        <GridRow label="Workload">
+          {campaign.sampling_rule ? (
+            <WorkloadPin rule={campaign.sampling_rule} />
+          ) : (
+            <span className="text-muted">—</span>
+          )}
         </GridRow>
         {campaign.scoring_config_sha256 ? (
           <GridRow label="Scoring config">
