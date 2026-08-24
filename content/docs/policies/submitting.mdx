@@ -1,0 +1,71 @@
+---
+title: Submitting a patch
+description: What a commit lets Pareton do with your patch, what you keep, and what is still undecided.
+---
+
+This page is for miners. It is not a privacy notice (see
+[This website](/docs/policies/website)) and it is not legal advice.
+
+Pareton needs a clear right to build, bench, and later ship work that arrives
+as a hostile git patch. Subnet emissions are the payment for that work. The
+Pareton repositories have their own licenses. Those licenses do not cover
+source you submit.
+
+## How you accept
+
+You accept the version of this page that is current at the block of your
+commitment when you run `python -m miner.commit_patch` and the watcher records
+that commitment. The on-chain record is the acceptance. A later edit of this
+page does not rewrite an earlier commit.
+
+## What Pareton may do with the patch
+
+You keep the copyright. You give Pareton a lasting, worldwide permission that
+does not need extra payment, and that Pareton can pass to a successor or a
+contractor. Under that permission Pareton may:
+
+- store, build, and run the patch in gates, images, and rounds
+- change the patch, combine it with other code, and ship the result
+- use the result in a hosted inference product or any other commercial
+  offering
+- publish the patch bytes and the evidence of the run (the retrieval URL and
+  the dashboard already make a submission public)
+
+That permission does not expire if you unregister or stop mining.
+
+## What you keep
+
+You still own the copyright. This is a permission, not a sale of the work.
+Nothing here stops you from using, publishing, or licensing the same patch
+somewhere else. Two miners cannot claim the same bytes in one campaign; the
+first valid `patch_hash` keeps the slot.
+
+## Money
+
+The [submission fee](/docs/miner/submission-fee) is the price of a commit. It
+is not refunded if the patch is rejected, disqualified, or loses a round.
+
+If the patch becomes leader and on-chain weights are later turned on, subnet
+emissions under the scoring rules of that campaign are the only extra payment
+Pareton owes for the rights above. There is no royalty and no revenue share
+for use of the patch in a product.
+
+## What you say is true
+
+By committing you say that:
+
+1. the patch is yours, or you have the right to submit it and to give the
+   permission above
+2. any third-party code in the patch is used under a license that allows this
+   submission and this permission, and you followed that license
+3. the patch is not written to break evaluation, steal data, damage hosts, or
+   interfere with other miners
+4. if you submit for a company or a group, you can bind that entity
+
+A failed gate, a crash, or a copy of someone else's comment-stripped patch
+does not undo those statements.
+
+## Changes
+
+Edits apply to commits that land after the edit is published. A commit is
+judged under the version that was live at its commitment block.
