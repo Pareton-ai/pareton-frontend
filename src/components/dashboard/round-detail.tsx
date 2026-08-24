@@ -21,6 +21,7 @@ import { monoLinkClassName } from "@/components/ui/mono-link";
 import {
   elapsedBetween,
   formatDuration,
+  formatScore,
   formatUtc,
   formatUtcShort,
   truncateDigest,
@@ -212,7 +213,13 @@ export function RoundStats({
       <StatTile
         icon={TrendingUp}
         label="Top score"
-        value={top === null ? "—" : <span className="tabular-nums">{top}</span>}
+        value={
+          top === null ? (
+            "—"
+          ) : (
+            <span className="tabular-nums">{formatScore(top)}</span>
+          )
+        }
         hint={top === null ? "no scored challenger" : "0 is baseline speed"}
       />
 

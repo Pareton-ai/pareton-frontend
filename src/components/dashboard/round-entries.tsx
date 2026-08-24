@@ -5,6 +5,7 @@ import { EntryStatusChip } from "@/components/dashboard/status-chip";
 import {
   elapsedBetween,
   formatDuration,
+  formatScore,
   truncateDigest,
   truncateMiddle,
 } from "@/lib/api/format";
@@ -82,7 +83,7 @@ function EntryRow({
         {entry.score === null ? (
           <span className="text-muted">—</span>
         ) : (
-          <span className="tabular-nums">{entry.score}</span>
+          <span className="tabular-nums">{formatScore(entry.score)}</span>
         )}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
