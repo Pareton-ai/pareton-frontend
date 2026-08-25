@@ -331,7 +331,9 @@ function locatePosition(
   }
 
   if (phase === "starting_engine" || phase === "sla_bench") {
-    if (allEntriesFinished(entries) && hint.entryIndex === null) {
+    // Scorer and drift have no entry row. A leftover progress.entry after the
+    // cohort has settled must not pin the cursor on that finished image.
+    if (allEntriesFinished(entries)) {
       if (phase === "starting_engine") {
         return at(indexOf(steps, "scorer", "starting_engine"));
       }
@@ -342,10 +344,13 @@ function locatePosition(
     if (entryIndex !== null) {
       const entry = entries[entryIndex];
       const hintedHere = hint.entryIndex === entryIndex;
+      // Live sla_bench still belongs to this image. Jumping to the next
+      // starting_engine would drop the phase we are actually in.
       if (
         !hintedHere &&
         entryFinished(entry) &&
-        entryIndex < entries.length - 1
+        entryIndex < entries.length - 1 &&
+        phase === "starting_engine"
       ) {
         return at(
           indexOf(

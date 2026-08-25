@@ -243,6 +243,55 @@ describe("annotateRoundPlan", () => {
     expect(currentLabel(round)).toBe("Drift baseline, running SLA");
   });
 
+  it("keeps live sla_bench on a finished image instead of jumping to the next start", () => {
+    const round = roundOver(roundRunning, {
+      phase: "sla_bench",
+      progress: null,
+      entries: [
+        entry({
+          id: 1,
+          role: "baseline",
+          status: "scored",
+          score: 0,
+          started_at: "2026-08-20T00:00:00+00:00",
+          completed_at: "2026-08-20T00:00:40+00:00",
+        }),
+        entry({ id: 2, role: "challenger", status: "pending" }),
+      ],
+    });
+    expect(currentLabel(round)).toBe("Baseline, running SLA");
+  });
+
+  it("ignores a leftover progress.entry once every seated image has finished", () => {
+    const settled = (
+      roundRunning as { entries: Array<Record<string, unknown>> }
+    ).entries.map((row, index) => ({
+      ...row,
+      status: "scored",
+      score: index === 0 ? 0 : 0.1,
+      started_at: "2026-08-20T00:00:10+00:00",
+      completed_at: "2026-08-20T00:00:50+00:00",
+    }));
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: { entry: 2 },
+          entries: settled,
+        })
+      )
+    ).toBe("Scorer, starting the engine");
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "sla_bench",
+          progress: { entry: 2 },
+          entries: settled,
+        })
+      )
+    ).toBe("Drift baseline, running SLA");
+  });
+
   it("paints the current step stalled when the heartbeat is old", () => {
     const round = parseRoundDetail(roundRunning);
     expect(currentLabel(round, LATER)).toBe("Candidate 2 of 2, running SLA");
