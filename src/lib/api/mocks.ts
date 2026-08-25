@@ -118,9 +118,9 @@ export const MOCK_CAMPAIGN: Campaign = {
     serve_args: null,
     correctness: {
       thresholds: {
-        argmax_mismatch_rate: 0.001,
-        mean_abs_logprob_diff: 0.0246,
-        max_abs_logprob_diff: 0.164,
+        min_mean_logprob: -4,
+        min_token_logprob: -12,
+        min_coverage_ratio: 0.5,
       },
     },
     baseline_engine_image_digest:

@@ -10,10 +10,10 @@ import type {
   SamplingRule,
 } from "@/lib/api/types";
 
-const QUALITY_THRESHOLD_ROWS = [
-  { key: "argmax_mismatch_rate", label: "Token mismatch rate" },
-  { key: "mean_abs_logprob_diff", label: "Mean logprob drift" },
-  { key: "max_abs_logprob_diff", label: "Max logprob drift" },
+const CORRECTNESS_THRESHOLD_ROWS = [
+  { key: "min_mean_logprob", label: "Mean logprob" },
+  { key: "min_token_logprob", label: "Min token logprob" },
+  { key: "min_coverage_ratio", label: "Coverage" },
 ] as const satisfies ReadonlyArray<{
   key: keyof CampaignBenchCorrectnessThresholds;
   label: string;
@@ -151,19 +151,18 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
             {campaign.scoring_rule.name.replaceAll("_", " ") || "—"}
           </span>
         </Row>
-        <Row label="Quality floor">
-          <span className="text-secondary">
-            {campaign.sla.quality_floor_spec || "—"}
-          </span>
+        <Row label="Correctness">
           {correctness ? (
-            <ul className="mt-2 space-y-1 text-secondary tabular-nums">
-              {QUALITY_THRESHOLD_ROWS.map(({ key, label }) => (
+            <ul className="space-y-1 text-secondary tabular-nums">
+              {CORRECTNESS_THRESHOLD_ROWS.map(({ key, label }) => (
                 <li key={key}>
-                  {label} ≤ {correctness.thresholds[key]}
+                  {label} ≥ {correctness.thresholds[key]}
                 </li>
               ))}
             </ul>
-          ) : null}
+          ) : (
+            <span className="text-muted">—</span>
+          )}
         </Row>
       </Panel>
 

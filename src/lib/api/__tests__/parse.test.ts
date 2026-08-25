@@ -644,9 +644,9 @@ describe("score progress", () => {
 
 const LIVE_CORRECTNESS = {
   thresholds: {
-    argmax_mismatch_rate: 0.001,
-    max_abs_logprob_diff: 0.164,
-    mean_abs_logprob_diff: 0.0246,
+    min_mean_logprob: -4.125,
+    min_token_logprob: -12.0625,
+    min_coverage_ratio: 0.51,
   },
   num_prompts: 32,
 };
@@ -698,9 +698,9 @@ describe("parseCampaign correctness thresholds", () => {
     });
     expect(campaign.bench.correctness).toStrictEqual({
       thresholds: {
-        argmax_mismatch_rate: 0.001,
-        mean_abs_logprob_diff: 0.0246,
-        max_abs_logprob_diff: 0.164,
+        min_mean_logprob: -4.125,
+        min_token_logprob: -12.0625,
+        min_coverage_ratio: 0.51,
       },
     });
     expect(campaign.scoring_rule).toEqual({ name: "median_e2e_speedup" });
@@ -715,9 +715,9 @@ describe("parseCampaign correctness thresholds", () => {
     if (parsed == null) return;
     const { thresholds } = parsed;
 
-    expect(String(thresholds.argmax_mismatch_rate)).toBe("0.001");
-    expect(String(thresholds.mean_abs_logprob_diff)).toBe("0.0246");
-    expect(String(thresholds.max_abs_logprob_diff)).toBe("0.164");
+    expect(String(thresholds.min_mean_logprob)).toBe("-4.125");
+    expect(String(thresholds.min_token_logprob)).toBe("-12.0625");
+    expect(String(thresholds.min_coverage_ratio)).toBe("0.51");
   });
 
   it("falls back to null when correctness is missing", () => {
@@ -733,7 +733,23 @@ describe("parseCampaign correctness thresholds", () => {
         bench: {
           correctness: {
             thresholds: {
+              min_mean_logprob: -4.125,
+              min_token_logprob: -12.0625,
+            },
+          },
+        },
+      }).bench.correctness
+    ).toBeNull();
+  });
+
+  it("does not treat pre-PAR-77 mismatch-rate keys as correctness", () => {
+    expect(
+      parseCampaign({
+        bench: {
+          correctness: {
+            thresholds: {
               argmax_mismatch_rate: 0.001,
+              mean_abs_logprob_diff: 0.0246,
               max_abs_logprob_diff: 0.164,
             },
           },
@@ -748,9 +764,9 @@ describe("parseCampaign correctness thresholds", () => {
         bench: {
           correctness: {
             thresholds: {
-              argmax_mismatch_rate: "0.001",
-              mean_abs_logprob_diff: 0.0246,
-              max_abs_logprob_diff: 0.164,
+              min_mean_logprob: "-4.125",
+              min_token_logprob: -12.0625,
+              min_coverage_ratio: 0.51,
             },
           },
         },
@@ -761,9 +777,9 @@ describe("parseCampaign correctness thresholds", () => {
         bench: {
           correctness: {
             thresholds: {
-              argmax_mismatch_rate: 0.001,
-              mean_abs_logprob_diff: Number.NaN,
-              max_abs_logprob_diff: 0.164,
+              min_mean_logprob: -4.125,
+              min_token_logprob: Number.NaN,
+              min_coverage_ratio: 0.51,
             },
           },
         },

@@ -76,9 +76,9 @@ describe.skipIf(!process.env.PARETON_LIVE_API_TESTS)(
       );
       expect(open.bench.correctness).toEqual({
         thresholds: {
-          argmax_mismatch_rate: 0.001,
-          mean_abs_logprob_diff: 0.0246,
-          max_abs_logprob_diff: 0.164,
+          min_mean_logprob: expect.any(Number),
+          min_token_logprob: expect.any(Number),
+          min_coverage_ratio: expect.any(Number),
         },
       });
       expect(open.scoring_rule.name).not.toBe("");
