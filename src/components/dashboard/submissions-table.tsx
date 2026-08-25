@@ -30,8 +30,9 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
 /**
  * Submission list for one campaign page.
  *
- * Outcome and the score from each submission's newest non-void round entry.
- * Scores are per-round and not comparable across rounds.
+ * Outcome is the latest pipeline state. Score lives on the round page (same
+ * prompt set) and the submission page (one entry). A column here would rank
+ * numbers from different rounds.
  */
 export function SubmissionsTable({
   campaignId,
@@ -73,7 +74,6 @@ export function SubmissionsTable({
               {/* Zone omitted to keep the column narrow; each cell carries the
                   full UTC timestamp as a tooltip. */}
               <th className="px-3 py-2.5 font-normal">Submitted</th>
-              <th className="px-3 py-2.5 font-normal">Score</th>
               <th className="px-3 py-2.5 font-normal">Outcome</th>
               <th className="w-8 px-2 py-2.5 font-normal">
                 <span className="sr-only">Open</span>
