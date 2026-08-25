@@ -122,6 +122,19 @@ describe("readProgressHint", () => {
       kind: "entry",
     });
   });
+
+  it("treats progress.step as a 1-based plan position", () => {
+    expect(readProgressHint({ step: 3 }, entries)).toEqual({
+      entryIndex: 2,
+      kind: "entry",
+    });
+    expect(readProgressHint({ step: 4 }, entries).kind).toBe("scorer");
+    expect(readProgressHint({ step: 5 }, entries).kind).toBe("drift");
+  });
+
+  it("lets a live step override a leftover seated entry index", () => {
+    expect(readProgressHint({ entry: 2, step: 5 }, entries).kind).toBe("drift");
+  });
 });
 
 describe("annotateRoundPlan", () => {
@@ -269,6 +282,7 @@ describe("annotateRoundPlan", () => {
       ...row,
       status: "scored",
       score: index === 0 ? 0 : 0.1,
+      disqualify_reason: null,
       started_at: "2026-08-20T00:00:10+00:00",
       completed_at: "2026-08-20T00:00:50+00:00",
     }));
@@ -290,6 +304,59 @@ describe("annotateRoundPlan", () => {
         })
       )
     ).toBe("Drift baseline, running SLA");
+  });
+
+  it("places an unhinted starting_engine on drift after the scorer has judged", () => {
+    const judged = (
+      roundRunning as { entries: Array<Record<string, unknown>> }
+    ).entries.map((row, index) => ({
+      ...row,
+      status: index === 1 ? "disqualified" : "scored",
+      score: index === 0 ? 0 : null,
+      disqualify_reason: index === 1 ? "fail_correctness" : null,
+      started_at: "2026-08-20T00:00:10+00:00",
+      completed_at: "2026-08-20T00:00:50+00:00",
+    }));
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: null,
+          entries: judged,
+        })
+      )
+    ).toBe("Drift baseline, starting the engine");
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: { entry: 2 },
+          entries: judged,
+        })
+      )
+    ).toBe("Drift baseline, starting the engine");
+  });
+
+  it("places a PAR-98 drift step on the drift engine, not the scorer", () => {
+    const settled = (
+      roundRunning as { entries: Array<Record<string, unknown>> }
+    ).entries.map((row, index) => ({
+      ...row,
+      status: "scored",
+      score: index === 0 ? 0 : 0.1,
+      disqualify_reason: null,
+      started_at: "2026-08-20T00:00:10+00:00",
+      completed_at: "2026-08-20T00:00:50+00:00",
+    }));
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: { step: 5, steps: 5, role: "baseline-drift" },
+          entries: settled,
+        })
+      )
+    ).toBe("Drift baseline, starting the engine");
   });
 
   it("paints the current step stalled when the heartbeat is old", () => {

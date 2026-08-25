@@ -85,6 +85,11 @@ function allEntriesFinished(entries: readonly RoundEntry[]): boolean {
   return entries.length > 0 && entries.every(entryFinished);
 }
 
+/** Shared scorer already graded someone; a later starting_engine is drift. */
+function scorerAlreadyJudged(entries: readonly RoundEntry[]): boolean {
+  return entries.some((row) => row.disqualify_reason === "fail_correctness");
+}
+
 function lastReachedIndex(entries: readonly RoundEntry[]): number {
   let last = -1;
   for (let i = 0; i < entries.length; i += 1) {
@@ -202,7 +207,9 @@ type ProgressHint = {
  * Read PAR-98-shaped progress. `entry` is a 0-based index into `entries`
  * (the running fixture uses `{ entry: 2 }` for the third row). `role` matches
  * `EngineStart.role` when that lands: `baseline`, `candidate-N`, `scorer`,
- * `baseline-drift`.
+ * `baseline-drift`. `step` is the 1-based plan position the harness stamps
+ * (`enumerate(starts, 1)`); seated rows are `1..N`, scorer is `N+1`, drift
+ * is `N+2`.
  */
 export function readProgressHint(
   progress: Record<string, unknown> | null,
@@ -251,6 +258,18 @@ export function readProgressHint(
       kind = kind ?? "scorer";
     } else if (n === entries.length + 1) {
       kind = kind ?? "drift";
+    }
+  }
+
+  if (typeof progress.step === "number" && Number.isInteger(progress.step)) {
+    const step = progress.step;
+    if (step >= 1 && step <= entries.length) {
+      entryIndex = entryIndex ?? step - 1;
+      kind = kind ?? "entry";
+    } else if (step === entries.length + 1) {
+      if (kind === null || kind === "entry") kind = "scorer";
+    } else if (step === entries.length + 2) {
+      if (kind === null || kind === "entry") kind = "drift";
     }
   }
 
@@ -335,6 +354,13 @@ function locatePosition(
     // cohort has settled must not pin the cursor on that finished image.
     if (allEntriesFinished(entries)) {
       if (phase === "starting_engine") {
+        // Same phase name starts the scorer and the drift baseline. After
+        // the scorer has judged, this start is drift; otherwise it is the
+        // scorer. Mapping every unhinted start to the scorer walks the
+        // cursor back onto an engine that already ran.
+        if (scorerAlreadyJudged(entries)) {
+          return at(indexOf(steps, "drift", "starting_engine"));
+        }
         return at(indexOf(steps, "scorer", "starting_engine"));
       }
       return at(indexOf(steps, "drift", "sla_bench"));
