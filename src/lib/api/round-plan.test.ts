@@ -135,6 +135,10 @@ describe("readProgressHint", () => {
   it("lets a live step override a leftover seated entry index", () => {
     expect(readProgressHint({ entry: 2, step: 5 }, entries).kind).toBe("drift");
   });
+
+  it("lets a live drift step override a leftover scorer-slot entry index", () => {
+    expect(readProgressHint({ entry: 3, step: 5 }, entries).kind).toBe("drift");
+  });
 });
 
 describe("annotateRoundPlan", () => {
@@ -275,7 +279,7 @@ describe("annotateRoundPlan", () => {
     expect(currentLabel(round)).toBe("Baseline, running SLA");
   });
 
-  it("ignores a leftover progress.entry once every seated image has finished", () => {
+  it("ignores a leftover seated progress.entry once every image has finished", () => {
     const settled = (
       roundRunning as { entries: Array<Record<string, unknown>> }
     ).entries.map((row, index) => ({
@@ -294,7 +298,16 @@ describe("annotateRoundPlan", () => {
           entries: settled,
         })
       )
-    ).toBe("Scorer, starting the engine");
+    ).toBe("Drift baseline, starting the engine");
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: null,
+          entries: settled,
+        })
+      )
+    ).toBe("Drift baseline, starting the engine");
     expect(
       currentLabel(
         roundOver(roundRunning, {
@@ -304,6 +317,37 @@ describe("annotateRoundPlan", () => {
         })
       )
     ).toBe("Drift baseline, running SLA");
+  });
+
+  it("still locates the scorer when progress names that engine", () => {
+    const settled = (
+      roundRunning as { entries: Array<Record<string, unknown>> }
+    ).entries.map((row, index) => ({
+      ...row,
+      status: "scored",
+      score: index === 0 ? 0 : 0.1,
+      disqualify_reason: null,
+      started_at: "2026-08-20T00:00:10+00:00",
+      completed_at: "2026-08-20T00:00:50+00:00",
+    }));
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: { entry: 3 },
+          entries: settled,
+        })
+      )
+    ).toBe("Scorer, starting the engine");
+    expect(
+      currentLabel(
+        roundOver(roundRunning, {
+          phase: "starting_engine",
+          progress: { role: "scorer", step: 4 },
+          entries: settled,
+        })
+      )
+    ).toBe("Scorer, starting the engine");
   });
 
   it("places an unhinted starting_engine on drift after the scorer has judged", () => {
