@@ -11,6 +11,7 @@ import {
   RoundVoidNotice,
 } from "@/components/dashboard/round-detail";
 import { RoundEntries } from "@/components/dashboard/round-entries";
+import { RoundPlan } from "@/components/dashboard/round-plan";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import { getCampaign, getRoundByOrdinal } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
@@ -149,12 +150,15 @@ async function RoundSections({
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
         <div className="min-w-0">
-          <RoundEntries
-            campaignId={campaignId}
-            entries={round.entries}
-            nowIso={now}
-          />
+          <RoundPlan round={round} now={now} />
           {activity ? <LiveActivityLine activity={activity} now={now} /> : null}
+          <div className="mt-8">
+            <RoundEntries
+              campaignId={campaignId}
+              entries={round.entries}
+              nowIso={now}
+            />
+          </div>
         </div>
 
         <RoundMetadata campaignId={campaignId} round={round} />

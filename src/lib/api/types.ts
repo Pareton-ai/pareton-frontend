@@ -655,8 +655,9 @@ export const BENCH_PHASE_META: Record<
     description: "Loading weights and waiting for the server to answer.",
   },
   correctness: {
-    label: "Running correctness",
-    description: "Comparing candidate output against the baseline engine.",
+    label: "Running the shared scorer",
+    description:
+      "The pinned baseline image teacher-forces captured outputs against the campaign thresholds.",
   },
   sla_bench: {
     label: "Running the SLA bench",
