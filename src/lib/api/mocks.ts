@@ -789,12 +789,20 @@ function derivedChallengerStatus(row: Round, index: number): EntryStatus {
   if (row.status === "pending") return "pending";
   if (row.status === "running") {
     if (index === 1) return "running";
-    return index === 2 ? "pending" : "scored";
+    return index > 1 ? "pending" : "scored";
   }
   if (row.status === "void") {
-    return row.void_reason === "no_surviving_challenger"
-      ? "disqualified"
-      : "infra_failed";
+    if (row.void_reason === "no_surviving_challenger") return "disqualified";
+    if (row.void_reason === "baseline_drift") return "scored";
+    if (
+      row.void_reason === "pod_provision_failed" ||
+      row.void_reason === "trace_unavailable" ||
+      row.void_reason === "leader_image_missing"
+    ) {
+      return "pending";
+    }
+    /* Mid-run infra void: the first challenger died, later images never started. */
+    return index === 1 ? "infra_failed" : "pending";
   }
   return index % 3 === 0 ? "disqualified" : "scored";
 }
@@ -803,7 +811,10 @@ function derivedChallengerStatus(row: Round, index: number): EntryStatus {
  *  own status so a void round shows no winner and a pending one shows no work. */
 function derivedEntries(row: Round): RoundEntry[] {
   const baselineStatus =
-    row.status === "pending"
+    row.status === "pending" ||
+    row.void_reason === "pod_provision_failed" ||
+    row.void_reason === "trace_unavailable" ||
+    row.void_reason === "leader_image_missing"
       ? "pending"
       : row.void_reason === "baseline_failed"
         ? "infra_failed"
@@ -888,10 +899,10 @@ function derivedRoundDetail(row: Round): RoundDetail {
         : row.void_reason === "baseline_drift"
           ? 0.12
           : 0.003,
-    phase: running ? "correctness" : null,
+    phase: running ? "sla_bench" : null,
     phase_started_at: running ? hoursAgo(0.2) : null,
     heartbeat_at: running ? hoursAgo(0) : null,
-    progress: running ? { entry: 2 } : null,
+    progress: running ? { entry: 1 } : null,
     created_at: row.created_at,
     started_at: row.status === "pending" ? null : row.created_at,
     completed_at: row.completed_at,

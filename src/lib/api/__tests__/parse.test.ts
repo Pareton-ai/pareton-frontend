@@ -327,6 +327,13 @@ describe("live bench activity", () => {
     expect(Object.keys(BENCH_PHASE_META)).toStrictEqual([...BENCH_PHASES]);
   });
 
+  it("describes correctness as the shared scorer, not a per-candidate compare", () => {
+    expect(BENCH_PHASE_META.correctness.label).toMatch(/scorer/i);
+    expect(BENCH_PHASE_META.correctness.description).not.toMatch(
+      /comparing candidate output against the baseline/i
+    );
+  });
+
   it("keeps phases out of the pipeline stage vocabulary", () => {
     for (const phase of BENCH_PHASES) {
       expect(SUBMISSION_STAGE_ORDER).not.toContain(phase);
