@@ -1,0 +1,150 @@
+---
+title: Computing the weight vector
+description: Build the subnet 10 weight vector yourself from the public API and the chain, and check it against the published one.
+---
+
+The vector is a function of four inputs, all public:
+
+1. The open campaigns and their `emission_rule`.
+2. The seated leader of each campaign, if any.
+3. The block the current leader won the crown at.
+4. The current block, and the metagraph that maps a hotkey to a UID.
+
+Nothing else affects it. There is no hidden state.
+
+## The algorithm
+
+For each open campaign:
+
+1. Read `emission_rule`. If it is null, the campaign pays nothing. Skip it.
+2. Read the seated leader. If the crown is vacant, the campaign pays nothing.
+3. Map the leader's hotkey to a UID through the metagraph. If the hotkey is not
+   registered, the campaign pays nothing.
+4. Compute `blocks_held` as `current_block - seed_block`, where `seed_block` is
+   the seed block of the round the crown was won at.
+5. Apply the curve to get that leader's weight.
+6. Add the weight at the leader's UID.
+
+Then give the burn UID whatever is left: `1.0 - sum(weights)`. The vector sums
+to exactly 1.0, and the burn UID absorbs the rounding residual, so no miner is
+overpaid by a float artifact.
+
+## The curve
+
+The shipped rule is `linear_decay`:
+
+```
+weight = floor_weight
+       + (start_weight - floor_weight) * (1 - blocks_held / decay_blocks)
+```
+
+Clamp it: `blocks_held` at or below 0 gives `start_weight`, and at or above
+`decay_blocks` gives `floor_weight`.
+
+Decay is measured in blocks on purpose. Wall-clock time brings timezone skew,
+NTP drift, and a question about whose clock is right. Blocks are the only clock
+every validator shares.
+
+## Finding `seed_block`
+
+The leader endpoint gives you `won_at_round_id`. The round gives you the seed
+block.
+
+```
+GET /v1/campaigns/{campaign_id}/leader   ->  won_at_round_id
+GET /v1/rounds/{won_at_round_id}         ->  seed_block
+```
+
+That block survives a successful defence and resets when the crown changes
+hands, which is exactly the decay clock. It is the block the round was created
+at, so the clock starts about one round early, uniformly for every leader.
+
+## Worked example
+
+Pull the inputs and rebuild one campaign's weight:
+
+```python
+import json, urllib.request
+
+BASE = "https://api.pareton.ai"
+
+def get(path):
+    with urllib.request.urlopen(BASE + path, timeout=20) as r:
+        return json.load(r)
+
+campaigns = get("/v1/campaigns")
+campaigns = campaigns.get("campaigns", campaigns)
+
+for c in campaigns:
+    if c["status"] != "open" or not c.get("emission_rule"):
+        continue
+    rule = c["emission_rule"]
+    leader = get(f"/v1/campaigns/{c['campaign_id']}/leader")   # 404 when vacant
+    rnd = get(f"/v1/rounds/{leader['won_at_round_id']}")
+
+    published = get("/v1/weights")
+    blocks_held = published["computed_at_block"] - rnd["seed_block"]
+
+    start, floor = rule["start_weight"], rule["floor_weight"]
+    span = rule["decay_blocks"]
+    weight = floor + (start - floor) * (1 - blocks_held / span)
+
+    print("hotkey     ", leader["hotkey"])
+    print("blocks_held", blocks_held)
+    print("recomputed ", weight)
+    print("published  ", [b["weight"] for b in published["breakdown"]])
+```
+
+A live run of this against the campaign reproduced the published weight exactly:
+`blocks_held` 2712 against a rule of `start_weight` 0.1, `floor_weight` 0.02, and
+`decay_blocks` 201600 gives `0.09892380952380952`, which is what
+`GET /v1/weights` reported.
+
+Use `computed_at_block` from the published vector when you compare. Comparing
+your own head block against a vector computed at a different block will differ,
+and that difference is the clock, not a disagreement.
+
+## Reusing the builder
+
+`weights.build.build_weight_vector` in the Pareton repository already implements
+the rules above, including the burn residual and the guard against a UID outside
+the metagraph. It is pure: no database, no chain calls.
+
+Feed it `CampaignEmission` records built from the API rather than from Postgres:
+
+```python
+from weights.build import CampaignEmission, build_weight_vector
+
+campaign = CampaignEmission(
+    campaign_id=c["campaign_id"],
+    status=c["status"],
+    emission_rule=c["emission_rule"],
+    leader_hotkey=leader["hotkey"],
+    seed_block=rnd["seed_block"],
+)
+
+vector = build_weight_vector(
+    [campaign],
+    hotkey_uids=hotkey_uids,   # hotkey -> uid, from the metagraph
+    uid_count=uid_count,
+    current_block=head,
+    burn_uid=201,
+)
+```
+
+`vector.weights` is the dense list, index is the UID. `vector.breakdown` is the
+per-campaign audit trail, with the `blocks_held` each weight was computed at.
+
+## When a campaign pays nobody
+
+The breakdown records why, and the share goes to burn:
+
+| `note`         | Meaning                                   |
+| -------------- | ----------------------------------------- |
+| `vacant`       | No leader is seated                       |
+| `deregistered` | The leader's hotkey no longer holds a UID |
+| `closed`       | The campaign is no longer open            |
+
+## Next
+
+[Running and verifying](/docs/validator/operations).

@@ -1,0 +1,107 @@
+---
+title: Setup
+description: Create a wallet, register on subnet 10, take a validator permit, and install the Pareton code.
+---
+
+Follow these steps in order. Each one has a check you can run before you move on.
+
+## 1. Create a wallet
+
+```bash
+btcli wallet new_coldkey --wallet.name pareton-validator
+btcli wallet new_hotkey  --wallet.name pareton-validator --wallet.hotkey default
+```
+
+Keep the coldkey offline. It holds your stake. The hotkey signs weights and is
+the only key the validator process needs.
+
+Check:
+
+```bash
+btcli wallet list
+```
+
+## 2. Register the hotkey on subnet 10
+
+```bash
+btcli subnet register --netuid 10 --subtensor.network finney \
+  --wallet.name pareton-validator --wallet.hotkey default
+```
+
+Registration costs the current recycle burn. It buys a UID, nothing more.
+
+Check that your hotkey holds a UID:
+
+```bash
+btcli subnet metagraph --netuid 10 --subtensor.network finney
+```
+
+## 3. Take a validator permit
+
+A UID alone cannot set weights. You need a validator permit, which the chain
+grants to the top stake holders on the subnet.
+
+```bash
+btcli stake add --netuid 10 --subtensor.network finney \
+  --wallet.name pareton-validator --wallet.hotkey default --amount <TAO>
+```
+
+How much you need depends on the current stake distribution. Read the metagraph
+and compare against the holders that already carry a permit.
+
+Check the permit before you try to set anything:
+
+```python
+import bittensor as bt
+
+st = bt.Subtensor(network="finney")
+meta = st.metagraph(netuid=10)
+neuron = meta.by_hotkey("<your hotkey ss58>")
+print("uid:", neuron.uid, "permit:", neuron.validator_permit)
+```
+
+`validator_permit` must be `True`. Setting weights without one fails inside the
+extrinsic as an opaque substrate error, so check here instead.
+
+## 4. Install
+
+```bash
+git clone https://github.com/Pareton-ai/pareton.git
+cd pareton
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+```
+
+You need this repository for two pieces: `weights.build.build_weight_vector`,
+which turns campaign inputs into a dense vector, and `chain.weights.set_weights`,
+which signs it with retries. Both are pure enough to use on their own.
+
+## 5. Configure
+
+Create `.env` in the repository root:
+
+```bash
+PARETON_NETUID=10
+PARETON_NETWORK=finney
+PARETON_WALLET_NAME=pareton-validator
+PARETON_WALLET_HOTKEY=default
+PARETON_VERSION_KEY=2032
+PARETON_BURN_UID=201
+PARETON_WEIGHTS_CADENCE_BLOCKS=360
+```
+
+`PARETON_VERSION_KEY` must match the value Pareton publishes at
+`GET /v1/weights`. Validators trust-weight each other only while their keys
+agree, so a change is a coordinated announcement, never something you pick.
+
+<Callout type="warn">
+  Do not run `python -m weights`. That process is Pareton's own cadence and
+  reads campaigns and leaders from Pareton's private database. It needs
+  `PARETON_DATABASE_URL` and will not work for you. Build the vector from the
+  public API instead. See [Computing the weight
+  vector](/docs/validator/weights).
+</Callout>
+
+## Next
+
+[Computing the weight vector](/docs/validator/weights).

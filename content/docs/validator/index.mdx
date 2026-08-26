@@ -1,0 +1,54 @@
+---
+title: Overview
+description: What a Pareton validator does on subnet 10, and what you need before you run one.
+---
+
+A Pareton validator sets weights on Bittensor subnet 10. It does not bench
+patches and it does not rent GPUs. Benching happens once, on Pareton's
+infrastructure, and the result is public.
+
+Your job as a validator is to decide the emission split and sign it.
+
+For how the split itself is defined, see
+[Validators and emissions](/docs/platform/validators-and-emissions).
+
+## What you are agreeing to
+
+Every open campaign pays its seated leader a share of subnet emission. The share
+follows the campaign's `emission_rule` and decays while one leader holds the
+crown. Everything not paid to a leader is burned.
+
+You recompute that split from public data and set it yourself. You do not have
+to trust Pareton's published vector, and you should not have to. Every input is
+readable from the [public API](/docs/platform/api) and the chain.
+
+## Two ways to run
+
+**Recompute (recommended).** Read the open campaigns, their emission rules, and
+each seated leader from the API. Read the current block and the metagraph from
+the chain. Build the vector yourself and sign it. This is the mode the system is
+designed for. Decay is measured in blocks, not wall-clock time, because blocks
+are the only clock you and Pareton share.
+
+**Mirror.** Read `GET /v1/weights` and sign the vector it returns. Simpler, but
+you are trusting Pareton's arithmetic instead of checking it. Use this only to
+get started.
+
+Either way, your `version_key` must match. Validators trust-weight each other
+only while their keys agree.
+
+## What you need
+
+- A Bittensor wallet with a hotkey registered on subnet 10 (finney).
+- A validator permit on that hotkey. Permits go to the top stake holders, so you
+  need enough stake to hold one.
+- A host that stays up. The cadence is every 360 blocks, about 72 minutes.
+- Python 3.10 or later, and `bittensor` 11.x.
+
+## Next
+
+1. [Setup](/docs/validator/setup): wallet, registration, permit, install.
+2. [Computing the weight vector](/docs/validator/weights): the algorithm, with a
+   worked example you can check against live data.
+3. [Running and verifying](/docs/validator/operations): the cadence, the
+   commit-reveal delay, and what to check when a set fails.
