@@ -101,21 +101,21 @@ function parseBenchModel(value: unknown): CampaignBenchModel {
 function parseCorrectness(value: unknown): CampaignBenchCorrectness | null {
   if (value == null) return null;
   const t = asRecord(asRecord(value).thresholds);
-  const argmax_mismatch_rate = asNullableNumber(t.argmax_mismatch_rate);
-  const mean_abs_logprob_diff = asNullableNumber(t.mean_abs_logprob_diff);
-  const max_abs_logprob_diff = asNullableNumber(t.max_abs_logprob_diff);
+  const min_mean_logprob = asNullableNumber(t.min_mean_logprob);
+  const min_token_logprob = asNullableNumber(t.min_token_logprob);
+  const min_coverage_ratio = asNullableNumber(t.min_coverage_ratio);
   if (
-    argmax_mismatch_rate == null ||
-    mean_abs_logprob_diff == null ||
-    max_abs_logprob_diff == null
+    min_mean_logprob == null ||
+    min_token_logprob == null ||
+    min_coverage_ratio == null
   ) {
     return null;
   }
   return {
     thresholds: {
-      argmax_mismatch_rate,
-      mean_abs_logprob_diff,
-      max_abs_logprob_diff,
+      min_mean_logprob,
+      min_token_logprob,
+      min_coverage_ratio,
     },
   };
 }

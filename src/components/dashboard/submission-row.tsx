@@ -3,7 +3,6 @@ import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { PipelineChip } from "@/components/dashboard/status-chip";
 import {
-  formatScore,
   formatUtc,
   formatUtcShort,
   truncateDigest,
@@ -14,9 +13,8 @@ import type { SubmissionRow as SubmissionRowData } from "@/lib/api/types";
 /**
  * One submission on the campaign page.
  *
- * Shows the score from the submission's newest non-void round entry. Scores
- * are per-round and not comparable across rounds; a null score (disqualified
- * or infra-failed entry) renders as a dash.
+ * Score is not shown here: those numbers are per-round and ranking them on
+ * this list would invite a comparison the prompt sets cannot support.
  */
 export function SubmissionRow({
   href,
@@ -54,15 +52,6 @@ export function SubmissionRow({
         title={formatUtc(row.committed_at)}
       >
         {formatUtcShort(row.committed_at)}
-      </td>
-      <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
-        {row.round == null || row.round.score == null ? (
-          <span className="text-muted">—</span>
-        ) : (
-          <span className="font-mono text-body tabular-nums">
-            {formatScore(row.round.score)}
-          </span>
-        )}
       </td>
       <td className="whitespace-nowrap px-3 py-3.5">
         <PipelineChip state={row.latest_state} />

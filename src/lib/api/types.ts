@@ -147,9 +147,9 @@ export type CampaignBenchModel = {
 };
 
 export type CampaignBenchCorrectnessThresholds = {
-  argmax_mismatch_rate: number;
-  mean_abs_logprob_diff: number;
-  max_abs_logprob_diff: number;
+  min_mean_logprob: number;
+  min_token_logprob: number;
+  min_coverage_ratio: number;
 };
 
 export type CampaignBenchCorrectness = {
