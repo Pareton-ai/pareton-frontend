@@ -10,7 +10,10 @@ import {
 } from "react";
 
 /** Matches the build-log poll cadence so a page and its log stay in sync. */
-const POLL_INTERVAL_MS = 15_000;
+export const SUBMISSION_POLL_INTERVAL_MS = 15_000;
+
+/** Round provision can fail in under 10s; faster than submission detail. */
+export const ROUND_POLL_INTERVAL_MS = 5_000;
 
 const SetLivePollEnabledContext = createContext<
   ((enabled: boolean) => void) | null
@@ -23,7 +26,13 @@ const SetLivePollEnabledContext = createContext<
  * failure (which swaps the RSC body for `SectionUnavailable`) cannot unmount
  * the poller and permanently stop live updates.
  */
-export function LivePollHost({ children }: { children: ReactNode }) {
+export function LivePollHost({
+  children,
+  intervalMs = SUBMISSION_POLL_INTERVAL_MS,
+}: {
+  children: ReactNode;
+  intervalMs?: number;
+}) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
 
@@ -32,10 +41,10 @@ export function LivePollHost({ children }: { children: ReactNode }) {
 
     const id = window.setInterval(() => {
       router.refresh();
-    }, POLL_INTERVAL_MS);
+    }, intervalMs);
 
     return () => window.clearInterval(id);
-  }, [enabled, router]);
+  }, [enabled, intervalMs, router]);
 
   return (
     <SetLivePollEnabledContext.Provider value={setEnabled}>

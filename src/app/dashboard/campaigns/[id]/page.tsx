@@ -26,7 +26,7 @@ import {
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
 import { campaignListHref } from "@/lib/routes";
 import {
-  isLiveSubmissionRow,
+  isLiveCampaignPage,
   type Campaign,
   type RoundsPage,
   type SubmissionsPage,
@@ -153,12 +153,14 @@ async function CampaignBody({
     }
   }
 
-  // A submissions blip must not send `enabled={false}`: that would stop the
-  // host. Keep polling while the campaign is open until a successful idle
-  // page proves there is nothing live.
-  const live =
-    campaign.status === "open" &&
-    (data === null || data.submissions.some(isLiveSubmissionRow));
+  // A fetch blip must not send `enabled={false}`: that would stop the host.
+  // An open campaign keeps polling even after listed rows settle, so the
+  // next round (or void) shows up without a reload.
+  const live = isLiveCampaignPage({
+    campaignStatus: campaign.status,
+    submissions: data === null ? null : data.submissions,
+    rounds: rounds === null ? null : rounds.rounds,
+  });
 
   return (
     <div className="space-y-8">

@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { shortSku } from "@/components/dashboard/gpu";
+import { LiveElapsed } from "@/components/dashboard/live-elapsed";
 import { RoundStatusChip } from "@/components/dashboard/status-chip";
 import {
   elapsedBetween,
@@ -9,17 +10,26 @@ import {
   truncateMiddle,
 } from "@/lib/api/format";
 import { blockExplorerHref } from "@/lib/routes";
-import type { Round } from "@/lib/api/types";
+import { isLiveRound, type Round } from "@/lib/api/types";
 
 function leaderChangedLabel(value: boolean | null): string {
   if (value == null) return "—";
   return value ? "yes" : "no";
 }
 
-function durationLabel(row: Round, nowIso: string): string {
+function RoundDuration({ row, nowIso }: { row: Round; nowIso: string }) {
   const end = row.completed_at ?? nowIso;
   const ms = elapsedBetween(row.created_at, end);
   if (ms == null) return "—";
+  if (isLiveRound(row.status)) {
+    return (
+      <LiveElapsed
+        since={row.created_at}
+        initialMs={ms}
+        className="tabular-nums"
+      />
+    );
+  }
   return formatDuration(ms);
 }
 
@@ -90,7 +100,7 @@ export function RoundRow({
         </span>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body tabular-nums text-secondary">
-        {durationLabel(row, nowIso)}
+        <RoundDuration row={row} nowIso={nowIso} />
       </td>
       <td
         aria-hidden
