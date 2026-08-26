@@ -89,6 +89,17 @@ OOM) or a health timeout stays `infra_failed` and gets one requeue. The same
 self-exit on the incumbent is remapped to `infra_failed` and voids the round:
 that image already started and scored on a prior pod.
 
+## Waiting for capacity
+
+A round needs a GPU pod of the campaign's SKU. When no provider has one, the
+round returns to `pending` and retries later. It keeps its ordinal, its cohort,
+and its prompt set, because nothing ran.
+
+The wait doubles after each failed attempt, from 5 minutes up to a ceiling of 1
+hour. A round can therefore sit `pending` for hours while the market has no
+stock. That is the system waiting, not a stuck round, and it consumes no
+ordinal.
+
 ## Void
 
 A voided round (pod death, baseline failure, leader infrastructure failure,

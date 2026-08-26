@@ -1,0 +1,66 @@
+---
+title: Public API
+description: Read-only HTTP endpoints for campaigns, submissions, rounds, the leader, and the weight vector.
+---
+
+The API is read-only and needs no key. The base URL is
+`https://api.pareton.ai`. An OpenAPI schema is served at
+`https://api.pareton.ai/openapi.json`.
+
+Use it to track a submission without watching the dashboard.
+
+## Campaigns
+
+| Endpoint                          | Returns                       |
+| --------------------------------- | ----------------------------- |
+| `GET /v1/campaigns`               | Every campaign                |
+| `GET /v1/campaigns/{campaign_id}` | One campaign and what it pins |
+| `GET /v1/stats`                   | Subnet-wide counters          |
+
+## Submissions
+
+| Endpoint                                                             | Returns                         |
+| -------------------------------------------------------------------- | ------------------------------- |
+| `GET /v1/campaigns/{campaign_id}/submissions`                        | Submissions in one campaign     |
+| `GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}`           | One submission, with its events |
+| `GET /v1/campaigns/{campaign_id}/submissions/{patch_hash}/build-log` | Sanitized build log tail        |
+
+Prefer the campaign-scoped path. A submission is identified by campaign plus
+patch hash together, so the short forms `GET /v1/submissions/{patch_hash}` and
+its build-log path return **409** when the same bytes were submitted to more
+than one campaign.
+
+A submission detail carries a `round` object once it is seated: round id,
+ordinal, entry status, score, and disqualify reason. The entry status is the
+outcome. There is no separate verdict field.
+
+## Rounds and the leader
+
+| Endpoint                                         | Returns                                    |
+| ------------------------------------------------ | ------------------------------------------ |
+| `GET /v1/campaigns/{campaign_id}/rounds`         | Rounds, newest ordinal first, paginated    |
+| `GET /v1/rounds/{round_id}`                      | One round, every entry, and the live phase |
+| `GET /v1/campaigns/{campaign_id}/leader`         | The seated leader                          |
+| `GET /v1/campaigns/{campaign_id}/score-progress` | One point per ordinal, for charting        |
+
+`GET /v1/campaigns/{campaign_id}/leader` returns **404** when the crown is
+vacant. A vacant crown has no row, so this is the expected answer, not an error.
+
+## Weights
+
+`GET /v1/weights` returns the newest stored weight vector and a per-campaign
+breakdown. See [Validators and emissions](/docs/platform/validators-and-emissions).
+
+## Caching
+
+A response that contains a `pending` or `running` round is sent `no-store`.
+`complete` and `void` rounds are terminal and cacheable. Poll live rounds; cache
+settled ones.
+
+## What the API never returns
+
+Evidence stays behind its gate. `evidence_s3_url` and the raw round entry report
+are never selected, on any endpoint.
+
+Identity is the hotkey. List responses truncate it to 16 characters. Detail
+responses carry it in full.
