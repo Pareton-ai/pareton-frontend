@@ -24,7 +24,7 @@ import {
   getRounds,
 } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
-import { campaignListHref } from "@/lib/routes";
+import { campaignListHref, clampedCampaignListHref } from "@/lib/routes";
 import {
   isLiveCampaignPage,
   type Campaign,
@@ -65,10 +65,7 @@ async function loadCampaign(
 async function loadRounds(
   id: string,
   page: number
-): Promise<
-  | { ok: true; data: RoundsPage }
-  | { ok: false; error: unknown }
-> {
+): Promise<{ ok: true; data: RoundsPage } | { ok: false; error: unknown }> {
   try {
     const data = await getRounds(id, {
       limit: PAGE_SIZE,
@@ -84,8 +81,7 @@ async function loadSubmissions(
   id: string,
   page: number
 ): Promise<
-  | { ok: true; data: SubmissionsPage }
-  | { ok: false; error: unknown }
+  { ok: true; data: SubmissionsPage } | { ok: false; error: unknown }
 > {
   try {
     const data = await getCampaignSubmissions(id, {
@@ -196,7 +192,7 @@ async function RoundsSection({
   ]);
   if (!campaignResult.ok) {
     if (campaignResult.kind === "not_found") notFound();
-    return campaignLoadUnavailable(campaignResult.kind);
+    return null;
   }
   if (!roundsResult.ok) {
     return (
@@ -212,15 +208,6 @@ async function RoundsSection({
   const { data: rounds } = roundsResult;
   const safePage = safePageNumber(page);
   const safeSubmissionsPage = safePageNumber(submissionsPage);
-  const totalPages = Math.max(1, Math.ceil(rounds.total / PAGE_SIZE));
-  if (safePage > totalPages) {
-    redirect(
-      campaignListHref(id, {
-        page: totalPages,
-        submissions: safeSubmissionsPage,
-      })
-    );
-  }
   if (rounds.total === 0) {
     return <EmptyRounds status={campaignResult.campaign.status} />;
   }
@@ -254,7 +241,7 @@ async function SubmissionsSection({
   ]);
   if (!campaignResult.ok) {
     if (campaignResult.kind === "not_found") notFound();
-    return campaignLoadUnavailable(campaignResult.kind);
+    return null;
   }
   if (!submissionsResult.ok) {
     return (
@@ -270,15 +257,6 @@ async function SubmissionsSection({
   const { data } = submissionsResult;
   const safePage = safePageNumber(page);
   const safeSubmissionsPage = safePageNumber(submissionsPage);
-  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  if (safeSubmissionsPage > totalPages) {
-    redirect(
-      campaignListHref(id, {
-        page: safePage,
-        submissions: totalPages,
-      })
-    );
-  }
   if (data.total === 0) {
     return <EmptySubmissions status={campaignResult.campaign.status} />;
   }
@@ -315,6 +293,31 @@ async function CampaignReferenceSection({ id }: { id: string }) {
   return <CampaignReference campaign={result.campaign} />;
 }
 
+async function redirectIfPagersOutOfRange(
+  id: string,
+  page: number,
+  submissionsPage: number
+) {
+  // Page 1 of either table is always in range (`totalPages` is at least 1).
+  if (page <= 1 && submissionsPage <= 1) return;
+  const [roundsResult, submissionsResult] = await Promise.all([
+    loadRounds(id, page),
+    loadSubmissions(id, submissionsPage),
+  ]);
+  const href = clampedCampaignListHref(
+    id,
+    { page, submissions: submissionsPage },
+    {
+      pageSize: PAGE_SIZE,
+      roundsTotal: roundsResult.ok ? roundsResult.data.total : null,
+      submissionsTotal: submissionsResult.ok
+        ? submissionsResult.data.total
+        : null,
+    }
+  );
+  if (href) redirect(href);
+}
+
 export default async function CampaignPage({
   params,
   searchParams,
@@ -323,6 +326,7 @@ export default async function CampaignPage({
   const sp = await searchParams;
   const page = parsePage(sp.page);
   const submissionsPage = parsePage(sp.submissions);
+  await redirectIfPagersOutOfRange(id, page, submissionsPage);
 
   return (
     <LiveCampaignPollHost>

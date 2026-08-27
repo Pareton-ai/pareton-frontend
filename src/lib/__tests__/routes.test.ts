@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   campaignHref,
   campaignListHref,
+  clampedCampaignListHref,
   parseRoundOrdinal,
   roundHref,
   submissionHref,
@@ -28,6 +29,40 @@ describe("campaignListHref", () => {
     expect(campaignListHref("mock-campaign", { page: 2, submissions: 3 })).toBe(
       "/dashboard/campaigns/mock-campaign?page=2&submissions=3"
     );
+  });
+});
+
+describe("clampedCampaignListHref", () => {
+  const pageSize = 10;
+
+  it("returns null when both pagers are in range", () => {
+    expect(
+      clampedCampaignListHref(
+        "c1",
+        { page: 2, submissions: 3 },
+        { pageSize, roundsTotal: 25, submissionsTotal: 40 }
+      )
+    ).toBeNull();
+  });
+
+  it("clamps both pagers in one URL when both are past the last page", () => {
+    expect(
+      clampedCampaignListHref(
+        "c1",
+        { page: 9, submissions: 8 },
+        { pageSize, roundsTotal: 12, submissionsTotal: 25 }
+      )
+    ).toBe(campaignListHref("c1", { page: 2, submissions: 3 }));
+  });
+
+  it("leaves a pager alone when that list total is missing", () => {
+    expect(
+      clampedCampaignListHref(
+        "c1",
+        { page: 9, submissions: 8 },
+        { pageSize, roundsTotal: 12, submissionsTotal: null }
+      )
+    ).toBe(campaignListHref("c1", { page: 2, submissions: 8 }));
   });
 });
 
