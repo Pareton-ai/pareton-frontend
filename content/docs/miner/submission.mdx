@@ -70,7 +70,11 @@ Open the campaign page on the [dashboard](/dashboard). Your submission appears w
 ## Rules that cost you a submission if ignored
 
 - **Use the presigned upload.** Self-hosted artifact URLs are rejected unless they are on the allowlist and carry your own hotkey in the path. A URL pointing at another hotkey's artifact is rejected at ingest and at the integrity gate.
-- **Do not resubmit identical bytes.** The patch hash is the dedupe key. Change the content to get a new slot.
+- **Do not resubmit identical bytes.** The patch hash is the dedupe key. Change
+  the content to get a new slot. A duplicate fails quietly: the fee is charged,
+  the CLI reports the commitment as visible on chain, and the submission never
+  appears on the dashboard. Check the campaign for your patch hash before you
+  commit.
 - **Do not use `--timelock`.** The flag exists for reproduction only; finney's timelock reveal path has produced no reveals, so sealed commitments never become visible.
 
 A commit is also an acceptance of [Submitting a patch](/docs/policies/submitting)

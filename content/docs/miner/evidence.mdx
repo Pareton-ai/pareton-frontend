@@ -24,3 +24,33 @@ Use the campaign-scoped path (preferred). The short path returns **409** when th
 Both return **404** when the submission or its log does not exist.
 
 A `rejected` submission never ran, so it has no round entry. A `disqualified` or `scored` submission ran; the dashboard shows that entry's status and reason.
+
+## How correctness is graded
+
+Correctness does not compare your text to the baseline's text. Your engine is
+free to produce different tokens.
+
+One shared scorer, the campaign's pinned baseline image, teacher-forces the
+output your engine actually produced and reports a logprob for each position.
+Your image never grades itself, and every image in the round is graded by the
+same scorer.
+
+Three campaign thresholds decide the verdict:
+
+| Threshold            | Fails when                                                    |
+| -------------------- | ------------------------------------------------------------- |
+| `min_mean_logprob`   | The mean logprob across scored positions is too low           |
+| `min_token_logprob`  | One low-confidence position is too low, at the quantile below |
+| `min_coverage_ratio` | The scorer read too little of the output to judge it          |
+
+`min_token_logprob` is applied to the k-th lowest position, where
+`k = ceil(min_token_quantile * positions)`, not to the outright minimum. Two
+instances of the same image can disagree at a single high-entropy position, and
+that alone must not fail an otherwise faithful output.
+
+Failing either logprob bar is `disqualified`. It is terminal, and the entry
+carries the measured value in its reason.
+
+Falling below `min_coverage_ratio` is different. The scorer could not read
+enough to judge, which is a harness problem rather than a wrong answer, so the
+entry is `infra_failed` and requeued once.

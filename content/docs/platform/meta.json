@@ -4,6 +4,8 @@
     "pipeline-stages",
     "campaigns",
     "rounds-and-leaders",
-    "dynamic-workloads"
+    "dynamic-workloads",
+    "validators-and-emissions",
+    "api"
   ]
 }

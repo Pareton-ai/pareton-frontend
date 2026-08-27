@@ -1,0 +1,108 @@
+---
+title: Validators and emissions
+description: How the Pareton validator sets on-chain weights, what a campaign leader earns, and why a fresh weight vector is not visible on chain right away.
+---
+
+Pareton runs one validator on Bittensor subnet 10. It holds UID 201. Every 360
+blocks, about 72 minutes, it recomputes the weight vector and sets it on chain.
+
+This page explains how emission is decided. To run your own validator, see the
+[Validator](/docs/validator) guide.
+
+Weights decide emission. A campaign leader earns a share of subnet emission for
+as long as it holds the crown. Nothing else on the subnet earns from Pareton.
+
+## Who earns
+
+Only the seated leader of a campaign earns. There is no runner-up and no
+partial credit. A challenger that scores well but does not take the crown earns
+nothing that round.
+
+Everything not paid to a leader is burned to UID 201. A campaign with a vacant
+crown burns its whole share.
+
+## The emission curve
+
+Each campaign pins an `emission_rule`. It maps how long the current leader has
+held the crown to the weight that leader receives.
+
+The shipped rule is `linear_decay`:
+
+| Field          | Meaning                                                    |
+| -------------- | ---------------------------------------------------------- |
+| `start_weight` | Weight on the block the leader is seated                   |
+| `floor_weight` | Weight the curve settles at                                |
+| `decay_blocks` | Blocks taken to fall from `start_weight` to `floor_weight` |
+
+The weight falls linearly between the two:
+
+`weight = floor + (start - floor) * (1 - blocks_held / decay_blocks)`
+
+`blocks_held` counts from the seed block of the round the crown was won in, so
+it resets when the crown changes hands.
+
+Holding pays less over time. That is deliberate. A leader that is never beaten
+still decays toward the floor, so the subnet keeps paying for new work rather
+than for one old win.
+
+## Reading the current weights
+
+`GET /v1/weights` returns the newest stored vector.
+
+```json
+{
+  "computed_at_block": 8929863,
+  "version_key": 2032,
+  "burn_uid": 201,
+  "weights": [0.0, 0.0, "..."],
+  "breakdown": [
+    {
+      "campaign_id": "...",
+      "hotkey": "5Gec...",
+      "uid": 252,
+      "blocks_held": 5396,
+      "weight": 0.09785873015873017,
+      "note": null
+    }
+  ]
+}
+```
+
+`weights[i]` is the weight for UID `i`. The vector always sums to 1.0, and the
+burn UID absorbs the rounding residual, so no miner is overpaid by a float
+artifact.
+
+Use `breakdown` to check your own share. It records the `blocks_held` the curve
+was evaluated at, so you can recompute the weight yourself. When a campaign pays
+nobody, `note` says why: `vacant`, `deregistered`, or `closed`.
+
+The endpoint reads stored rows. It never recomputes, so it always shows what the
+validator actually signed.
+
+## Commit-reveal delay
+
+Subnet 10 runs with commit-reveal on. The validator commits a weight vector, and
+the chain reveals it at the next epoch boundary.
+
+A fresh commit is therefore not readable on chain right away. Reading
+`Weights[10][201]` immediately after a commit correctly returns the previous
+vector. The delay runs from near-zero to one full epoch, depending on where in
+the epoch the commit landed.
+
+This is not a fault. Do not report a missing weight change until a full epoch has
+passed since the commit.
+
+`/v1/weights` shows the committed vector as soon as it is stored, so it leads the
+chain by up to one epoch.
+
+## Verifying a payout
+
+Three sources should agree once the reveal lands:
+
+1. `GET /v1/weights`, the vector Pareton computed and signed.
+2. On-chain `Weights[10][201]`, the revealed vector.
+3. The `breakdown` weight recomputed from the campaign's `emission_rule`.
+
+On-chain values are quantized to `u16` against a ceiling of 65535, so they never
+match the API floats exactly. Compare the ratio between two UIDs rather than the
+absolute numbers.

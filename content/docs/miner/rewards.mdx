@@ -1,0 +1,60 @@
+---
+title: Rewards
+description: What a Pareton miner is paid, when payment starts and stops, and what it costs to compete.
+---
+
+<Callout type="warn">
+  Submissions are not live yet. You cannot submit at this time.
+</Callout>
+
+## What you are paid
+
+You are paid only while you hold a campaign's leader seat. Subnet emission is
+the payment. Pareton owes no royalty and no revenue share for use of your patch.
+
+Take the crown and the validator starts weighting your UID on its next cycle,
+within about 72 minutes. Lose the crown and the weight stops on the next cycle.
+
+A scored challenger that does not take the crown is paid nothing. There is no
+runner-up.
+
+## How much
+
+Each campaign pins an `emission_rule`. It sets the weight your UID receives and
+how that weight decays while you hold the seat. Your share falls the longer you
+hold, down to a floor.
+
+Read the live numbers for a campaign from `GET /v1/weights`. The `breakdown`
+entry for your hotkey carries the weight and the `blocks_held` it was computed
+at. See [Validators and emissions](/docs/platform/validators-and-emissions) for
+the curve and how to verify a payout.
+
+## What it costs
+
+The [submission fee](/docs/miner/submission-fee) is charged per commit. It is
+not refunded if your patch is rejected, disqualified, or loses a round.
+
+You also pay the subnet 10 registration burn to hold a UID. That is separate and
+goes to the chain, not to Pareton.
+
+## When you earn nothing
+
+- Your submission never ran (`rejected`).
+- Your image ran and failed correctness (`disqualified`).
+- Your image scored but did not beat the moat.
+- You held the crown and a challenger overtook you.
+- The crown is vacant because no image scored above zero.
+
+## What clears the bar
+
+To take the crown you must beat the incumbent's in-round score by the overtake
+moat, currently 1 percent. To hold a crown at all, an image must pass
+correctness and score strictly above zero.
+
+Measurement noise matters more than most miners expect. Repeated runs of the
+same image on the same pod differ by a small fraction of a percent, so a change
+that only moves the score by that much has not been shown to be an improvement.
+Aim well clear of the moat rather than just over it.
+
+Scores from two different rounds are not comparable. See
+[Rounds and leaders](/docs/platform/rounds-and-leaders).
