@@ -1,107 +1,164 @@
 ---
-title: Setup
-description: Create a wallet, register on subnet 10, take a validator permit, and install the Pareton code.
+title: Run your own validator
+description: Rent a VPS, fill in .env, run three services, and set weights from your own results.
 ---
 
-Follow these steps in order. Each one has a check you can run before you move on.
+This path runs the whole Pareton pipeline on your own host. You watch the chain
+for miner submissions, bench them on GPUs you rent per job, crown leaders from
+your own numbers, and sign a vector built from those leaders. You depend on
+nothing of ours.
 
-## 1. Create a wallet
+Budget for it: a VPS that stays up, plus GPU rental per submission benched.
 
-```bash
-btcli wallet new_coldkey --wallet.name pareton-validator
-btcli wallet new_hotkey  --wallet.name pareton-validator --wallet.hotkey default
-```
+## Prerequisites
 
-Keep the coldkey offline. It holds your stake. The hotkey signs weights and is
-the only key the validator process needs.
+- A hotkey registered on subnet 10 (finney) with a validator permit.
+- A Postgres database.
+- An account with at least one GPU provider: Lium, Shadeform, or Targon.
+- S3 storage for miner patches, a Hugging Face token, and a GHCR token for the
+  hermetic builder.
 
-Check:
+## 1. Rent a VPS
 
-```bash
-btcli wallet list
-```
+The host itself never needs a GPU. It builds images and orchestrates rented GPU
+pods. Start at 8 vCPU / 16 GB / 200 GB disk, Ubuntu 22.04 or later.
 
-## 2. Register the hotkey on subnet 10
-
-```bash
-btcli subnet register --netuid 10 --subtensor.network finney \
-  --wallet.name pareton-validator --wallet.hotkey default
-```
-
-Registration costs the current recycle burn. It buys a UID, nothing more.
-
-Check that your hotkey holds a UID:
+Add swap before your first submission. Hermetic builds compile vLLM CUDA
+kernels, and `cicc` peaks at 6 to 12 GB per job. A 16 GB box without swap gets
+OOM-killed, which surfaces as `hermetic_build_failed` and wrongly rejects the
+miner's patch.
 
 ```bash
-btcli subnet metagraph --netuid 10 --subtensor.network finney
+fallocate -l 64G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 
-## 3. Take a validator permit
-
-A UID alone cannot set weights. You need a validator permit, which the chain
-grants to the top stake holders on the subnet.
+Docker is required for the builder:
 
 ```bash
-btcli stake add --netuid 10 --subtensor.network finney \
-  --wallet.name pareton-validator --wallet.hotkey default --amount <TAO>
+curl -fsSL https://get.docker.com | sh
 ```
 
-How much you need depends on the current stake distribution. Read the metagraph
-and compare against the holders that already carry a permit.
-
-Check the permit before you try to set anything:
-
-```python
-import bittensor as bt
-
-st = bt.Subtensor(network="finney")
-meta = st.metagraph(netuid=10)
-neuron = meta.by_hotkey("<your hotkey ss58>")
-print("uid:", neuron.uid, "permit:", neuron.validator_permit)
-```
-
-`validator_permit` must be `True`. Setting weights without one fails inside the
-extrinsic as an opaque substrate error, so check here instead.
-
-## 4. Install
+## 2. Install
 
 ```bash
-git clone https://github.com/Pareton-ai/pareton.git
-cd pareton
+git clone https://github.com/Pareton-ai/pareton.git /opt/pareton
+cd /opt/pareton
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-You need this repository for two pieces: `weights.build.build_weight_vector`,
-which turns campaign inputs into a dense vector, and `chain.weights.set_weights`,
-which signs it with retries. Both are pure enough to use on their own.
+## 3. Create the database
 
-## 5. Configure
-
-Create `.env` in the repository root:
+One canonical schema file, applied wholesale to a fresh database:
 
 ```bash
-PARETON_NETUID=10
-PARETON_NETWORK=finney
-PARETON_WALLET_NAME=pareton-validator
-PARETON_WALLET_HOTKEY=default
-PARETON_VERSION_KEY=2032
-PARETON_BURN_UID=201
-PARETON_WEIGHTS_CADENCE_BLOCKS=360
+psql "$PARETON_DATABASE_URL" -f db/schema.sql
 ```
 
-`PARETON_VERSION_KEY` must match the value Pareton publishes at
-`GET /v1/weights`. Validators trust-weight each other only while their keys
-agree, so a change is a coordinated announcement, never something you pick.
+## 4. Fill in `.env`
 
-<Callout type="warn">
-  Do not run `python -m weights`. That process is Pareton's own cadence and
-  reads campaigns and leaders from Pareton's private database. It needs
-  `PARETON_DATABASE_URL` and will not work for you. Build the vector from the
-  public API instead. See [Computing the weight
-  vector](/docs/validator/weights).
-</Callout>
+```bash
+cp .env.example .env
+```
 
-## Next
+The fields that matter:
 
-[Computing the weight vector](/docs/validator/weights).
+| Variable                                        | What to put there                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| `PARETON_DATABASE_URL`                          | Your Postgres connection string                                          |
+| `PARETON_NETUID` / `PARETON_NETWORK`            | `10` and `finney`                                                        |
+| `PARETON_WALLET_NAME` / `PARETON_WALLET_HOTKEY` | The wallet holding your permitted hotkey                                 |
+| `PARETON_VERSION_KEY`                           | `2032`. Must match what `GET /v1/weights` publishes                      |
+| `PARETON_BURN_UID`                              | `201`                                                                    |
+| `PARETON_WEIGHTS_CADENCE_BLOCKS`                | `360`, about 72 minutes                                                  |
+| `PARETON_WEIGHTS_ENABLED`                       | `false` for a dry run: compute and store, never sign. `true` to go live  |
+| `PARETON_S3_*`                                  | Bucket, region, and keys for miner patch uploads                         |
+| `HF_TOKEN`                                      | Hugging Face token for model and dataset pulls during bench              |
+| `PARETON_GHCR_*`                                | Registry owner, username, and token for the hermetic builder push        |
+| `PARETON_GPU_PROVIDERS`                         | Ordered try-list, for example `lium,shadeform,targon`                    |
+| `PARETON_LIUM_API_KEY` and friends              | One key per provider you listed                                          |
+| `PARETON_GPU_TTL_HOURS`                         | `2`. Pods are reaped past this, so a stuck job cannot burn money forever |
+| `PARETON_GPU_MAX_HOURLY_CENTS`                  | Your ceiling per pod hour                                                |
+
+Start with `PARETON_WEIGHTS_ENABLED=false`. The vector is computed and stored
+every cadence but never signed, so you can compare it against
+`GET /v1/weights` before you put your hotkey behind it.
+
+## 5. Seed the campaign
+
+Campaigns live in your database, not on chain. Seed the one you intend to
+validate:
+
+```bash
+.venv/bin/python -m campaign.seed
+```
+
+The defaults pin the baseline repo, commit, bench model, GPU SKU, and the
+`emission_rule` that drives decay. Your pins must match the campaign miners are
+actually submitting against, otherwise you are benching a different workload
+and your leaders will not match anyone else's. Read `campaign/seed.py` for
+every flag.
+
+## 6. Run the services
+
+Three units. Install them from `ops/systemd/` in the repo:
+
+```bash
+cp ops/systemd/pareton-watcher.service /etc/systemd/system/
+cp ops/systemd/pareton-worker.service  /etc/systemd/system/
+cp ops/systemd/pareton-weights.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now pareton-watcher pareton-worker pareton-weights
+```
+
+| Service           | Command                    | What it does                                                                                                                                                            |
+| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pareton-watcher` | `python -m worker.watcher` | Polls subnet 10 commitments, enqueues new miner submissions, opens rounds when a cohort fills, reaps stale ones. Safe to restart at any time.                           |
+| `pareton-worker`  | `python -m worker.main`    | Claims one job at a time: gates the patch, builds the image, rents a GPU pod, benches it, scores it, tears the pod down. Drains on `SIGTERM`, so a stop can take hours. |
+| `pareton-weights` | `python -m weights`        | Every 360 blocks: reads open campaigns and seated leaders, builds the vector, stores it, and signs it. This is the only unit that touches your wallet.                  |
+
+`pareton-api` is optional. Run it if you want to read your own results over
+HTTP the way [our API](/docs/platform/api) exposes ours:
+
+```bash
+cp ops/systemd/pareton-api.service /etc/systemd/system/
+systemctl enable --now pareton-api
+```
+
+## 7. Watch the logs
+
+The weight setter is the one to watch. It logs the permit check, the cycle
+outcome, and the block it set at:
+
+```bash
+journalctl -u pareton-weights -f
+```
+
+A healthy cycle looks like this:
+
+```
+validator permit ok uid=42
+weights cycle set at block 6721920
+```
+
+The other two:
+
+```bash
+journalctl -u pareton-watcher -f   # chain scans, new submissions, rounds opened
+journalctl -u pareton-worker  -f   # gate, build, GPU provision, bench, score
+```
+
+## Failures worth reading
+
+| Log line                                | Cause                                                             |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| `holds no validator permit`             | Stake too low. The cycle is skipped before it computes            |
+| `is not registered on netuid 10`        | The hotkey lost its UID                                           |
+| `uid ... is outside the metagraph`      | Stale metagraph read. The cycle aborts rather than pay a stranger |
+| `weights cycle failed; will retry`      | Usually a dropped subtensor websocket. It reconnects next poll    |
+| `hermetic_build_failed` with `exit 137` | The build was OOM-killed. Add swap                                |
+| No `set` line for hours                 | `PARETON_WEIGHTS_ENABLED=false`, or the cadence has not come due  |
