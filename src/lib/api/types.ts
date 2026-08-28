@@ -584,11 +584,31 @@ export function isFailedState(state: string): boolean {
  *
  * List payloads have no job array, so a queued wait (`bench_queued` /
  * `sampled` with no `bench_phase` yet) cannot be told from a stall. Treat
- * every non-terminal state as live; a stuck row polling once a minute is
+ * every non-terminal state as live; a stuck row polling for a few seconds is
  * cheaper than freezing the table through the GPU wait and the whole bench.
  */
 export function isLiveSubmissionRow(row: { latest_state: string }): boolean {
   return !isTerminalState(row.latest_state);
+}
+
+/**
+ * Whether the campaign detail page should keep soft-refreshing.
+ *
+ * `open` is the signal that a new round can still be seated, even when every
+ * listed submission and round has already settled (a voided provision is
+ * often followed by the next round in seconds). Draft/closed pages poll only
+ * while a loaded row is still moving, or while a fetch blip left us without
+ * a page to judge.
+ */
+export function isLiveCampaignPage(args: {
+  campaignStatus: string;
+  submissions: readonly { latest_state: string }[] | null;
+  rounds: readonly { status: RoundStatus }[] | null;
+}): boolean {
+  if (args.campaignStatus === "open") return true;
+  if (args.submissions === null || args.rounds === null) return true;
+  if (args.submissions.some(isLiveSubmissionRow)) return true;
+  return args.rounds.some((row) => isLiveRound(row.status));
 }
 
 /** Whether the pipeline got far enough for a build log to exist. */

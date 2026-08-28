@@ -29,6 +29,48 @@ export function campaignListHref(
   return qs ? `${base}?${qs}` : base;
 }
 
+function totalPages(total: number, pageSize: number): number {
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+/**
+ * Campaign-list URL with both pagers clamped to available pages, or null
+ * if the current query is already in range. Pass a null total to leave
+ * that pager unchanged (list fetch failed).
+ */
+export function clampedCampaignListHref(
+  campaignId: string,
+  query: { page: number; submissions: number },
+  totals: {
+    pageSize: number;
+    roundsTotal?: number | null;
+    submissionsTotal?: number | null;
+  }
+): string | null {
+  const page =
+    query.page > 0 && Number.isFinite(query.page) ? Math.floor(query.page) : 1;
+  const submissions =
+    query.submissions > 0 && Number.isFinite(query.submissions)
+      ? Math.floor(query.submissions)
+      : 1;
+  const nextPage =
+    totals.roundsTotal == null
+      ? page
+      : Math.min(page, totalPages(totals.roundsTotal, totals.pageSize));
+  const nextSubmissions =
+    totals.submissionsTotal == null
+      ? submissions
+      : Math.min(
+          submissions,
+          totalPages(totals.submissionsTotal, totals.pageSize)
+        );
+  if (nextPage === page && nextSubmissions === submissions) return null;
+  return campaignListHref(campaignId, {
+    page: nextPage,
+    submissions: nextSubmissions,
+  });
+}
+
 export function roundHref(campaignId: string, ordinal: number): string {
   return `/dashboard/campaigns/${encodeURIComponent(campaignId)}/rounds/${ordinal}`;
 }

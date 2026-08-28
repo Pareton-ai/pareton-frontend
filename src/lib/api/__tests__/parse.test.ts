@@ -39,6 +39,7 @@ import {
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
   isFailedState,
+  isLiveCampaignPage,
   isLiveSubmissionRow,
   isStalled,
   ROUND_STATUSES,
@@ -217,6 +218,65 @@ describe("submission jobs", () => {
     const detail = parseSubmissionDetail(rejected);
     expect(getFailedSubmissionJob(detail.jobs)).toBeNull();
     expect(isStalled(detail.latest_state, detail.jobs)).toBe(false);
+  });
+});
+
+describe("isLiveCampaignPage", () => {
+  it("keeps polling an open campaign after listed rows settle", () => {
+    expect(
+      isLiveCampaignPage({
+        campaignStatus: "open",
+        submissions: [{ latest_state: "scored" }],
+        rounds: [{ status: "void" }],
+      })
+    ).toBe(true);
+  });
+
+  it("stops on a closed campaign with only settled rows", () => {
+    expect(
+      isLiveCampaignPage({
+        campaignStatus: "closed",
+        submissions: [{ latest_state: "scored" }],
+        rounds: [{ status: "complete" }],
+      })
+    ).toBe(false);
+  });
+
+  it("does not poll a draft with empty tables", () => {
+    expect(
+      isLiveCampaignPage({
+        campaignStatus: "draft",
+        submissions: [],
+        rounds: [],
+      })
+    ).toBe(false);
+  });
+
+  it("stays live on a closed campaign while a round is still running", () => {
+    expect(
+      isLiveCampaignPage({
+        campaignStatus: "closed",
+        submissions: [{ latest_state: "scored" }],
+        rounds: [{ status: "running" }],
+      })
+    ).toBe(true);
+  });
+
+  it("stays live when a submissions or rounds fetch blips", () => {
+    expect(
+      isLiveCampaignPage({
+        campaignStatus: "closed",
+        submissions: null,
+        rounds: [{ status: "complete" }],
+      })
+    ).toBe(true);
+    expect(
+      isLiveCampaignPage({
+        campaignStatus: "closed",
+        submissions: [{ latest_state: "scored" }],
+        rounds: null,
+      })
+    ).toBe(true);
   });
 });
 

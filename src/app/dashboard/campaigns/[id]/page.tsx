@@ -24,9 +24,9 @@ import {
   getRounds,
 } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
-import { campaignListHref } from "@/lib/routes";
+import { campaignListHref, clampedCampaignListHref } from "@/lib/routes";
 import {
-  isLiveSubmissionRow,
+  isLiveCampaignPage,
   type Campaign,
   type RoundsPage,
   type SubmissionsPage,
@@ -42,6 +42,10 @@ function parsePage(value: string | undefined): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
 }
 
+function safePageNumber(page: number): number {
+  return page > 0 && Number.isFinite(page) ? Math.floor(page) : 1;
+}
+
 async function loadCampaign(
   id: string
 ): Promise<
@@ -55,6 +59,38 @@ async function loadCampaign(
     if (isNotFound(error)) return { ok: false, kind: "not_found" };
     if (isUnavailable(error)) return { ok: false, kind: "unavailable" };
     return { ok: false, kind: "error" };
+  }
+}
+
+async function loadRounds(
+  id: string,
+  page: number
+): Promise<{ ok: true; data: RoundsPage } | { ok: false; error: unknown }> {
+  try {
+    const data = await getRounds(id, {
+      limit: PAGE_SIZE,
+      offset: (safePageNumber(page) - 1) * PAGE_SIZE,
+    });
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+async function loadSubmissions(
+  id: string,
+  page: number
+): Promise<
+  { ok: true; data: SubmissionsPage } | { ok: false; error: unknown }
+> {
+  try {
+    const data = await getCampaignSubmissions(id, {
+      limit: PAGE_SIZE,
+      offset: (safePageNumber(page) - 1) * PAGE_SIZE,
+    });
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error };
   }
 }
 
@@ -83,7 +119,12 @@ async function CampaignHeading({ id }: { id: string }) {
   return <CampaignTitle campaign={result.campaign} />;
 }
 
-async function CampaignBody({
+/**
+ * Starts the three list fetches together so a slow rounds query does not
+ * sit behind the campaign row, then enables polling once we know whether
+ * anything is still moving.
+ */
+async function CampaignPollGate({
   id,
   page,
   submissionsPage,
@@ -92,136 +133,189 @@ async function CampaignBody({
   page: number;
   submissionsPage: number;
 }) {
+  const [campaignResult, roundsResult, submissionsResult] = await Promise.all([
+    loadCampaign(id),
+    loadRounds(id, page),
+    loadSubmissions(id, submissionsPage),
+  ]);
+  if (!campaignResult.ok) {
+    return <LiveCampaignPoll enabled />;
+  }
+  return (
+    <LiveCampaignPoll
+      enabled={isLiveCampaignPage({
+        campaignStatus: campaignResult.campaign.status,
+        submissions: submissionsResult.ok
+          ? submissionsResult.data.submissions
+          : null,
+        rounds: roundsResult.ok ? roundsResult.data.rounds : null,
+      })}
+    />
+  );
+}
+
+async function CampaignStatsSection({
+  id,
+  submissionsPage,
+}: {
+  id: string;
+  submissionsPage: number;
+}) {
+  const [campaignResult, submissionsResult] = await Promise.all([
+    loadCampaign(id),
+    loadSubmissions(id, submissionsPage),
+  ]);
+  if (!campaignResult.ok) {
+    if (campaignResult.kind === "not_found") notFound();
+    return campaignLoadUnavailable(campaignResult.kind);
+  }
+  return (
+    <CampaignStats
+      campaign={campaignResult.campaign}
+      submissions={submissionsResult.ok ? submissionsResult.data : null}
+    />
+  );
+}
+
+async function RoundsSection({
+  id,
+  page,
+  submissionsPage,
+}: {
+  id: string;
+  page: number;
+  submissionsPage: number;
+}) {
+  const [campaignResult, roundsResult] = await Promise.all([
+    loadCampaign(id),
+    loadRounds(id, page),
+  ]);
+  if (!campaignResult.ok) {
+    if (campaignResult.kind === "not_found") notFound();
+    return null;
+  }
+  if (!roundsResult.ok) {
+    return (
+      <SectionUnavailable
+        message={
+          isUnavailable(roundsResult.error)
+            ? "Rounds are temporarily unavailable (API/DB)."
+            : "Could not load rounds."
+        }
+      />
+    );
+  }
+  const { data: rounds } = roundsResult;
+  const safePage = safePageNumber(page);
+  const safeSubmissionsPage = safePageNumber(submissionsPage);
+  if (rounds.total === 0) {
+    return <EmptyRounds status={campaignResult.campaign.status} />;
+  }
+  return (
+    <RoundsTable
+      campaignId={id}
+      page={safePage}
+      data={rounds}
+      pageHref={(next) =>
+        campaignListHref(id, {
+          page: next,
+          submissions: safeSubmissionsPage,
+        })
+      }
+    />
+  );
+}
+
+async function SubmissionsSection({
+  id,
+  page,
+  submissionsPage,
+}: {
+  id: string;
+  page: number;
+  submissionsPage: number;
+}) {
+  const [campaignResult, submissionsResult] = await Promise.all([
+    loadCampaign(id),
+    loadSubmissions(id, submissionsPage),
+  ]);
+  if (!campaignResult.ok) {
+    if (campaignResult.kind === "not_found") notFound();
+    return null;
+  }
+  if (!submissionsResult.ok) {
+    return (
+      <SectionUnavailable
+        message={
+          isUnavailable(submissionsResult.error)
+            ? "Submissions are temporarily unavailable (API/DB)."
+            : "Could not load submissions."
+        }
+      />
+    );
+  }
+  const { data } = submissionsResult;
+  const safePage = safePageNumber(page);
+  const safeSubmissionsPage = safePageNumber(submissionsPage);
+  if (data.total === 0) {
+    return <EmptySubmissions status={campaignResult.campaign.status} />;
+  }
+  return (
+    <SubmissionsTable
+      campaignId={id}
+      page={safeSubmissionsPage}
+      data={data}
+      pageHref={(next) =>
+        campaignListHref(id, {
+          page: safePage,
+          submissions: next,
+        })
+      }
+    />
+  );
+}
+
+async function CampaignRequirementsSection({ id }: { id: string }) {
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    return (
-      <div className="space-y-8">
-        <LiveCampaignPoll enabled />
-        {campaignLoadUnavailable(result.kind)}
-      </div>
-    );
+    return null;
   }
-  const { campaign } = result;
+  return <CampaignRequirements campaign={result.campaign} />;
+}
 
-  const safePage = page > 0 && Number.isFinite(page) ? Math.floor(page) : 1;
-  const safeSubmissionsPage =
-    submissionsPage > 0 && Number.isFinite(submissionsPage)
-      ? Math.floor(submissionsPage)
-      : 1;
+async function CampaignReferenceSection({ id }: { id: string }) {
+  const result = await loadCampaign(id);
+  if (!result.ok) {
+    if (result.kind === "not_found") notFound();
+    return null;
+  }
+  return <CampaignReference campaign={result.campaign} />;
+}
 
-  const [roundsSettled, submissionsSettled] = await Promise.allSettled([
-    getRounds(id, {
-      limit: PAGE_SIZE,
-      offset: (safePage - 1) * PAGE_SIZE,
-    }),
-    getCampaignSubmissions(id, {
-      limit: PAGE_SIZE,
-      offset: (safeSubmissionsPage - 1) * PAGE_SIZE,
-    }),
+async function redirectIfPagersOutOfRange(
+  id: string,
+  page: number,
+  submissionsPage: number
+) {
+  // Page 1 of either table is always in range (`totalPages` is at least 1).
+  if (page <= 1 && submissionsPage <= 1) return;
+  const [roundsResult, submissionsResult] = await Promise.all([
+    loadRounds(id, page),
+    loadSubmissions(id, submissionsPage),
   ]);
-
-  const rounds: RoundsPage | null =
-    roundsSettled.status === "fulfilled" ? roundsSettled.value : null;
-  const roundsError =
-    roundsSettled.status === "rejected" ? roundsSettled.reason : null;
-  const data: SubmissionsPage | null =
-    submissionsSettled.status === "fulfilled" ? submissionsSettled.value : null;
-  const submissionsError =
-    submissionsSettled.status === "rejected" ? submissionsSettled.reason : null;
-
-  if (rounds) {
-    const totalPages = Math.max(1, Math.ceil(rounds.total / PAGE_SIZE));
-    if (safePage > totalPages) {
-      redirect(
-        campaignListHref(id, {
-          page: totalPages,
-          submissions: safeSubmissionsPage,
-        })
-      );
+  const href = clampedCampaignListHref(
+    id,
+    { page, submissions: submissionsPage },
+    {
+      pageSize: PAGE_SIZE,
+      roundsTotal: roundsResult.ok ? roundsResult.data.total : null,
+      submissionsTotal: submissionsResult.ok
+        ? submissionsResult.data.total
+        : null,
     }
-  }
-  if (data) {
-    const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-    if (safeSubmissionsPage > totalPages) {
-      redirect(
-        campaignListHref(id, {
-          page: safePage,
-          submissions: totalPages,
-        })
-      );
-    }
-  }
-
-  // A submissions blip must not send `enabled={false}`: that would stop the
-  // host. Keep polling while the campaign is open until a successful idle
-  // page proves there is nothing live.
-  const live =
-    campaign.status === "open" &&
-    (data === null || data.submissions.some(isLiveSubmissionRow));
-
-  return (
-    <div className="space-y-8">
-      <LiveCampaignPoll enabled={live} />
-      <CampaignStats campaign={campaign} submissions={data} />
-
-      {rounds === null ? (
-        <SectionUnavailable
-          message={
-            isUnavailable(roundsError)
-              ? "Rounds are temporarily unavailable (API/DB)."
-              : "Could not load rounds."
-          }
-        />
-      ) : rounds.total === 0 ? (
-        <EmptyRounds status={campaign.status} />
-      ) : (
-        <RoundsTable
-          campaignId={id}
-          page={safePage}
-          data={rounds}
-          pageHref={(next) =>
-            campaignListHref(id, {
-              page: next,
-              submissions: safeSubmissionsPage,
-            })
-          }
-        />
-      )}
-
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
-        <div className="min-w-0">
-          {data === null ? (
-            <SectionUnavailable
-              message={
-                isUnavailable(submissionsError)
-                  ? "Submissions are temporarily unavailable (API/DB)."
-                  : "Could not load submissions."
-              }
-            />
-          ) : data.total === 0 ? (
-            <EmptySubmissions status={campaign.status} />
-          ) : (
-            <SubmissionsTable
-              campaignId={id}
-              page={safeSubmissionsPage}
-              data={data}
-              pageHref={(next) =>
-                campaignListHref(id, {
-                  page: safePage,
-                  submissions: next,
-                })
-              }
-            />
-          )}
-        </div>
-
-        <CampaignRequirements campaign={campaign} />
-      </div>
-
-      <CampaignReference campaign={campaign} />
-    </div>
   );
+  if (href) redirect(href);
 }
 
 export default async function CampaignPage({
@@ -232,10 +326,19 @@ export default async function CampaignPage({
   const sp = await searchParams;
   const page = parsePage(sp.page);
   const submissionsPage = parsePage(sp.submissions);
+  await redirectIfPagersOutOfRange(id, page, submissionsPage);
 
   return (
     <LiveCampaignPollHost>
       <div className="space-y-8">
+        <Suspense fallback={null}>
+          <CampaignPollGate
+            id={id}
+            page={page}
+            submissionsPage={submissionsPage}
+          />
+        </Suspense>
+
         <div className="flex items-start gap-4">
           {/* Rendered outside the Suspense boundary so the way back is never
               gated on the campaign fetch. */}
@@ -252,17 +355,54 @@ export default async function CampaignPage({
 
         <Suspense
           fallback={
-            <div className="space-y-8">
-              <div className="h-28 animate-pulse border border-border bg-border/10" />
-              <div className="h-72 animate-pulse border border-border bg-border/10" />
-              <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem]">
-                <div className="h-72 animate-pulse border border-border bg-border/10" />
-                <div className="h-72 animate-pulse border border-border bg-border/10" />
-              </div>
-            </div>
+            <div className="h-28 animate-pulse border border-border bg-border/10" />
           }
         >
-          <CampaignBody id={id} page={page} submissionsPage={submissionsPage} />
+          <CampaignStatsSection id={id} submissionsPage={submissionsPage} />
+        </Suspense>
+
+        <Suspense
+          fallback={
+            <div className="h-72 animate-pulse border border-border bg-border/10" />
+          }
+        >
+          <RoundsSection
+            id={id}
+            page={page}
+            submissionsPage={submissionsPage}
+          />
+        </Suspense>
+
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
+          <div className="min-w-0">
+            <Suspense
+              fallback={
+                <div className="h-72 animate-pulse border border-border bg-border/10" />
+              }
+            >
+              <SubmissionsSection
+                id={id}
+                page={page}
+                submissionsPage={submissionsPage}
+              />
+            </Suspense>
+          </div>
+
+          <Suspense
+            fallback={
+              <div className="h-72 animate-pulse border border-border bg-border/10" />
+            }
+          >
+            <CampaignRequirementsSection id={id} />
+          </Suspense>
+        </div>
+
+        <Suspense
+          fallback={
+            <div className="h-40 animate-pulse border border-border bg-border/10" />
+          }
+        >
+          <CampaignReferenceSection id={id} />
         </Suspense>
       </div>
     </LiveCampaignPollHost>

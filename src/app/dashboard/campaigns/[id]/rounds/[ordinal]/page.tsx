@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BackLink } from "@/components/dashboard/back-link";
 import { LiveActivityLine } from "@/components/dashboard/live-activity";
-import { LivePoll, LivePollHost } from "@/components/dashboard/live-poll";
+import {
+  LivePoll,
+  LivePollHost,
+  ROUND_POLL_INTERVAL_MS,
+} from "@/components/dashboard/live-poll";
 import {
   RoundMetadata,
   RoundStats,
@@ -194,7 +198,7 @@ export default async function RoundPage({ params }: PageProps) {
   if (ordinal === null) notFound();
 
   return (
-    <LivePollHost>
+    <LivePollHost intervalMs={ROUND_POLL_INTERVAL_MS}>
       <Suspense
         fallback={<RoundFallback campaignId={campaignId} ordinal={ordinal} />}
       >
