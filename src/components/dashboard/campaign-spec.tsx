@@ -131,12 +131,12 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
   );
 }
 
-/** Sidebar column: what a patch has to achieve and what it runs against. */
+/** What a patch has to achieve and what it runs against. */
 export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
   const { model, correctness } = campaign.bench;
 
   return (
-    <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
       <Panel icon={Target} title="Objective">
         <Row label="Priority metric">
           {campaign.priority_metric.replaceAll("_", " ") || "—"}
@@ -180,13 +180,28 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
           </span>
         </Row>
       </Panel>
-    </aside>
+    </div>
   );
 }
 
 /**
- * Full-width reference band: the digests and paths needed to reproduce or audit
- * a run. Last in the reading order because nobody opens the page for these.
+ * The Metadata tab: the campaign contract in full.
+ *
+ * What a patch must achieve first, then the digests and paths needed to
+ * reproduce or audit a run. The reference band is last because nobody opens
+ * the tab for it, but it is the only place those hashes are quotable.
+ */
+export function CampaignMetadata({ campaign }: { campaign: Campaign }) {
+  return (
+    <div className="space-y-6">
+      <CampaignRequirements campaign={campaign} />
+      <CampaignReference campaign={campaign} />
+    </div>
+  );
+}
+
+/**
+ * Reference band: the digests and paths needed to reproduce or audit a run.
  */
 export function CampaignReference({ campaign }: { campaign: Campaign }) {
   return (

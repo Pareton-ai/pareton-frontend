@@ -3,6 +3,7 @@ import {
   campaignHref,
   campaignListHref,
   clampedCampaignListHref,
+  parseCampaignTab,
   parseRoundOrdinal,
   roundHref,
   submissionHref,
@@ -103,5 +104,54 @@ describe("blockExplorerHref", () => {
     expect(blockExplorerHref(8912412)).toBe(
       "https://taomarketcap.com/blocks/8912412"
     );
+  });
+});
+
+describe("parseCampaignTab", () => {
+  it("round-trips every tab campaignListHref can write", () => {
+    for (const tab of [
+      "rounds",
+      "submissions",
+      "metadata",
+      "leaders",
+    ] as const) {
+      expect(parseCampaignTab(tab)).toBe(tab);
+    }
+  });
+
+  it("falls back to rounds for a missing or unknown tab", () => {
+    expect(parseCampaignTab(undefined)).toBe("rounds");
+    expect(parseCampaignTab("")).toBe("rounds");
+    expect(parseCampaignTab("leaderboard")).toBe("rounds");
+  });
+});
+
+describe("campaignListHref tabs", () => {
+  it("omits the default tab so the bare campaign URL stays canonical", () => {
+    expect(campaignListHref("c1", { tab: "rounds" })).toBe(campaignHref("c1"));
+  });
+
+  it("names any other tab", () => {
+    expect(campaignListHref("c1", { tab: "leaders" })).toBe(
+      "/dashboard/campaigns/c1?tab=leaders"
+    );
+  });
+
+  it("carries both pagers across a tab switch, so places are kept", () => {
+    expect(
+      campaignListHref("c1", { tab: "metadata", page: 3, submissions: 2 })
+    ).toBe("/dashboard/campaigns/c1?tab=metadata&page=3&submissions=2");
+  });
+});
+
+describe("clampedCampaignListHref tabs", () => {
+  it("keeps you on the tab it redirects you from", () => {
+    expect(
+      clampedCampaignListHref(
+        "c1",
+        { page: 9, submissions: 1, tab: "leaders" },
+        { pageSize: 10, roundsTotal: 12, submissionsTotal: 4 }
+      )
+    ).toBe(campaignListHref("c1", { page: 2, tab: "leaders" }));
   });
 });
