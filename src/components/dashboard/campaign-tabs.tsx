@@ -69,9 +69,6 @@ export function CampaignTabs({
                 aria-current={isActive ? "page" : undefined}
                 title={hint}
                 scroll={false}
-                   of the four tabs, and its taller line box would otherwise
-                   make those tabs deeper than the rest. 44px also keeps the
-                   touch target honest. */
                 className={`group flex h-11 items-center gap-2 border-b-2 px-4 font-mono text-caption uppercase tracking-caps transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
                   isActive
                     ? "border-accent bg-accent-dim text-foreground"

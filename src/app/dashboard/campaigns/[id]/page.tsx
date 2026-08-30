@@ -224,7 +224,6 @@ async function CampaignStatsSection({
   );
 }
 
- *  open a section. Both fetches are shared with the poll gate. */
 async function CampaignTabsSection({
   id,
   query,
