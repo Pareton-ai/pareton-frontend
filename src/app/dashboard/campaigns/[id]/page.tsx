@@ -309,7 +309,7 @@ async function MetadataSection({ id }: { id: string }) {
   const result = await loadCampaign(id);
   if (!result.ok) {
     if (result.kind === "not_found") notFound();
-    return campaignLoadUnavailable(result.kind);
+    return null;
   }
   return <CampaignMetadata campaign={result.campaign} />;
 }
@@ -321,7 +321,7 @@ async function LeadersSection({ id }: { id: string }) {
   ]);
   if (!campaignResult.ok) {
     if (campaignResult.kind === "not_found") notFound();
-    return campaignLoadUnavailable(campaignResult.kind);
+    return null;
   }
   if (!leadersResult.ok) {
     return sectionUnavailable(leadersResult.error, "Leaders");

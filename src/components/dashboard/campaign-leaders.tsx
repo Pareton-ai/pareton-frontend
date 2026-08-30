@@ -24,24 +24,47 @@ import type {
   ScoreProgressSeries,
 } from "@/lib/api/types";
 
-export function EmptyLeaders({ status }: { status: CampaignStatus }) {
-  const copy =
-    status === "open"
-      ? {
-          title: "Crown vacant",
-          body: "No image has beaten the baseline yet. The first challenger to clear the gates in a scored round takes the crown.",
-        }
-      : status === "draft"
-        ? {
-            title: "No leader yet",
-            body: "This campaign has not opened. A crown holder appears once the first round scores.",
-          }
-        : {
-            title: "No leader",
-            body: "This campaign closed without a scored round, so no image ever held the crown.",
-          };
-
+export function EmptyLeaders({
+  status,
+  hasScoredHistory = false,
+}: {
+  status: CampaignStatus;
+  /** Scored rounds exist, but the crown is vacant (leader vacated). */
+  hasScoredHistory?: boolean;
+}) {
+  const copy = emptyLeadersCopy(status, hasScoredHistory);
   return <EmptyState tone="accent" title={copy.title} message={copy.body} />;
+}
+
+function emptyLeadersCopy(
+  status: CampaignStatus,
+  hasScoredHistory: boolean
+): { title: string; body: string } {
+  if (hasScoredHistory) {
+    return {
+      title: status === "draft" ? "No leader yet" : "Crown vacant",
+      body:
+        status === "closed"
+          ? "This campaign closed with no crown holder. The chart above is the score history from rounds that scored."
+          : "No image currently holds the crown. The chart above is the score history from scored rounds.",
+    };
+  }
+  if (status === "open") {
+    return {
+      title: "Crown vacant",
+      body: "No image has beaten the baseline yet. The first challenger to clear the gates in a scored round takes the crown.",
+    };
+  }
+  if (status === "draft") {
+    return {
+      title: "No leader yet",
+      body: "This campaign has not opened. A crown holder appears once the first round scores.",
+    };
+  }
+  return {
+    title: "No leader",
+    body: "This campaign closed without a scored round, so no image ever held the crown.",
+  };
 }
 
 /** Score progress with the axis label the campaign actually scores on. */
@@ -222,7 +245,7 @@ export function CampaignLeaders({
           </div>
         </Panel>
       ) : (
-        <EmptyLeaders status={campaign.status} />
+        <EmptyLeaders status={campaign.status} hasScoredHistory />
       )}
     </div>
   );
