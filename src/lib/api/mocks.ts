@@ -13,6 +13,8 @@ import type {
   RoundDetail,
   RoundEntry,
   RoundsPage,
+  ScoreProgressEntry,
+  ScoreProgressPoint,
   ScoreProgressSeries,
   SubmissionDetail,
   SubmissionRow,
@@ -478,10 +480,12 @@ const MOCK_LEADER: Leader = {
   hotkey: HOTKEYS[0],
   engine_image_ref:
     "ghcr.io/pareton-ai/pareton-engine@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-  won_at_round_id: MOCK_ROUND_3,
-  won_at_ordinal: 3,
-  last_score: 0.31,
-  last_scored_round_id: MOCK_ROUND_3,
+  /* Won the crown back in round 3 and has defended it since, so the leader
+     tiles agree with the last point the score-progress chart draws. */
+  won_at_round_id: mockId(2012),
+  won_at_ordinal: 12,
+  last_score: 0.39,
+  last_scored_round_id: mockId(2012),
   updated_at: hoursAgo(4),
 };
 
@@ -918,39 +922,105 @@ const MOCK_ROUND_DETAILS: Record<string, RoundDetail> = {
   ...HAND_WRITTEN_ROUND_DETAILS,
 };
 
+/**
+ * Leader score for each round that completed, shaped as a believable climb:
+ * a first win well over baseline, then defences that mostly hold and
+ * occasionally improve. Rounds absent from this map never produced a score.
+ */
+const MOCK_LEADER_SCORES: Record<number, number> = {
+  1: 0.06,
+  3: 0.31,
+  6: 0.33,
+  8: 0.36,
+  10: 0.36,
+  12: 0.39,
+};
+
+/** Stable pseudo-random in 0…1, so the mock scatter does not move per render. */
+function mockJitter(ordinal: number, slot: number): number {
+  const x = Math.sin(ordinal * 37.13 + slot * 91.7) * 10_000;
+  return x - Math.floor(x);
+}
+
+/**
+ * The field that ran in one round.
+ *
+ * Slot 0 is the baseline (0.0 by definition), slot 1 the incumbent leader, and
+ * the rest challengers scattered under it. A void or unfinished round scores
+ * nobody, which is what puts the gaps in the chart.
+ */
+function mockScoreEntries(round: Round): ScoreProgressEntry[] {
+  const leaderScore = MOCK_LEADER_SCORES[round.ordinal] ?? null;
+  const complete = round.status === "complete" && leaderScore !== null;
+  const unscoredStatus: EntryStatus =
+    round.status === "running"
+      ? "running"
+      : round.status === "void"
+        ? "infra_failed"
+        : "pending";
+
+  return Array.from({ length: round.entry_count }, (_, slot) => {
+    const base = {
+      submission_id: `${round.id}-${slot}`,
+      hotkey: HOTKEYS[slot % HOTKEYS.length].slice(0, 16),
+    };
+    if (!complete) {
+      return {
+        ...base,
+        role: "challenger",
+        status: unscoredStatus,
+        score: null,
+      };
+    }
+    if (slot === 0) {
+      return {
+        ...base,
+        hotkey: null,
+        role: "baseline",
+        status: "scored",
+        score: 0,
+      };
+    }
+    if (slot === 1) {
+      return { ...base, role: "leader", status: "scored", score: leaderScore };
+    }
+    const jitter = mockJitter(round.ordinal, slot);
+    if (jitter > 0.78) {
+      return {
+        ...base,
+        role: "challenger",
+        status: "disqualified",
+        score: null,
+      };
+    }
+    return {
+      ...base,
+      role: "challenger",
+      status: "scored",
+      score: Number((leaderScore * (0.2 + jitter * 0.75)).toFixed(4)),
+    };
+  });
+}
+
+function mockScorePoint(round: Round): ScoreProgressPoint {
+  return {
+    round_id: round.id,
+    ordinal: round.ordinal,
+    status: round.status,
+    leader_score:
+      round.status === "complete"
+        ? (MOCK_LEADER_SCORES[round.ordinal] ?? null)
+        : null,
+    entries: mockScoreEntries(round),
+  };
+}
+
+/** Oldest round first, the order the chart reads in. */
 const MOCK_SCORE_PROGRESS: ScoreProgressSeries = {
   campaign_id: MOCK_CAMPAIGN_ID,
-  points: [
-    {
-      round_id: MOCK_ROUND_1,
-      ordinal: 1,
-      status: "complete",
-      leader_score: 0.31,
-      entries: [
-        {
-          submission_id: SEED_SPECS[1].id,
-          hotkey: HOTKEYS[1].slice(0, 16),
-          role: "challenger",
-          status: "disqualified",
-          score: null,
-        },
-      ],
-    },
-    {
-      round_id: MOCK_ROUND_2,
-      ordinal: 2,
-      status: "void",
-      leader_score: null,
-      entries: [],
-    },
-    {
-      round_id: MOCK_ROUND_3,
-      ordinal: 3,
-      status: "complete",
-      leader_score: 0.4,
-      entries: [],
-    },
-  ],
+  points: [...MOCK_ROUNDS]
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map(mockScorePoint),
 };
 
 export function apiMocksEnabled(): boolean {

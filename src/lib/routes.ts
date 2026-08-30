@@ -7,17 +7,44 @@ export function campaignHref(campaignId: string): string {
 }
 
 /**
- * Campaign page with independent paginators.
+ * Sections of the campaign page, in reading order.
  *
- * `page` is the rounds table (the primary listing). `submissions` is the
- * flat outcome list underneath. Page 1 is omitted so the bare campaign URL
- * stays the first page of both.
+ * Tabs are URL state rather than client state so a section is shareable, the
+ * browser back button steps between them, and each render fetches only the
+ * panel it shows. `rounds` is the default and is omitted from the query.
+ */
+export const CAMPAIGN_TABS = [
+  "rounds",
+  "submissions",
+  "metadata",
+  "leaders",
+] as const;
+
+export type CampaignTab = (typeof CAMPAIGN_TABS)[number];
+
+export const DEFAULT_CAMPAIGN_TAB: CampaignTab = "rounds";
+
+/** Read a `?tab=` value, falling back to the default for anything unknown. */
+export function parseCampaignTab(value: string | undefined): CampaignTab {
+  return CAMPAIGN_TABS.find((tab) => tab === value) ?? DEFAULT_CAMPAIGN_TAB;
+}
+
+/**
+ * Campaign page with a section tab and independent paginators.
+ *
+ * `page` is the rounds table, `submissions` the flat outcome list. Both pagers
+ * ride along on every link so switching tabs and coming back keeps your place.
+ * Page 1 and the default tab are omitted so the bare campaign URL stays the
+ * canonical first view.
  */
 export function campaignListHref(
   campaignId: string,
-  query: { page?: number; submissions?: number } = {}
+  query: { page?: number; submissions?: number; tab?: CampaignTab } = {}
 ): string {
   const params = new URLSearchParams();
+  if (query.tab != null && query.tab !== DEFAULT_CAMPAIGN_TAB) {
+    params.set("tab", query.tab);
+  }
   if (query.page != null && query.page > 1) {
     params.set("page", String(query.page));
   }
@@ -40,7 +67,7 @@ function totalPages(total: number, pageSize: number): number {
  */
 export function clampedCampaignListHref(
   campaignId: string,
-  query: { page: number; submissions: number },
+  query: { page: number; submissions: number; tab?: CampaignTab },
   totals: {
     pageSize: number;
     roundsTotal?: number | null;
@@ -68,6 +95,7 @@ export function clampedCampaignListHref(
   return campaignListHref(campaignId, {
     page: nextPage,
     submissions: nextSubmissions,
+    tab: query.tab,
   });
 }
 
