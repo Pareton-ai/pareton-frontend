@@ -3,15 +3,79 @@ title: Set weights from our API
 description: Read the published vector from the Pareton API and sign it on subnet 10.
 ---
 
-The simplest way to validate. Read `GET /v1/weights`, sign what it returns,
-repeat every 360 blocks.
+Download `auditor.py` and run it. It fetches `GET https://api.pareton.ai/v1/weights`
+and submits that vector on Finney netuid 10. It does not change the vector.
+
+After a successful submission it waits 360 blocks. After a failure it waits
+36 blocks. SN10 uses commit-reveal, so a successful call means the commitment
+was accepted; the vector goes live after reveal.
 
 ## Install
 
 ```bash
-python -m venv .venv && . .venv/bin/activate
-pip install bittensor==11.0.2
+# Download the standalone script
+curl -O https://raw.githubusercontent.com/Pareton-ai/pareton/main/scripts/auditor.py
+# Install the two dependencies
+python -m pip install 'requests>=2.31' 'bittensor==11.0.2'
+# Confirm the CLI loads
+python auditor.py --help
 ```
+
+The script imports nothing else from the Pareton repository. You do not need
+to clone the repo.
+
+## Configure
+
+Only the wallet is configurable. Network, netuid, and the API URL are fixed
+in the script.
+
+| Variable                | Flag        | Meaning                              |
+| ----------------------- | ----------- | ------------------------------------ |
+| `PARETON_WALLET_NAME`   | `--coldkey` | Local Bittensor wallet name          |
+| `PARETON_WALLET_HOTKEY` | `--hotkey`  | Local hotkey name inside that wallet |
+
+A flag overrides the environment variable. Both are required. These are local
+wallet names, not addresses or seeds. The hotkey must be registered on netuid
+10 with a validator permit; the script checks that and exits before signing
+if it is not.
+
+## Run
+
+```bash
+export PARETON_WALLET_NAME=my-validator-coldkey
+export PARETON_WALLET_HOTKEY=my-validator-hotkey
+
+python auditor.py --once   # one attempt, exit 0 on acceptance, 1 on failure
+python auditor.py          # run forever
+```
+
+Stop the foreground process with `Ctrl-C`. Test `--once` first.
+
+## Run in the background
+
+With PM2:
+
+```bash
+pm2 start auditor.py --name pareton-auditor --interpreter "$(command -v python)"
+pm2 save
+pm2 logs pareton-auditor
+```
+
+PM2 inherits the environment of the shell that started it. Run `pm2 startup`
+once if it should start after a reboot.
+
+With nohup:
+
+```bash
+nohup python auditor.py > pareton-auditor.log 2>&1 &
+echo $! > pareton-auditor.pid
+tail -f pareton-auditor.log
+
+kill "$(cat pareton-auditor.pid)"
+```
+
+A validator that stops setting weights stops earning, and the chain does not
+warn you. Keep the process supervised.
 
 ## The vector
 
@@ -30,71 +94,8 @@ curl -s https://api.pareton.ai/v1/weights
 ```
 
 `weights[i]` is the weight for UID `i`. The list is dense and sums to 1.0.
-`breakdown` is the per-campaign audit trail, including the `blocks_held` each
-weight was computed at. A 404 means no vector has been computed yet; do not
-set anything.
-
-## The script
-
-```python
-import json
-import urllib.request
-
-import bittensor as bt
-
-NETUID = 10
-WALLET = "pareton-validator"
-HOTKEY = "default"
-
-with urllib.request.urlopen("https://api.pareton.ai/v1/weights", timeout=20) as r:
-    published = json.load(r)
-
-subtensor = bt.Subtensor(network="finney")
-wallet = bt.Wallet(name=WALLET, hotkey=HOTKEY)
-meta = subtensor.metagraph(netuid=NETUID)
-
-neuron = meta.by_hotkey(wallet.hotkey.ss58_address)
-if neuron is None or not neuron.validator_permit:
-    raise SystemExit("hotkey is not registered, or holds no validator permit")
-
-weights = [float(w) for w in published["weights"]]
-uids = [i for i, w in enumerate(weights) if w > 0]
-
-result = subtensor.execute(
-    bt.SetWeights(
-        netuid=NETUID,
-        uids=uids,
-        weights=[weights[i] for i in uids],
-        version_key=published["version_key"],
-    ),
-    wallet,
-    wait_for_inclusion=True,
-    wait_for_finalization=True,
-)
-print("ok" if result.success else result.message)
-```
-
-Check the permit before you sign. Setting weights without one fails inside the
-extrinsic as an opaque substrate error, and the check above names the real
-problem instead.
-
-Take `version_key` from the response rather than hardcoding it. If it changes,
-your vector still counts.
-
-## Run it on a cadence
-
-Every 360 blocks, about 72 minutes. Compare block heights, not clock time:
-
-```python
-head = int(subtensor.block)
-if head >= last_set_block + 360:
-    ...
-```
-
-Keep the process supervised. A validator that stops setting weights stops
-earning, and the chain does not warn you. A systemd unit and a `Restart=always`
-is enough; see the units in [Run your own
-validator](/docs/validator/setup) for the shape.
+`breakdown` is the per-campaign audit trail. A 404 means no vector has been
+computed yet; the script retries in 36 blocks and does not sign.
 
 ## Verify a set landed
 
@@ -117,4 +118,4 @@ your previous vector. Wait a full epoch before you treat it as a failure.
 | `is not registered on netuid 10`         | The hotkey lost its UID                        |
 | Chain shows the old vector after a set   | Commit-reveal delay. Wait one epoch            |
 | Other validators do not trust-weight you | `version_key` does not match                   |
-| 404 from `/v1/weights`                   | No vector computed yet. Set nothing            |
+| 404 from `/v1/weights`                   | No vector computed yet. The script retries     |
