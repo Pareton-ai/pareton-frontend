@@ -18,12 +18,13 @@ know what that command is doing with your coldkey before you run it.
 
 |            |                                                    |
 | ---------- | -------------------------------------------------- |
-| Amount     | **0.05 TAO** per submission                        |
+| Amount     | **0.1 TAO** per submission                         |
 | Recipient  | `5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K` |
 | Signed by  | your **coldkey**                                   |
 | Refundable | no                                                 |
 
-The fee is charged per submission, not per campaign.
+The fee is charged per submission, not per campaign. It is the same for every
+campaign, and the CLI already knows it: you do not configure an amount.
 
 This is separate from the subnet 10 registration burn. That burn is paid to the
 chain when you register a hotkey and has nothing to do with Pareton; see
@@ -48,7 +49,7 @@ transfer is coldkey-signed. See
 A successful run prints the payment before it prints the commitment:
 
 ```
-paid fee 0.05 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K (payment 6123456-2)
+paid fee 0.1 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K (payment 6123456-2)
 ```
 
 `6123456-2` is the block number and the extrinsic index inside
@@ -78,7 +79,7 @@ python -m miner.commit_patch ... --dry-run
 ```
 
 ```
-dry-run: would transfer 0.05 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K
+dry-run: would transfer 0.1 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K
 dry-run: not submitting on-chain
 ```
 
@@ -125,8 +126,7 @@ python -m miner.commit_patch ... --payment-block 6123456 --payment-tx 2
 ```
 
 The CLI prints those exact flags to stderr when a commit fails after a payment.
-Both flags must be set together, and they require
-`PARETON_SUBMISSION_FEE_TAO > 0`.
+Both flags must be set together.
 
 If the transfer landed but the SDK returned no extrinsic id, the CLI stops
 rather than committing an unprovable payment. Find the block and index on a
