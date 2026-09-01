@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { TriangleAlert } from "lucide-react";
 import { CampaignList } from "@/components/dashboard/campaign-list";
 
 function CampaignsFallback() {
