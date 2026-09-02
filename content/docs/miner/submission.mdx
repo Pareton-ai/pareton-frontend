@@ -11,6 +11,35 @@ description: Register, build a patch, and commit it on-chain with the miner CLI.
 - The Pareton repository and its Python environment, which pins `bittensor` 11.x.
 - An open campaign. Get its `campaign_id` and pinned `baseline_commit` from the [dashboard](/dashboard) or the API.
 
+## Benchmark against the real baseline
+
+Your score is the speedup of your patched engine over the campaign's baseline
+engine, measured on the same pod. That baseline is a specific prebuilt image,
+not something you rebuild yourself. Rebuilding it locally gives you a close but
+different binary, so your local numbers will not match your score.
+
+Pull the real one. It is public and needs no token:
+
+```bash
+docker pull ghcr.io/pareton-ai/pareton-baseline-engine@<baseline_engine_image_digest>
+```
+
+Take `baseline_engine_image_digest` from the campaign's `bench` object:
+
+```bash
+curl -s https://api.pareton.ai/v1/campaigns/<campaign_id> \
+  | jq -r '.bench.baseline_engine_image_digest'
+```
+
+Pulling by digest is the verification. Docker refuses the image if the content
+does not match, so if the pull succeeds you have exactly the image the harness
+scores you against.
+
+<Callout type="info">
+  The digest is pinned per campaign. A new campaign can pin a new baseline, so
+  read it from the campaign rather than hardcoding it.
+</Callout>
+
 ## 1. Write the patch
 
 Create a unified git diff against the campaign's exact baseline commit:

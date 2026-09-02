@@ -23,6 +23,10 @@ index 3f4a1b2c9..8d2e7f1a4 100644
 
 The diff is content-addressed: its SHA-256 hash is the ingest dedupe key. The first valid commitment of a given patch hash wins the slot for that campaign. Later duplicates are skipped, including your own.
 
+You are scored against a prebuilt baseline engine image, which is public and
+needs no token. Pull it and benchmark locally before you commit: see
+[Benchmark against the real baseline](/docs/miner/submission#benchmark-against-the-real-baseline).
+
 ## Pipeline
 
 Every submission walks the same sequence of states, in this order:
