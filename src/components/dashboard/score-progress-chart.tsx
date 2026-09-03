@@ -14,6 +14,9 @@ import type { ScoreProgressPoint } from "@/lib/api/types";
 
 /** Plot box insets. Left carries the score axis, bottom the round axis. */
 const PAD = { top: 16, right: 16, bottom: 30, left: 46 };
+/** Halo on the latest leader mark. The clip floor sits this far below the
+ *  zero rule so a score of 0 is not cut in half on the clip edge. */
+const LEADER_HALO_R = 7;
 const HEIGHT = 300;
 const COMPACT_HEIGHT = 240;
 /** Width used for the server render, before the container reports its own. */
@@ -298,10 +301,16 @@ export function ScoreProgressChart({
               below-baseline score is cut off at the zero rule instead of
               dragging the scale into the negatives. */}
           <defs>
-            {/* Only the floor clips. Full width keeps the first and last dots
-                whole where they sit on the plot edges. */}
+            {/* Only the floor clips, and it sits a halo-radius below the
+                zero rule so a score of 0 stays whole. Full width keeps the
+                first and last dots whole where they sit on the plot edges. */}
             <clipPath id={clipId}>
-              <rect x={0} y={0} width={width} height={plotBottom} />
+              <rect
+                x={0}
+                y={0}
+                width={width}
+                height={plotBottom + LEADER_HALO_R}
+              />
             </clipPath>
           </defs>
           <g clipPath={`url(#${clipId})`}>
@@ -362,7 +371,12 @@ export function ScoreProgressChart({
               return (
                 <g key={`dot-${index}`}>
                   {isLast ? (
-                    <circle cx={x} cy={y} r={7} className="fill-accent/20" />
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={LEADER_HALO_R}
+                      className="fill-accent/20"
+                    />
                   ) : null}
                   <circle
                     cx={x}
