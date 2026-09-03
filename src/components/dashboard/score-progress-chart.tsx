@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -13,6 +14,9 @@ import type { ScoreProgressPoint } from "@/lib/api/types";
 
 /** Plot box insets. Left carries the score axis, bottom the round axis. */
 const PAD = { top: 16, right: 16, bottom: 30, left: 46 };
+/** Halo on the latest leader mark. The clip floor sits this far below the
+ *  zero rule so a score of 0 is not cut in half on the clip edge. */
+const LEADER_HALO_R = 7;
 const HEIGHT = 300;
 const COMPACT_HEIGHT = 240;
 /** Width used for the server render, before the container reports its own. */
@@ -25,11 +29,13 @@ type Domain = { min: number; max: number; ticks: number[] };
 /**
  * Axis domain rounded out to human steps (0.1, 0.25, 0.5 …).
  *
- * Always spans zero: a score of 0.0 means the image matched baseline speed, so
- * the axis has to show where baseline sits even when every entry beat it.
+ * The floor is zero: a score of 0.0 means the image matched baseline speed, so
+ * baseline is always on the axis, and the axis never runs negative. Scores
+ * below baseline are clipped out of the plot box rather than stretching the
+ * scale downward; they stay readable in the tooltip and the table.
  */
 function niceDomain(values: readonly number[], tickCount = 4): Domain {
-  const min = Math.min(0, ...values);
+  const min = 0;
   const max = Math.max(0, ...values);
   const span = max - min || 1;
   const rawStep = span / tickCount;
@@ -124,6 +130,9 @@ export function ScoreProgressChart({
 }) {
   const { ref, width } = useMeasuredWidth();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  // useId wraps its value in punctuation that has no business in a url(#…)
+  // reference, so keep only the parts that are safe in a fragment id.
+  const clipId = `score-plot-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
 
   const compact = width < COMPACT_BELOW;
   const height = compact ? COMPACT_HEIGHT : HEIGHT;
@@ -288,83 +297,106 @@ export function ScoreProgressChart({
             ) : null
           )}
 
-          {/* One line for the crown. Segments that skip a round it never scored
-              go dashed, so a gap reads as missing data rather than as a
-              measured dip, without the series losing its weight. */}
-          {scored.slice(0, -1).map((from, i) => {
-            const to = scored[i + 1];
-            const contiguous = to.index === from.index + 1;
-            return (
-              <line
-                key={`link-${from.index}`}
-                x1={from.x}
-                y1={from.y}
-                x2={to.x}
-                y2={to.y}
-                className="stroke-accent"
-                strokeWidth={1.5}
-                strokeDasharray={contiguous ? undefined : "4 4"}
-                strokeLinecap="round"
+          {/* Marks live inside the plot box: the axis stops at baseline, so a
+              below-baseline score is cut off at the zero rule instead of
+              dragging the scale into the negatives. */}
+          <defs>
+            {/* Only the floor clips, and it sits a halo-radius below the
+                zero rule so a score of 0 stays whole. Full width keeps the
+                first and last dots whole where they sit on the plot edges. */}
+            <clipPath id={clipId}>
+              <rect
+                x={0}
+                y={0}
+                width={width}
+                height={plotBottom + LEADER_HALO_R}
               />
-            );
-          })}
-
-          {/* Every other image that ran in the round. */}
-          {points.map((point, index) =>
-            point.entries.map((entry) =>
-              entry.score !== null && entry.score !== point.leader_score ? (
-                <circle
-                  key={`${point.round_id}-${entry.submission_id}`}
-                  cx={xFor(index)}
-                  cy={yFor(entry.score)}
-                  r={2.5}
-                  className="fill-secondary/50"
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${clipId})`}>
+            {/* One line for the crown. Segments that skip a round it never
+                scored go dashed, so a gap reads as missing data rather than as
+                a measured dip, without the series losing its weight. */}
+            {scored.slice(0, -1).map((from, i) => {
+              const to = scored[i + 1];
+              const contiguous = to.index === from.index + 1;
+              return (
+                <line
+                  key={`link-${from.index}`}
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
+                  className="stroke-accent"
+                  strokeWidth={1.5}
+                  strokeDasharray={contiguous ? undefined : "4 4"}
+                  strokeLinecap="round"
                 />
-              ) : null
-            )
-          )}
+              );
+            })}
 
-          {/* Crosshair for the reading under the cursor. */}
-          {active && activeIndex !== null ? (
-            <line
-              x1={xFor(activeIndex)}
-              x2={xFor(activeIndex)}
-              y1={PAD.top}
-              y2={plotBottom}
-              className="stroke-border-strong"
-              strokeWidth={1}
-              shapeRendering="crispEdges"
-            />
-          ) : null}
+            {/* Every other image that ran in the round. */}
+            {points.map((point, index) =>
+              point.entries.map((entry) =>
+                entry.score !== null && entry.score !== point.leader_score ? (
+                  <circle
+                    key={`${point.round_id}-${entry.submission_id}`}
+                    cx={xFor(index)}
+                    cy={yFor(entry.score)}
+                    r={2.5}
+                    className="fill-secondary/50"
+                  />
+                ) : null
+              )
+            )}
 
-          {/* Leader score per round. The last one carries a halo: on an open
-              campaign it is the number every miner is trying to beat. */}
-          {scored.map(({ index, x, y }, i) => {
-            const isLast = i === scored.length - 1;
-            const isActive = index === activeIndex;
-            return (
-              <g key={`dot-${index}`}>
-                {isLast ? (
-                  <circle cx={x} cy={y} r={7} className="fill-accent/20" />
-                ) : null}
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={isActive ? 4.5 : 3}
-                  className="fill-accent"
-                />
-                {isActive ? (
+            {/* Crosshair for the reading under the cursor. */}
+            {active && activeIndex !== null ? (
+              <line
+                x1={xFor(activeIndex)}
+                x2={xFor(activeIndex)}
+                y1={PAD.top}
+                y2={plotBottom}
+                className="stroke-border-strong"
+                strokeWidth={1}
+                shapeRendering="crispEdges"
+              />
+            ) : null}
+
+            {/* Leader score per round. The last one carries a halo: on an open
+                campaign it is the number every miner is trying to beat. */}
+            {scored.map(({ index, x, y }, i) => {
+              const isLast = i === scored.length - 1;
+              const isActive = index === activeIndex;
+              return (
+                <g key={`dot-${index}`}>
+                  {isLast ? (
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={LEADER_HALO_R}
+                      className="fill-accent/20"
+                    />
+                  ) : null}
                   <circle
                     cx={x}
                     cy={y}
-                    r={4.5}
-                    className="fill-none stroke-background"
-                    strokeWidth={1.5}
+                    r={isActive ? 4.5 : 3}
+                    className="fill-accent"
                   />
-                ) : null}
-              </g>
-            );
-          })}
+                  {isActive ? (
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={4.5}
+                      className="fill-none stroke-background"
+                      strokeWidth={1.5}
+                    />
+                  ) : null}
+                </g>
+              );
+            })}
+          </g>
         </svg>
 
         {active && activeIndex !== null ? (
