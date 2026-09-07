@@ -35,8 +35,14 @@ export function PatchArtifact({
         if (request) return;
         const controller = new AbortController();
         request = controller;
+        const showRetryStatus = () => {
+          // A tab-return check can fail while the next attempt is still days away.
+          // Keep the scheduled availability visible until the reveal is due.
+          const deadline = Date.parse(revealAt ?? "");
+          setRetrying(!Number.isFinite(deadline) || Date.now() >= deadline);
+        };
         const timeout = setTimeout(() => {
-          setRetrying(true);
+          showRetryStatus();
           controller.abort();
         }, 12_000);
         try {
@@ -51,7 +57,7 @@ export function PatchArtifact({
             setRetrying(false);
           }
         } catch {
-          if (!controller.signal.aborted) setRetrying(true);
+          if (!controller.signal.aborted) showRetryStatus();
         } finally {
           clearTimeout(timeout);
           request = null;
