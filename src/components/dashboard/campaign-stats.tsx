@@ -92,7 +92,7 @@ function SubmissionsTile({ data }: { data: SubmissionsPage | null }) {
           ? "none yet"
           : complete
             ? `${pass} passing · ${fail} rejected`
-            : `${rows.length} listed below`
+            : undefined
       }
     >
       {complete ? <MixBar pass={pass} fail={fail} pending={pending} /> : null}
