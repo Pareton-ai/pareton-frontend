@@ -37,7 +37,9 @@ describe("patch availability proxy", () => {
   it("returns a withheld URL and the backend deadline without caching", async () => {
     vi.mocked(getSubmission).mockResolvedValue(fixture());
     const response = await request();
-    expect(getSubmission).toHaveBeenCalledWith("campaign", hash);
+    expect(getSubmission).toHaveBeenCalledWith("campaign", hash, {
+      timeoutMs: 60_000,
+    });
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.json()).toEqual({
       url: "",

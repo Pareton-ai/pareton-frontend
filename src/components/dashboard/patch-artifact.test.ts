@@ -63,6 +63,7 @@ describe("patch availability failure status", () => {
   it.each(["HTTP error", "timeout"])(
     "keeps the deadline after a pre-reveal %s, then shows retries after reveal",
     async (failure) => {
+      const failureDelay = failure === "timeout" ? 65_000 : 0;
       const initial: PatchAvailability = {
         url: "",
         downloadable: false,
@@ -88,21 +89,58 @@ describe("patch availability failure status", () => {
       page.dispatchEvent(new Event("visibilitychange"));
       page.hidden = false;
       page.dispatchEvent(new Event("visibilitychange"));
-      await vi.advanceTimersByTimeAsync(12_000);
+      await vi.advanceTimersByTimeAsync(failureDelay);
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(render(initial)).toBe(scheduledMarkup);
 
-      await vi.advanceTimersByTimeAsync(DAY - 12_001);
+      await vi.advanceTimersByTimeAsync(DAY - failureDelay - 1);
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(render(initial)).toBe(scheduledMarkup);
 
-      await vi.advanceTimersByTimeAsync(12_001);
+      await vi.advanceTimersByTimeAsync(1 + failureDelay);
       expect(fetch).toHaveBeenCalledTimes(2);
       expect(render(initial)).toContain(
         "Download temporarily unavailable. Retrying…"
       );
-      await vi.advanceTimersByTimeAsync(3_000);
+      await vi.advanceTimersByTimeAsync(15_000 - (failureDelay % 15_000));
       expect(fetch).toHaveBeenCalledTimes(3);
     }
   );
+
+  it("waits for slow publication without aborting or overlapping requests", async () => {
+    const initial: PatchAvailability = {
+      url: "",
+      downloadable: false,
+      revealAt: new Date(Date.now() - 1).toISOString(),
+      awaitingRevealTime: false,
+    };
+    let signal: AbortSignal | null | undefined;
+    const fetch = vi.fn((_url: string, options: RequestInit) => {
+      signal = options.signal;
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            ok: true,
+            json: async () => ({
+              ...initial,
+              url: "https://artifacts.example/public.diff",
+              downloadable: true,
+            }),
+          });
+        }, 55_000);
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+    render(initial);
+    cleanup = hooks.effect?.();
+
+    await vi.advanceTimersByTimeAsync(54_999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(signal?.aborted).toBe(false);
+    expect(render(initial)).not.toContain("Retrying");
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal?.aborted).toBe(false);
+    expect(render(initial)).toContain("Download diff");
+  });
 });

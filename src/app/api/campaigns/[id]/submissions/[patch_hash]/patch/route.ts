@@ -20,7 +20,8 @@ export async function GET(
     );
   }
   try {
-    const detail = await getSubmission(id, patchHash);
+    // This read can publish the diff to S3; allow longer than an ordinary read.
+    const detail = await getSubmission(id, patchHash, { timeoutMs: 60_000 });
     if (detail.submission.campaign_id !== id) {
       return NextResponse.json(
         { error: "Submission not found." },

@@ -106,13 +106,15 @@ export async function getCampaignSubmissions(
  */
 export async function getSubmission(
   campaignId: string,
-  patchHash: string
+  patchHash: string,
+  opts?: { timeoutMs?: number }
 ): Promise<SubmissionDetail> {
   if (apiMocksEnabled()) return mockGetSubmission(campaignId, patchHash);
 
   const data = await apiFetch<unknown>(
     `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}`,
     {
+      timeoutMs: opts?.timeoutMs,
       revalidate: LIVE_REVALIDATE,
       tags: [
         "submissions",

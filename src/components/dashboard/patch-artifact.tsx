@@ -41,10 +41,11 @@ export function PatchArtifact({
           const deadline = Date.parse(revealAt ?? "");
           setRetrying(!Number.isFinite(deadline) || Date.now() >= deadline);
         };
+        // Allow the proxy's 60-second publication request to finish first.
         const timeout = setTimeout(() => {
           showRetryStatus();
           controller.abort();
-        }, 12_000);
+        }, 65_000);
         try {
           const response = await fetch(
             `/api/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/patch`,
