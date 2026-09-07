@@ -344,6 +344,8 @@ function baseSubmission(
     hotkey: row.hotkey,
     baseline_commit: MOCK_CAMPAIGN.baseline_commit,
     retrieval_url: `https://example.com/patches/${row.patch_hash}.diff`,
+    patch_reveal_at: null,
+    patch_download_url: null,
     commit_block: 1_234_567,
     committed_at: row.committed_at,
     engine_image_ref:

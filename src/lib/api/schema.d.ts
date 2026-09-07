@@ -163,6 +163,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/weights": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Latest Weights
+     * @description The newest stored weight vector. Reads only; never computes.
+     *
+     *     `weights[i]` is UID `i`. Pass it to `SetWeights` with
+     *     `uids=range(len(weights))`. A missing or all-zero row is 404: an empty
+     *     vector is a valid on-chain instruction to pay nobody.
+     */
+    get: operations["latest_weights_v1_weights_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/campaigns/{campaign_id}/submissions/{patch_hash}": {
     parameters: {
       query?: never;
@@ -189,6 +213,40 @@ export interface paths {
     };
     /** Submission Detail */
     get: operations["submission_detail_v1_submissions__patch_hash__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/campaigns/{campaign_id}/submissions/{patch_hash}/patch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Campaign Submission Patch */
+    get: operations["campaign_submission_patch_v1_campaigns__campaign_id__submissions__patch_hash__patch_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/submissions/{patch_hash}/patch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Submission Patch */
+    get: operations["submission_patch_v1_submissions__patch_hash__patch_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -306,10 +364,48 @@ export interface components {
     };
     /** PresignRequest */
     PresignRequest: {
-      /** Campaign Id */
+      /**
+       * Campaign Id
+       * Format: uuid
+       */
       campaign_id: string;
       /** Hotkey */
       hotkey: string;
+      /** Patch Hash */
+      patch_hash: string;
+      /**
+       * Upload Id
+       * Format: uuid4
+       */
+      upload_id: string;
+      /** Expires At */
+      expires_at: number;
+      /** Network */
+      network: string;
+      /** Netuid */
+      netuid: number;
+      /** Signature */
+      signature: string;
+    };
+    /** PresignResponse */
+    PresignResponse: {
+      /** Upload Url */
+      upload_url: string;
+      /** Retrieval Url */
+      retrieval_url: string;
+      /** Object Key */
+      object_key: string;
+      /** Expires In */
+      expires_in: number;
+      /** Required Headers */
+      required_headers: {
+        [key: string]: string;
+      };
+      /**
+       * Already Uploaded
+       * @default false
+       */
+      already_uploaded: boolean;
     };
     /**
      * RoundDetailModel
@@ -572,7 +668,8 @@ export interface components {
       | "infra_failed"
       | "scored"
       | "disqualified"
-      | "rejected";
+      | "rejected"
+      | "rejected_duplicate";
     /**
      * SubmissionSummaryModel
      * @description One row of `GET /v1/campaigns/{campaign_id}/submissions`.
@@ -599,6 +696,10 @@ export interface components {
       /** Latest State */
       latest_state?: components["schemas"]["SubmissionState"] | string | null;
       round?: components["schemas"]["SubmissionRoundModel"] | null;
+      /** Patch Reveal At */
+      patch_reveal_at?: string | null;
+      /** Patch Download Url */
+      patch_download_url?: string | null;
     };
     /** SubmissionsPageModel */
     SubmissionsPageModel: {
@@ -625,6 +726,47 @@ export interface components {
       input?: unknown;
       /** Context */
       ctx?: Record<string, never>;
+    };
+    /**
+     * WeightBreakdownModel
+     * @description One campaign's contribution, so the vector is auditable, not magic.
+     *
+     *     `uid` is what the metagraph reported at compute time and is NOT
+     *     authoritative afterwards: a UID is a lease that deregistration reassigns,
+     *     so nobody may cache it. Resolve a hotkey against the live metagraph.
+     *
+     *     `note` says why a share was withheld (`vacant`, `closed`, `deregistered`)
+     *     and is null for a share that paid. A withheld share burns.
+     */
+    WeightBreakdownModel: {
+      /** Campaign Id */
+      campaign_id: string;
+      /** Hotkey */
+      hotkey?: string | null;
+      /** Uid */
+      uid?: number | null;
+      /** Blocks Held */
+      blocks_held?: number | null;
+      /** Weight */
+      weight: number;
+      /** Note */
+      note?: string | null;
+    };
+    /**
+     * WeightsModel
+     * @description `GET /v1/weights`. `weights[i]` is the weight for UID `i`.
+     */
+    WeightsModel: {
+      /** Computed At Block */
+      computed_at_block: number;
+      /** Version Key */
+      version_key: number;
+      /** Burn Uid */
+      burn_uid: number;
+      /** Weights */
+      weights: number[];
+      /** Breakdown */
+      breakdown: components["schemas"]["WeightBreakdownModel"][];
     };
   };
   responses: never;
@@ -898,6 +1040,26 @@ export interface operations {
       };
     };
   };
+  latest_weights_v1_weights_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WeightsModel"];
+        };
+      };
+    };
+  };
   campaign_submission_detail_v1_campaigns__campaign_id__submissions__patch_hash__get: {
     parameters: {
       query?: never;
@@ -948,6 +1110,69 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SubmissionDetailModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  campaign_submission_patch_v1_campaigns__campaign_id__submissions__patch_hash__patch_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        campaign_id: string;
+        patch_hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  submission_patch_v1_submissions__patch_hash__patch_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        patch_hash: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -1047,8 +1272,22 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": components["schemas"]["PresignResponse"];
         };
+      };
+      /** @description Invalid upload authorization or disqualified hotkey */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Upload UUID already contains a different patch */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

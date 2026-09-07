@@ -267,6 +267,8 @@ function parseSubmission(value: unknown): Submission {
     hotkey: asString(o.hotkey),
     baseline_commit: asString(o.baseline_commit),
     retrieval_url: asString(o.retrieval_url),
+    patch_reveal_at: asNullableString(o.patch_reveal_at),
+    patch_download_url: asNullableString(o.patch_download_url),
     commit_block: asNullableNumber(o.commit_block),
     committed_at: asString(o.committed_at),
     engine_image_ref: asNullableString(o.engine_image_ref),

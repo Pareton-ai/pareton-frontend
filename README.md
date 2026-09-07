@@ -58,10 +58,39 @@ npm run api:types  # regenerate src/lib/api/schema.d.ts from OpenAPI
 
 ## API client rules
 
-- All dashboard data is fetched in React Server Components via `src/lib/api`.
+- Dashboard data is fetched via `src/lib/api` in React Server Components or frontend proxies.
 - Every outbound call goes through `apiFetch` in `client.ts` — nothing else talks to the API host.
 - Types: generated OpenAPI in `schema.d.ts` + hand-narrowed domain models in `types.ts`.
 - When the backend schema changes, run `npm run api:types` and commit the diff.
+
+## Patch downloads and automatic reveal
+
+New miner patches stay private until the backend's reveal deadline. The backend
+currently defaults to two days after the first finalized scored or disqualified
+evaluation. The dashboard uses the API's `submission.patch_reveal_at` timestamp;
+it does not calculate a deadline from commit time or hardcode the delay.
+
+Submission pages show **Available from [UTC time]** while the download URL is
+withheld. The patch control waits until that timestamp, then requests fresh
+availability through the frontend's `/api/campaigns/{id}/submissions/{hash}/patch`
+proxy. This server-only proxy uses the existing submission API helper. With the
+accompanying backend change, the eligible request creates the verified public
+S3 copy and returns its permanent, unsigned `retrieval_url`. **Download diff**
+then appears automatically without reloading the page.
+
+The control pauses requests while its tab is hidden and refreshes on return.
+If a measured entry is waiting for its round to finalize, it checks every 15
+seconds until a reveal timestamp arrives. Publication errors show a retry
+message in the patch control and retry every 15 seconds while visible; the rest
+of the submission page stays available. Requests stop once the URL arrives.
+Pipeline and build-log polling retain their existing behavior.
+
+This updates open submission pages automatically. It does not publish patches
+without API traffic; a background publisher would be a separate backend change.
+Legacy public URLs still render immediately, and missing reveal fields are
+accepted during rollout. Keep `PARETON_ARTIFACT_BASE_URL` aligned with the
+backend's public artifact host. See the [API client README](src/lib/api/README.md)
+for the response contract and cache behavior.
 
 ## Frontend standards (typography)
 
