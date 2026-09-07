@@ -25,12 +25,12 @@ rules, wide-tracked mono labels, and a lot of negative space.
 
 The brand uses four distinct grounds. Do not merge them.
 
-| Surface | Ground | Type | Where |
-| --- | --- | --- | --- |
-| **Paper** | `--paper` #f4efe4 | Bricolage / Fraunces / Azeret | Landing page, print, social |
-| **Plate** | `--plate` #101114 | same three | Method section only. Inner stage is `#0c0d10`. |
-| **Ink** | `--ink` #161412 | same three | Close banner and footer |
-| **Product** | `--background` #0f1013 | Inter / IBM Plex Mono | Dashboard and docs dark. Dashboard swaps to Bricolage / Fraunces / Azeret inside `.dashboard-shell`. |
+| Surface     | Ground                 | Type                          | Where                                                                                                |
+| ----------- | ---------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Paper**   | `--paper` #f4efe4      | Bricolage / Fraunces / Azeret | Landing page, print, social                                                                          |
+| **Plate**   | `--plate` #101114      | same three                    | Method section only. Inner stage is `#0c0d10`.                                                       |
+| **Ink**     | `--ink` #161412        | same three                    | Close banner and footer                                                                              |
+| **Product** | `--background` #0f1013 | Inter / IBM Plex Mono         | Dashboard and docs dark. Dashboard swaps to Bricolage / Fraunces / Azeret inside `.dashboard-shell`. |
 
 Docs also has a light theme (`html.light`: `#fafafa`, `--muted` #6b7078, `--accent` #1f4fd4, `--rust` #b4532a). It is not the brand voice. Do not "fix" it, and do not use Inter anywhere else.
 
@@ -107,16 +107,16 @@ label because the bar is the only carrier of the value's shape.
 
 **Voice: confident, technical, understated.** Short declaratives. Full stops where a lesser
 brand would use an em dash. The reader is addressed as **you**, and "you" means an engineer
-who owns GPU spend: *"You run vLLM, TensorRT-LLM, or SGLang in production."* The company is
+who owns GPU spend: _"You run vLLM, TensorRT-LLM, or SGLang in production."_ The company is
 "Pareton" or "we", used sparingly.
 
 **Sentence fragments as rhythm.** The site's most characteristic move is a run of clipped
-sentences: *"Same GPUs. Same traffic. Same latency cap. If it is not cheaper, it is discarded."*
-Headlines do the same: *"Faster. Cheaper. Verified on yours."*
+sentences: _"Same GPUs. Same traffic. Same latency cap. If it is not cheaper, it is discarded."_
+Headlines do the same: _"Faster. Cheaper. Verified on yours."_
 
 **Claims are conditional and falsifiable.** Nothing is promised; everything is gated.
-*"A change only counts if it beats today."* *"We only keep a change if your latency cap still
-holds."* Where a competitor would write "up to 40% faster", Pareton writes the gate.
+_"A change only counts if it beats today."_ _"We only keep a change if your latency cap still
+holds."_ Where a competitor would write "up to 40% faster", Pareton writes the gate.
 
 **Casing.** Sentence case in headlines and titles, always ending in a period. Uppercase is
 reserved for mono labels. Section indices are written `01 · Brief`, `02 · Method` — two digits,
@@ -130,8 +130,8 @@ leader, and Trophy. Numbers are specific and unrounded (`0.71×`, `312 ms`, `p99
 they are not given. The Method visuals use 100 / 93 / 88 / 84 GPU hours.
 
 **Anti-hype about its own novelty.** The closing line is a statement of intent, not a promise:
-*"Pushing the Pareto frontier of inference."* Status is stated plainly: *"Coming Soon ·
-Bittensor Subnet 10."*
+_"Pushing the Pareto frontier of inference."_ Status is stated plainly: _"Coming Soon ·
+Bittensor Subnet 10."_
 
 ---
 
@@ -163,13 +163,13 @@ non-alphabetic character the brand uses in text is the middot (`·`) as a separa
 
 ### Brand assets in `assets/`
 
-| File | What |
-| --- | --- |
-| `logo.png` | 512px mark — three blue cells on a black tile |
-| `logo-transparent-bg.png` | Same mark, no tile |
-| `logo-text.png` | Horizontal wordmark lockup (2784×750) |
-| `android-chrome-192x192.png` | Small-size mark |
-| `android-chrome-512x512.png` | Large-size mark |
+| File                         | What                                          |
+| ---------------------------- | --------------------------------------------- |
+| `logo.png`                   | 512px mark — three blue cells on a black tile |
+| `logo-transparent-bg.png`    | Same mark, no tile                            |
+| `logo-text.png`              | Horizontal wordmark lockup (2784×750)         |
+| `android-chrome-192x192.png` | Small-size mark                               |
+| `android-chrome-512x512.png` | Large-size mark                               |
 
 The mark **is** the hero grid: a 2×3 field where cells 1, 4 and 5 are filled. Filled cells are
 validated configurations; empty cells are the space still being searched. Reuse the grid at
