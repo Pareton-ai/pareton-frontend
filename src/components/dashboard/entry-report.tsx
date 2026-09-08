@@ -1,4 +1,4 @@
-import { Gauge, ListChecks, ShieldCheck, Timer } from "lucide-react";
+import { Activity, Gauge, ListChecks, ShieldCheck, Timer } from "lucide-react";
 import {
   Panel,
   PanelRow,
@@ -8,6 +8,7 @@ import {
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatScore, truncateDigest } from "@/lib/api/format";
+import { readEngineTimings, type EngineTiming } from "@/lib/api/trace";
 import type { PromptScore, RoundEntryReport } from "@/lib/api/types";
 
 /** Percent for reading, e.g. `+71.94%`. The sign matters: a patch can be slower. */
@@ -17,6 +18,13 @@ function formatPercent(value: number): string {
     maximumFractionDigits: 2,
   });
   return value > 0 ? `+${percent}%` : `${percent}%`;
+}
+
+/** TTFT and inter-token gaps live in milliseconds; a stall past 1s does not. */
+function formatMs(value: number | null): string {
+  if (value === null) return "—";
+  if (value >= 1) return `${value.toFixed(3)}s`;
+  return `${(value * 1000).toFixed(2)}ms`;
 }
 
 function formatSeconds(value: number | null): string {
@@ -125,6 +133,90 @@ function BlobRows({ blob }: { blob: Record<string, unknown> }) {
   );
 }
 
+function TimingRow({ timing }: { timing: EngineTiming }) {
+  return (
+    <tr className="border-t border-border/80">
+      <td className="whitespace-nowrap px-4 py-3 font-mono text-body text-secondary sm:px-5">
+        {timing.requestId}
+      </td>
+      <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-foreground">
+        {formatMs(timing.ttftS)}
+      </td>
+      <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
+        {formatSeconds(timing.totalS)}
+      </td>
+      <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
+        {timing.completionTokens}
+      </td>
+      <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
+        {formatMs(timing.maxItlS)}
+      </td>
+      <td className="px-3 py-3 pr-4 font-mono text-body sm:pr-5">
+        {timing.coalesced ? (
+          <span className="text-rust">
+            {timing.gapCount} gaps for {timing.completionTokens} tokens
+          </span>
+        ) : (
+          <span className="text-muted">—</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * The engine's own replay, request by request.
+ *
+ * The prompt table above says how this entry compared to the baseline; this
+ * says what the engine actually did, which is where a miner looks after a
+ * speedup fails to reproduce.
+ */
+export function EntryReportTrace({ report }: { report: RoundEntryReport }) {
+  const timings = readEngineTimings(report.sla);
+  if (timings.length === 0) return null;
+
+  return (
+    <Panel
+      icon={Activity}
+      title="Request trace"
+      meta={`${timings.length} requests`}
+      bodyClassName=""
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[46rem] border-collapse text-left">
+          <thead>
+            <tr>
+              <th className="px-4 py-3 font-mono text-caption uppercase tracking-caps text-muted sm:px-5">
+                Request
+              </th>
+              <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
+                TTFT
+              </th>
+              <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
+                Total
+              </th>
+              <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
+                Tokens
+              </th>
+              <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
+                Slowest gap
+              </th>
+              <th className="px-3 py-3 pr-4 font-mono text-caption uppercase tracking-caps text-muted sm:pr-5">
+                Stream
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {timings.map((timing) => (
+              <TimingRow key={timing.requestId} timing={timing} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
 export function EntryReportStats({ report }: { report: RoundEntryReport }) {
   const { prompt_summary: summary } = report;
   const tolerance = toleranceLabel(report.scoring_rule);
@@ -221,6 +313,14 @@ export function EntryReportEvidence({ report }: { report: RoundEntryReport }) {
           {typeof report.sla.metrics === "object" &&
           report.sla.metrics !== null ? (
             <BlobRows blob={report.sla.metrics as Record<string, unknown>} />
+          ) : null}
+          {/* How far the repeats of this run drifted from each other. A wide
+              range means the number above is noise, so it belongs on screen. */}
+          {typeof report.sla.cross_rep_variance === "object" &&
+          report.sla.cross_rep_variance !== null ? (
+            <BlobRows
+              blob={report.sla.cross_rep_variance as Record<string, unknown>}
+            />
           ) : null}
         </Panel>
       ) : null}

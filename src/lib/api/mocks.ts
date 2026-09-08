@@ -1268,6 +1268,25 @@ export function mockGetRoundEntryReport(
       role: isBaseline ? "baseline" : "candidate",
       metrics: { output_tokens_per_s: isBaseline ? 24.1 : 41.7 },
       cross_rep_variance: { p99_e2e_ms_rel_range: 0.018 },
+      // Shaped like the real harness output: one gap per token after the
+      // first, most of them near zero with an occasional stall, so the trace
+      // panel has the same distribution to render as production.
+      timings: Object.fromEntries(
+        Array.from({ length: MOCK_PROMPT_COUNT }, (_unused, slot) => {
+          const jitter = mockJitter(entry.id + 2, slot);
+          const tokens = 40 + Math.round(jitter * 8);
+          return [
+            `req-${slot}`,
+            {
+              ttft_s: 0.03 + jitter * 0.03,
+              itl_s: Array.from({ length: tokens - 1 }, (_gap, index) =>
+                index % 7 === 0 ? 0.014 + jitter * 0.002 : 0.00001
+              ),
+              completion_tokens: tokens,
+            },
+          ];
+        })
+      ),
     },
     correctness: isBaseline
       ? null

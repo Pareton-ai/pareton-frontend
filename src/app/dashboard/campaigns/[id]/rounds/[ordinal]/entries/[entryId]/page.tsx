@@ -7,6 +7,7 @@ import {
   EntryReportEvidence,
   EntryReportPrompts,
   EntryReportStats,
+  EntryReportTrace,
 } from "@/components/dashboard/entry-report";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import { EntryStatusChip } from "@/components/dashboard/status-chip";
@@ -156,6 +157,7 @@ async function ReportSections({
       </p>
 
       <EntryReportPrompts report={report} />
+      <EntryReportTrace report={report} />
       <EntryReportEvidence report={report} />
     </div>
   );
