@@ -9,9 +9,12 @@ import type {
   Campaign,
   EntryStatus,
   Leader,
+  PromptScore,
+  PromptSummary,
   Round,
   RoundDetail,
   RoundEntry,
+  RoundEntryReport,
   RoundsPage,
   ScoreProgressEntry,
   ScoreProgressPoint,
@@ -502,6 +505,7 @@ function mockRoundSummary(
     ordinal,
     status,
     void_reason: null,
+    void_detail: null,
     gpu_sku: "H200",
     seed_block: 1000 + ordinal,
     seed_block_hash: "0x" + ordinal.toString(16).padStart(64, "0"),
@@ -552,6 +556,8 @@ const EXTRA_ROUND_SPECS: Array<{
     status: "void",
     over: {
       void_reason: "heartbeat_stale",
+      void_detail:
+        "no heartbeat for over 900s; the pod stopped reporting and the round was reaped",
       leader_changed: null,
       entry_count: 5,
     },
@@ -566,6 +572,7 @@ const EXTRA_ROUND_SPECS: Array<{
     status: "void",
     over: {
       void_reason: "baseline_failed",
+      void_detail: "baseline engine exited before the SLA replay finished",
       leader_changed: null,
       entry_count: 2,
     },
@@ -580,6 +587,7 @@ const EXTRA_ROUND_SPECS: Array<{
     status: "void",
     over: {
       void_reason: "no_surviving_challenger",
+      void_detail: "every challenger disqualified before scoring",
       leader_changed: null,
       entry_count: 4,
     },
@@ -594,6 +602,8 @@ const EXTRA_ROUND_SPECS: Array<{
     status: "void",
     over: {
       void_reason: "leader_infra_failed",
+      void_detail:
+        "leader image pull failed: registry timeout after 3 attempts",
       leader_changed: null,
       entry_count: 3,
     },
@@ -603,6 +613,7 @@ const EXTRA_ROUND_SPECS: Array<{
     status: "void",
     over: {
       void_reason: "pod_failed",
+      void_detail: "provider returned 503 after 3 retries",
       leader_changed: null,
       entry_count: 6,
     },
@@ -621,6 +632,7 @@ const MOCK_ROUNDS: Round[] = [
   }),
   mockRoundSummary(MOCK_ROUND_2, 2, "void", {
     void_reason: "baseline_drift",
+    void_detail: "baseline drifted 0.12 from the pinned reference",
     leader_changed: null,
     entry_count: 2,
   }),
@@ -653,6 +665,7 @@ const HAND_WRITTEN_ROUND_DETAILS: Record<string, RoundDetail> = {
     ordinal: 3,
     status: "complete",
     void_reason: null,
+    void_detail: null,
     gpu_sku: "H200",
     seed_block: 1003,
     seed_block_hash: "0x" + "3".padStart(64, "0"),
@@ -696,6 +709,7 @@ const HAND_WRITTEN_ROUND_DETAILS: Record<string, RoundDetail> = {
     ordinal: 2,
     status: "void",
     void_reason: "baseline_drift",
+    void_detail: "baseline drifted 0.12 from the pinned reference",
     gpu_sku: "H200",
     seed_block: 1002,
     seed_block_hash: "0x" + "2".padStart(64, "0"),
@@ -741,6 +755,7 @@ const HAND_WRITTEN_ROUND_DETAILS: Record<string, RoundDetail> = {
     ordinal: 1,
     status: "complete",
     void_reason: null,
+    void_detail: null,
     gpu_sku: "H200",
     seed_block: 1001,
     seed_block_hash: "0x" + "1".padStart(64, "0"),
@@ -890,6 +905,7 @@ function derivedRoundDetail(row: Round): RoundDetail {
     ordinal: row.ordinal,
     status: row.status,
     void_reason: row.void_reason,
+    void_detail: row.void_detail,
     gpu_sku: row.gpu_sku,
     seed_block: row.seed_block,
     seed_block_hash: row.seed_block_hash,
@@ -1148,6 +1164,122 @@ export function mockGetRound(roundId: string): RoundDetail {
     });
   }
   return detail;
+}
+
+/** Prompts per mock report. The real campaigns sample a few dozen. */
+const MOCK_PROMPT_COUNT = 32;
+
+/**
+ * A believable breakdown for one entry, derived rather than hand-written so
+ * every entry in the mock dashboard opens.
+ *
+ * The spread is built around the entry's own score: most prompts land near it,
+ * and a couple trip the tolerance gate so the zeroed path has something to
+ * render. A gated prompt keeps a 0.0 speedup and a reason, matching what
+ * score.py actually writes.
+ */
+function mockPromptScores(
+  entryId: number,
+  score: number | null
+): PromptScore[] {
+  if (score === null) return [];
+
+  return Array.from({ length: MOCK_PROMPT_COUNT }, (_unused, slot) => {
+    const jitter = mockJitter(entryId + 1, slot);
+    // Two of the 32 land below tolerance, deterministically.
+    const gated = slot === 7 || slot === 19;
+    const baseline = 1.6 + jitter * 0.5;
+
+    if (gated) {
+      return {
+        request_id: `req-${slot}`,
+        speedup: 0,
+        aligned_tokens: 30 + Math.round(jitter * 6),
+        baseline_e2e_s: baseline,
+        candidate_e2e_s: null,
+        reason: "candidate output below tolerance",
+      };
+    }
+
+    const speedup = score + (jitter - 0.5) * 0.12;
+    return {
+      request_id: `req-${slot}`,
+      speedup,
+      aligned_tokens: 44,
+      baseline_e2e_s: baseline,
+      candidate_e2e_s: baseline * (1 - speedup),
+      reason: null,
+    };
+  });
+}
+
+function mockPromptSummary(prompts: PromptScore[]): PromptSummary {
+  const zeroedByReason: Record<string, number> = {};
+  for (const prompt of prompts) {
+    if (prompt.reason === null) continue;
+    zeroedByReason[prompt.reason] = (zeroedByReason[prompt.reason] ?? 0) + 1;
+  }
+  const zeroed = Object.values(zeroedByReason).reduce((a, b) => a + b, 0);
+  return {
+    total: prompts.length,
+    scored: prompts.length - zeroed,
+    zeroed,
+    below_tolerance: zeroedByReason["candidate output below tolerance"] ?? 0,
+    zeroed_by_reason: zeroedByReason,
+  };
+}
+
+export function mockGetRoundEntryReport(
+  roundId: string,
+  entryId: number
+): RoundEntryReport {
+  const round = mockGetRound(roundId);
+  const entry = round.entries.find((row) => row.id === entryId);
+  if (!entry) {
+    throw new ApiError({
+      status: 404,
+      path: `/v1/rounds/${roundId}/entries/${entryId}/report`,
+      detail: "round entry not found",
+    });
+  }
+
+  // The baseline stores its SLA replay, not a comparison against itself.
+  const isBaseline = entry.role === "baseline";
+  const prompts = isBaseline ? [] : mockPromptScores(entry.id, entry.score);
+
+  return {
+    round_id: round.id,
+    round_ordinal: round.ordinal,
+    entry_id: entry.id,
+    submission_id: entry.submission_id,
+    patch_hash: entry.patch_hash,
+    hotkey: entry.hotkey,
+    role: entry.role,
+    status: entry.status,
+    engine_image_ref: entry.engine_image_ref,
+    image_digest: entry.engine_image_ref.split("@")[1] ?? null,
+    score: entry.score,
+    reason: entry.disqualify_reason,
+    engine_crashed: false,
+    scoring_rule: round.scoring_rule,
+    prompt_summary: mockPromptSummary(prompts),
+    prompts,
+    sla: {
+      role: isBaseline ? "baseline" : "candidate",
+      metrics: { output_tokens_per_s: isBaseline ? 24.1 : 41.7 },
+      cross_rep_variance: { p99_e2e_ms_rel_range: 0.018 },
+    },
+    correctness: isBaseline
+      ? null
+      : {
+          verdict:
+            entry.status === "disqualified" ? "fail_correctness" : "pass",
+          mean_logprob: entry.status === "disqualified" ? -3.9 : -0.42,
+          coverage_ratio: 1,
+        },
+    started_at: entry.started_at,
+    completed_at: entry.completed_at,
+  };
 }
 
 export function mockGetScoreProgress(campaignId: string): ScoreProgressSeries {

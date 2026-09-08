@@ -10,9 +10,12 @@ import {
   type CampaignStatus,
   type CustomerSignoff,
   type Leader,
+  type PromptScore,
+  type PromptSummary,
   type Round,
   type RoundDetail,
   type RoundEntry,
+  type RoundEntryReport,
   type RoundsPage,
   type SamplingRule,
   type ScoreProgressEntry,
@@ -342,6 +345,7 @@ function parseRoundSummary(value: unknown): Round {
     ordinal: asNumber(o.ordinal),
     status: asString(o.status),
     void_reason: asNullableString(o.void_reason),
+    void_detail: asNullableString(o.void_detail),
     gpu_sku: asString(o.gpu_sku),
     seed_block: asNumber(o.seed_block),
     seed_block_hash: asString(o.seed_block_hash),
@@ -392,6 +396,7 @@ export function parseRoundDetail(value: unknown): RoundDetail {
     ordinal: asNumber(o.ordinal),
     status: asString(o.status),
     void_reason: asNullableString(o.void_reason),
+    void_detail: asNullableString(o.void_detail),
     gpu_sku: asString(o.gpu_sku),
     seed_block: asNumber(o.seed_block),
     seed_block_hash: asString(o.seed_block_hash),
@@ -414,6 +419,73 @@ export function parseRoundDetail(value: unknown): RoundDetail {
     started_at: asNullableString(o.started_at),
     completed_at: asNullableString(o.completed_at),
     entries: asArray(o.entries).map(parseRoundEntry),
+  };
+}
+
+function parsePromptScore(value: unknown): PromptScore {
+  const o = asRecord(value);
+  return {
+    request_id: asString(o.request_id),
+    // A prompt's speedup is 0.0 when it was gated, which is a real number on
+    // the wire, so the plain numeric fallback is correct here.
+    speedup: asNumber(o.speedup),
+    aligned_tokens: asNumber(o.aligned_tokens),
+    baseline_e2e_s: asNullableNumber(o.baseline_e2e_s),
+    candidate_e2e_s: asNullableNumber(o.candidate_e2e_s),
+    reason: asNullableString(o.reason),
+  };
+}
+
+/** Reason -> count. Non-numeric values are dropped rather than coerced to 0. */
+function parseZeroedByReason(value: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [reason, count] of Object.entries(asRecord(value))) {
+    if (typeof count === "number" && Number.isFinite(count))
+      out[reason] = count;
+  }
+  return out;
+}
+
+function parsePromptSummary(value: unknown): PromptSummary {
+  const o = asRecord(value);
+  return {
+    total: asNumber(o.total),
+    scored: asNumber(o.scored),
+    zeroed: asNumber(o.zeroed),
+    below_tolerance: asNumber(o.below_tolerance),
+    zeroed_by_reason: parseZeroedByReason(o.zeroed_by_reason),
+  };
+}
+
+export function parseRoundEntryReport(value: unknown): RoundEntryReport {
+  const o = asRecord(value);
+  return {
+    round_id: asString(o.round_id),
+    round_ordinal: asNumber(o.round_ordinal),
+    entry_id: asNumber(o.entry_id),
+    submission_id: asNullableString(o.submission_id),
+    patch_hash: asNullableString(o.patch_hash),
+    hotkey: asNullableString(o.hotkey),
+    role: asString(o.role),
+    status: asString(o.status),
+    engine_image_ref: asString(o.engine_image_ref),
+    image_digest: asNullableString(o.image_digest),
+    score: parseScore(o.score),
+    reason: asNullableString(o.reason),
+    engine_crashed: o.engine_crashed === true,
+    scoring_rule: asRecord(o.scoring_rule),
+    prompt_summary: parsePromptSummary(o.prompt_summary),
+    prompts: asArray(o.prompts).map(parsePromptScore),
+    // Harness blobs are rendered as key/value, not modelled field by field:
+    // they carry different keys per campaign profile. null stays null so the
+    // page can tell "not recorded" from "recorded empty".
+    sla: o.sla === null || o.sla === undefined ? null : asRecord(o.sla),
+    correctness:
+      o.correctness === null || o.correctness === undefined
+        ? null
+        : asRecord(o.correctness),
+    started_at: asNullableString(o.started_at),
+    completed_at: asNullableString(o.completed_at),
   };
 }
 

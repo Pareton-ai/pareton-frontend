@@ -355,6 +355,7 @@ export type Round = {
   ordinal: number;
   status: RoundStatus;
   void_reason: string | null;
+  void_detail: string | null;
   gpu_sku: string;
   seed_block: number;
   seed_block_hash: string;
@@ -393,6 +394,7 @@ export type RoundDetail = {
   ordinal: number;
   status: RoundStatus;
   void_reason: string | null;
+  void_detail: string | null;
   gpu_sku: string;
   seed_block: number;
   seed_block_hash: string;
@@ -411,6 +413,62 @@ export type RoundDetail = {
   started_at: string | null;
   completed_at: string | null;
   entries: RoundEntry[];
+};
+
+/**
+ * One prompt's contribution to an entry's score.
+ *
+ * `speedup` is the fraction faster than baseline at the same output token
+ * count: 0.35 is 35 percent faster, negative is slower. A non-null `reason`
+ * means the prompt was forced to 0.0 and measured nothing; a 0.0 with no
+ * reason is a real result meaning baseline speed.
+ */
+export type PromptScore = {
+  request_id: string;
+  speedup: number;
+  aligned_tokens: number;
+  baseline_e2e_s: number | null;
+  candidate_e2e_s: number | null;
+  reason: string | null;
+};
+
+/** Counts over `prompts`, so the headline needs no client-side math. */
+export type PromptSummary = {
+  total: number;
+  scored: number;
+  zeroed: number;
+  below_tolerance: number;
+  zeroed_by_reason: Record<string, number>;
+};
+
+/**
+ * `GET /v1/rounds/{round_id}/entries/{entry_id}/report`.
+ *
+ * The arithmetic behind one entry's score. `prompts` is empty for an entry
+ * that never reached scoring, and for the baseline, which stores its SLA
+ * replay rather than a comparison against itself.
+ */
+export type RoundEntryReport = {
+  round_id: string;
+  round_ordinal: number;
+  entry_id: number;
+  submission_id: string | null;
+  patch_hash: string | null;
+  hotkey: string | null;
+  role: EntryRole;
+  status: EntryStatus;
+  engine_image_ref: string;
+  image_digest: string | null;
+  score: number | null;
+  reason: string | null;
+  engine_crashed: boolean;
+  scoring_rule: Record<string, unknown>;
+  prompt_summary: PromptSummary;
+  prompts: PromptScore[];
+  sla: Record<string, unknown> | null;
+  correctness: Record<string, unknown> | null;
+  started_at: string | null;
+  completed_at: string | null;
 };
 
 export type ScoreProgressEntry = {

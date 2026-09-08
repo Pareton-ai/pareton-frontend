@@ -163,6 +163,35 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/rounds/{round_id}/entries/{entry_id}/report": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Round Entry Report
+     * @description The arithmetic behind one entry's score, prompt by prompt.
+     *
+     *     The round score is the named rule applied to `prompts`, so a miner can
+     *     re-derive it and see which prompts paid and which were gated. Absolute
+     *     seconds are served alongside the ratios: a speedup on its own cannot be
+     *     checked against a local run.
+     *
+     *     The baseline entry stores its SLA replay rather than a comparison, so it
+     *     comes back with `sla` populated and `prompts` empty. It is the reference
+     *     the rest are measured against, not a competitor with a score of its own.
+     */
+    get: operations["round_entry_report_v1_rounds__round_id__entries__entry_id__report_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/weights": {
     parameters: {
       query?: never;
@@ -408,6 +437,47 @@ export interface components {
       already_uploaded: boolean;
     };
     /**
+     * PromptScoreModel
+     * @description One prompt's contribution to an entry's score.
+     *
+     *     `speedup` is the fraction faster than baseline at the same output token
+     *     count: 0.35 is 35 percent faster, and a negative value is slower. A
+     *     non-null `reason` means the prompt was forced to 0.0 and did not measure
+     *     anything; a 0.0 with no reason is a real result meaning baseline speed.
+     */
+    PromptScoreModel: {
+      /** Request Id */
+      request_id: string;
+      /** Speedup */
+      speedup: number;
+      /** Aligned Tokens */
+      aligned_tokens: number;
+      /** Baseline E2E S */
+      baseline_e2e_s?: number | null;
+      /** Candidate E2E S */
+      candidate_e2e_s?: number | null;
+      /** Reason */
+      reason?: string | null;
+    };
+    /**
+     * PromptSummaryModel
+     * @description Counts over `prompts`, so the headline number needs no client math.
+     */
+    PromptSummaryModel: {
+      /** Total */
+      total: number;
+      /** Scored */
+      scored: number;
+      /** Zeroed */
+      zeroed: number;
+      /** Below Tolerance */
+      below_tolerance: number;
+      /** Zeroed By Reason */
+      zeroed_by_reason: {
+        [key: string]: number;
+      };
+    };
+    /**
      * RoundDetailModel
      * @description `GET /v1/rounds/{round_id}`. `phase` is live while the round runs.
      */
@@ -422,6 +492,8 @@ export interface components {
       status: string;
       /** Void Reason */
       void_reason?: string | null;
+      /** Void Detail */
+      void_detail?: string | null;
       /** Gpu Sku */
       gpu_sku: string;
       /** Seed Block */
@@ -496,6 +568,64 @@ export interface components {
       completed_at?: string | null;
     };
     /**
+     * RoundEntryReportModel
+     * @description `GET /v1/rounds/{round_id}/entries/{entry_id}/report`.
+     *
+     *     The arithmetic behind one entry's score. `prompts` is empty for an entry
+     *     that never reached scoring, which is every disqualified and infra-failed
+     *     entry: read `status` and `reason` for why.
+     */
+    RoundEntryReportModel: {
+      /** Round Id */
+      round_id: string;
+      /** Round Ordinal */
+      round_ordinal: number;
+      /** Entry Id */
+      entry_id: number;
+      /** Submission Id */
+      submission_id?: string | null;
+      /** Patch Hash */
+      patch_hash?: string | null;
+      /** Hotkey */
+      hotkey?: string | null;
+      /** Role */
+      role: string;
+      /** Status */
+      status: string;
+      /** Engine Image Ref */
+      engine_image_ref: string;
+      /** Image Digest */
+      image_digest?: string | null;
+      /** Score */
+      score?: number | null;
+      /** Reason */
+      reason?: string | null;
+      /**
+       * Engine Crashed
+       * @default false
+       */
+      engine_crashed: boolean;
+      /** Scoring Rule */
+      scoring_rule: {
+        [key: string]: unknown;
+      };
+      prompt_summary: components["schemas"]["PromptSummaryModel"];
+      /** Prompts */
+      prompts: components["schemas"]["PromptScoreModel"][];
+      /** Sla */
+      sla?: {
+        [key: string]: unknown;
+      } | null;
+      /** Correctness */
+      correctness?: {
+        [key: string]: unknown;
+      } | null;
+      /** Started At */
+      started_at?: string | null;
+      /** Completed At */
+      completed_at?: string | null;
+    };
+    /**
      * RoundSummaryModel
      * @description One row of `GET /v1/campaigns/{campaign_id}/rounds`.
      */
@@ -508,6 +638,8 @@ export interface components {
       status: string;
       /** Void Reason */
       void_reason?: string | null;
+      /** Void Detail */
+      void_detail?: string | null;
       /** Gpu Sku */
       gpu_sku: string;
       /** Seed Block */
@@ -1027,6 +1159,38 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RoundDetailModel"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  round_entry_report_v1_rounds__round_id__entries__entry_id__report_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        round_id: string;
+        entry_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RoundEntryReportModel"];
         };
       };
       /** @description Validation Error */
