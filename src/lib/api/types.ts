@@ -260,6 +260,10 @@ export type Submission = {
   hotkey: string;
   baseline_commit: string;
   retrieval_url: string;
+  /** API deadline after the first qualifying evaluation, not commit time. */
+  patch_reveal_at: string | null;
+  /** Campaign-qualified API redirect; retrieval_url is the public artifact. */
+  patch_download_url: string | null;
   commit_block: number | null;
   committed_at: string;
   engine_image_ref: string | null;
@@ -564,6 +568,16 @@ export function stageIndex(state: string): number {
 /** States after which no further pipeline events are expected. */
 export function isTerminalState(state: string): boolean {
   return state === "scored" || state === "disqualified" || state === "rejected";
+}
+
+/** An entry can settle before its round finalizes and supplies the deadline. */
+export function isAwaitingPatchRevealTime(detail: SubmissionDetail): boolean {
+  return (
+    !detail.submission.retrieval_url &&
+    !detail.submission.patch_reveal_at &&
+    (detail.round?.status === "scored" ||
+      detail.round?.status === "disqualified")
+  );
 }
 
 /** A round still moving: waiting to be seated on a pod, or running on one. */

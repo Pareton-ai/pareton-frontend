@@ -1,8 +1,8 @@
 # Pareton API client (`src/lib/api`)
 
 Server-only read layer for [api.pareton.ai](https://api.pareton.ai). All dashboard
-data is fetched in React Server Components — the browser never talks to the API
-host directly.
+data is fetched in React Server Components or through frontend proxies for the
+build log and patch availability. The browser never talks to the API host directly.
 
 ## Rules
 
@@ -82,9 +82,40 @@ so keep the two in step when artifact hosting moves.
 
 ## Caching
 
-Lists and campaign pages use `revalidate: 30` to match the API's shared
-`Cache-Control`. Submission detail and build-log use `revalidate: 0` so the
-detail page can poll while `latest_state` is non-terminal (PAR-44); the API
-returns `no-store` for those responses until the submission is terminal.
-Prefer section-level `<Suspense>` + degraded empty/unavailable UI over a
-whole-page crash when the API returns 503.
+Lists and campaign pages use `revalidate: 30`. Submission detail and build-log
+use `revalidate: 0`, including terminal submission details. The patch availability
+proxy calls that same uncached `getSubmission` helper and returns `no-store`, so
+a deadline check reaches the backend instead of reusing a withheld URL. The
+backend also returns `no-store` for submissions enrolled in delayed patch reveal.
+
+## Patch reveal contract
+
+The submission detail response carries these fields inside `submission`:
+
+| Field                | Before reveal                                             | After successful publication            |
+| -------------------- | --------------------------------------------------------- | --------------------------------------- |
+| `retrieval_url`      | Empty string                                              | Permanent, unsigned public artifact URL |
+| `patch_reveal_at`    | Null until a qualifying evaluation, then an ISO timestamp | The same deadline                       |
+| `patch_download_url` | Null                                                      | Campaign-qualified API redirect path    |
+
+The parser retains both reveal fields as nullable strings, including when an
+older backend omits them. The UI links to the allowlisted `retrieval_url`, as
+before; it does not turn the relative API redirect path into a frontend route.
+The API remains responsible for eligibility and publication. Client clocks and
+timers never authorize downloads or construct a public URL.
+
+The client patch control calls
+`GET /api/campaigns/{id}/submissions/{hash}/patch`, a frontend JSON proxy, to
+refresh just its availability. The proxy returns `{ url, revealAt, downloadable,
+awaitingRevealTime }`. It validates the campaign/hash and checks the artifact
+allowlist on the server, where `PARETON_ARTIFACT_BASE_URL` is available. It never
+forwards backend error diagnostics. A deadline request may cause the backend to
+create the public copy; there is no scheduled backend publisher in this change.
+
+A future deadline uses one timer, re-armed in chunks for waits beyond the browser
+timeout limit. Hidden tabs pause requests and refresh on return. A measured entry
+with no deadline polls every 15 seconds until round finalization supplies one.
+Publication failures retry at that same cadence while the patch control displays
+a temporary error. Client requests time out after 12 seconds, do not overlap,
+and are aborted on unmount. Once the URL arrives, checks stop. Pipeline polling,
+build-log polling, and campaign-list caching are unchanged.

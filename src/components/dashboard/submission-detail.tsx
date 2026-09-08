@@ -1,7 +1,6 @@
 import {
   Activity,
   Clock,
-  Download,
   GitBranch,
   Timer,
   TrendingUp,
@@ -20,6 +19,7 @@ import {
 import { PipelineChip } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
 import { isSafeArtifactUrl } from "@/lib/api/artifacts";
+import { PatchArtifact } from "./patch-artifact";
 import {
   elapsedBetween,
   formatDuration,
@@ -315,33 +315,6 @@ export function SubmissionStats({
   );
 }
 
-function PatchArtifact({ url }: { url: string }) {
-  if (!url) {
-    return <span className="text-muted">—</span>;
-  }
-
-  // Miner-supplied URL that failed validation: show it, never link it.
-  if (!isSafeArtifactUrl(url)) {
-    return (
-      <span className="break-all text-muted" title={url}>
-        {truncateMiddle(url, 20, 12)}
-      </span>
-    );
-  }
-
-  return (
-    <a
-      href={url}
-      rel="noreferrer nofollow"
-      target="_blank"
-      className="inline-flex items-center gap-1.5 text-secondary underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-    >
-      <Download className="size-3 shrink-0" aria-hidden />
-      Download diff
-    </a>
-  );
-}
-
 /**
  * Sidebar column: who submitted the patch and what it was built from. Reference
  * material, so it sits beside the timeline rather than above it.
@@ -349,9 +322,11 @@ function PatchArtifact({ url }: { url: string }) {
 export function SubmissionMetadata({
   submission,
   campaign,
+  awaitingRevealTime,
 }: {
   submission: SubmissionDetail["submission"];
   campaign: Campaign | null;
+  awaitingRevealTime: boolean;
 }) {
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
@@ -384,7 +359,17 @@ export function SubmissionMetadata({
 
       <Panel icon={GitBranch} title="Build inputs">
         <PanelRow label="Patch artifact">
-          <PatchArtifact url={submission.retrieval_url} />
+          <PatchArtifact
+            key={`${submission.id}:${submission.retrieval_url}:${submission.patch_reveal_at}:${awaitingRevealTime}`}
+            campaignId={submission.campaign_id}
+            patchHash={submission.patch_hash}
+            initial={{
+              url: submission.retrieval_url,
+              downloadable: isSafeArtifactUrl(submission.retrieval_url),
+              revealAt: submission.patch_reveal_at,
+              awaitingRevealTime,
+            }}
+          />
         </PanelRow>
         <PanelRow label="Baseline commit">
           <CopyableMono

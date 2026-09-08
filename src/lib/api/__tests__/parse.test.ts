@@ -38,6 +38,7 @@ import {
   getRunningSubmissionJob,
   getSubmissionStateMeta,
   HEARTBEAT_STALE_AFTER_MS,
+  isAwaitingPatchRevealTime,
   isFailedState,
   isLiveCampaignPage,
   isLiveSubmissionRow,
@@ -845,5 +846,67 @@ describe("parseCampaign correctness thresholds", () => {
         },
       }).bench.correctness
     ).toBeNull();
+  });
+});
+
+describe("patch reveal contract", () => {
+  const revealAt = "2026-09-09T12:00:00+00:00";
+  const downloadUrl = "/v1/campaigns/campaign/submissions/sha256:abc/patch";
+
+  it("preserves the API deadline and redirect without inventing a public URL", () => {
+    const { submission } = parseSubmissionDetail({
+      submission: {
+        retrieval_url: "",
+        patch_reveal_at: revealAt,
+        patch_download_url: downloadUrl,
+      },
+    });
+    expect(submission.retrieval_url).toBe("");
+    expect(submission.patch_reveal_at).toBe(revealAt);
+    expect(submission.patch_download_url).toBe(downloadUrl);
+  });
+
+  it("accepts legacy responses without reveal metadata", () => {
+    const { submission } = parseSubmissionDetail(rejected);
+    expect(submission.retrieval_url).toBe(rejected.submission.retrieval_url);
+    expect(submission.patch_reveal_at).toBeNull();
+    expect(submission.patch_download_url).toBeNull();
+  });
+
+  it.each(["scored", "disqualified"])(
+    "keeps refreshing a %s entry until the round supplies its deadline",
+    (status) => {
+      const detail = parseSubmissionDetail({
+        submission: { retrieval_url: "", patch_reveal_at: null },
+        latest_state: status,
+        round: { round_id: "round", status },
+      });
+      expect(isAwaitingPatchRevealTime(detail)).toBe(true);
+      detail.submission.patch_reveal_at = revealAt;
+      expect(isAwaitingPatchRevealTime(detail)).toBe(false);
+      detail.submission.patch_reveal_at = null;
+      detail.submission.retrieval_url = "https://example.com/public.diff";
+      expect(isAwaitingPatchRevealTime(detail)).toBe(false);
+    }
+  );
+
+  it.each(["rejected", "disqualified"])(
+    "does not wait for an unevaluated terminal submission (%s)",
+    (latest_state) => {
+      const detail = parseSubmissionDetail({
+        submission: { retrieval_url: "" },
+        latest_state,
+        round: null,
+      });
+      expect(isAwaitingPatchRevealTime(detail)).toBe(false);
+    }
+  );
+
+  it("does not treat infrastructure failure as a qualifying evaluation", () => {
+    const detail = parseSubmissionDetail({
+      submission: { retrieval_url: "" },
+      round: { round_id: "round", status: "infra_failed" },
+    });
+    expect(isAwaitingPatchRevealTime(detail)).toBe(false);
   });
 });
