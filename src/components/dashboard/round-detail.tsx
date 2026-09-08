@@ -101,6 +101,13 @@ export function RoundVoidNotice({ round }: { round: RoundDetail }) {
       <p className="mt-2 break-words font-mono text-body text-rust">
         {round.void_reason?.replaceAll("_", " ") ?? "No reason recorded."}
       </p>
+      {/* The reason is a bare code; the detail is the sentence behind it.
+          Rounds voided before it was recorded carry none. */}
+      {round.void_detail ? (
+        <p className="mt-1.5 max-w-2xl break-words font-mono text-body text-secondary">
+          {round.void_detail}
+        </p>
+      ) : null}
       <p className="mt-2 max-w-2xl text-body leading-relaxed text-secondary">
         A void round scores nothing and leaves the leader where it was. The
         entries below ran, but their results do not count.

@@ -4,7 +4,9 @@ import {
   campaignListHref,
   clampedCampaignListHref,
   parseCampaignTab,
+  parseEntryId,
   parseRoundOrdinal,
+  roundEntryReportHref,
   roundHref,
   submissionHref,
   blockExplorerHref,
@@ -153,5 +155,32 @@ describe("clampedCampaignListHref tabs", () => {
         { pageSize: 10, roundsTotal: 12, submissionsTotal: 4 }
       )
     ).toBe(campaignListHref("c1", { page: 2, tab: "leaders" }));
+  });
+});
+
+describe("roundEntryReportHref", () => {
+  it("hangs the entry off its round", () => {
+    expect(roundEntryReportHref("mock-campaign", 12, 3)).toBe(
+      `${roundHref("mock-campaign", 12)}/entries/3`
+    );
+  });
+
+  it("encodes a campaign id with a slash", () => {
+    expect(roundEntryReportHref("a/b", 1, 2)).toContain("a%2Fb");
+  });
+});
+
+describe("parseEntryId", () => {
+  it("round-trips an id roundEntryReportHref wrote", () => {
+    expect(parseEntryId("3")).toBe(3);
+    expect(parseEntryId("1")).toBe(1);
+  });
+
+  it("rejects anything that is not a plain positive integer", () => {
+    // Entry ids count from 1, so these name no entry and must 404 before
+    // reaching the API rather than being coerced.
+    for (const bad of ["0", "01", "-1", "1e3", "1.5", "12abc", "", " 1"]) {
+      expect(parseEntryId(bad)).toBeNull();
+    }
   });
 });

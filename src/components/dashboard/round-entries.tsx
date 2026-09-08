@@ -9,7 +9,8 @@ import {
   truncateDigest,
   truncateMiddle,
 } from "@/lib/api/format";
-import { submissionHref } from "@/lib/routes";
+import { monoLinkClassName } from "@/components/ui/mono-link";
+import { roundEntryReportHref, submissionHref } from "@/lib/routes";
 import type { RoundEntry } from "@/lib/api/types";
 
 function EntryDuration({
@@ -29,10 +30,12 @@ function EntryDuration({
 
 function EntryRow({
   campaignId,
+  ordinal,
   entry,
   nowIso,
 }: {
   campaignId: string;
+  ordinal: number;
   entry: RoundEntry;
   nowIso: string;
 }) {
@@ -105,6 +108,17 @@ function EntryRow({
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
         <EntryDuration entry={entry} nowIso={nowIso} />
       </td>
+      <td className="whitespace-nowrap px-3 py-3.5 pr-4 text-right sm:pr-5">
+        <Link
+          href={roundEntryReportHref(campaignId, ordinal, entry.id)}
+          className={monoLinkClassName(
+            { tone: "muted" },
+            "underline decoration-border underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          )}
+        >
+          Breakdown
+        </Link>
+      </td>
     </tr>
   );
 }
@@ -117,10 +131,12 @@ function EntryRow({
  */
 export function RoundEntries({
   campaignId,
+  ordinal,
   entries,
   nowIso,
 }: {
   campaignId: string;
+  ordinal: number;
   entries: readonly RoundEntry[];
   nowIso: string;
 }) {
@@ -151,6 +167,9 @@ export function RoundEntries({
                 <th className="px-3 py-2.5 font-normal">Status</th>
                 <th className="px-3 py-2.5 font-normal">Score</th>
                 <th className="px-3 py-2.5 font-normal">Duration</th>
+                <th className="px-3 py-2.5 pr-4 text-right font-normal sm:pr-5">
+                  <span className="sr-only">Score breakdown</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -158,6 +177,7 @@ export function RoundEntries({
                 <EntryRow
                   key={entry.id}
                   campaignId={campaignId}
+                  ordinal={ordinal}
                   entry={entry}
                   nowIso={nowIso}
                 />

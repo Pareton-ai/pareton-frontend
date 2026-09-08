@@ -159,6 +159,7 @@ async function RoundSections({
           <div className="mt-8">
             <RoundEntries
               campaignId={campaignId}
+              ordinal={round.ordinal}
               entries={round.entries}
               nowIso={now}
             />

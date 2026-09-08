@@ -104,6 +104,33 @@ export function roundHref(campaignId: string, ordinal: number): string {
 }
 
 /**
+ * One entry's score breakdown inside a round.
+ *
+ * Addressed by `round_entries.id`, which is what the report endpoint takes.
+ * Unlike the round itself there is no public alias for it, so the numeric id
+ * is the URL.
+ */
+export function roundEntryReportHref(
+  campaignId: string,
+  ordinal: number,
+  entryId: number
+): string {
+  return `${roundHref(campaignId, ordinal)}/entries/${entryId}`;
+}
+
+/**
+ * Read an `entries/[entryId]` route param back into an entry id.
+ *
+ * Ids count from 1, so anything that is not a plain decimal integer names no
+ * entry and must 404 rather than reaching the API.
+ */
+export function parseEntryId(param: string): number | null {
+  if (!/^[1-9][0-9]*$/.test(param)) return null;
+  const entryId = Number.parseInt(param, 10);
+  return Number.isSafeInteger(entryId) ? entryId : null;
+}
+
+/**
  * Read a `rounds/[ordinal]` route param back into an ordinal.
  *
  * Ordinals count from 1, so anything that is not a plain decimal integer

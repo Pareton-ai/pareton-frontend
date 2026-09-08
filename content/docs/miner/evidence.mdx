@@ -10,7 +10,7 @@ Every submission produces artifacts you can inspect after the run. Nothing is th
 - **Patch:** uploaded to S3. This is the exact diff bytes the gates and build used.
 - **Engine image:** the built engine image, pushed to GHCR and pinned by digest. This is the artifact the benchmark actually ran.
 - **Build log:** the durable output of the hermetic build. Fetched with the build log endpoint (see below).
-- **Round evidence bundle:** the harness output for the whole round, saved to S3. It holds correctness grades and SLA timings for every image that ran on that pod. The public API does not return this tarball (`evidence_s3_url` and the per-entry `report` are not selected).
+- **Round evidence bundle:** the harness output for the whole round, saved to S3. It holds correctness grades and SLA timings for every image that ran on that pod. The public API does not return this tarball (`evidence_s3_url` is not selected), but the scoring half of it is served per entry: see [the score breakdown](#check-your-score) below.
 
 ## Inspect a run
 
@@ -24,6 +24,27 @@ Use the campaign-scoped path (preferred). The short path returns **409** when th
 Both return **404** when the submission or its log does not exist.
 
 A `rejected` submission never ran, so it has no round entry. A `disqualified` or `scored` submission ran; the dashboard shows that entry's status and reason.
+
+## Check your score
+
+A round score is one number, and the arithmetic behind it is public:
+
+`GET /v1/rounds/{round_id}/entries/{entry_id}/report`
+
+It returns one row per prompt: the speedup, the token count both engines were
+compared at, the baseline and candidate end-to-end times in seconds, and a
+reason for any prompt that scored nothing. `prompt_summary` counts how many
+prompts scored and how many fell under the tolerance bar.
+
+Use it when a local measurement disagrees with the dashboard. A gap is usually
+a few prompts under tolerance, which score nothing and pull the median down.
+The absolute seconds are there so you can compare against your own run rather
+than only the ratio. The environment block in the round evidence also records
+the validator pod's CPU, cores and cgroup quota, which is the other common
+source of a gap: this workload is short generations, so CPU overhead moves the
+numbers as much as the GPU does.
+
+Each entry links to its breakdown from the round page on the dashboard.
 
 ## How correctness is graded
 
