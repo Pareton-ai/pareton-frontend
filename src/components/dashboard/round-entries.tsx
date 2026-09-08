@@ -9,7 +9,6 @@ import {
   truncateDigest,
   truncateMiddle,
 } from "@/lib/api/format";
-import { monoLinkClassName } from "@/components/ui/mono-link";
 import { roundEntryReportHref, submissionHref } from "@/lib/routes";
 import type { RoundEntry } from "@/lib/api/types";
 
@@ -97,27 +96,25 @@ function EntryRow({
         </span>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
-        {/* Null is "no score", never zero: 0.0 means the image matched
-            baseline speed, which is a real result. */}
-        {entry.score === null ? (
-          <span className="text-muted">—</span>
-        ) : (
-          <span className="tabular-nums">{formatScore(entry.score)}</span>
-        )}
+        {/* The score is the claim, so it is also the link to the arithmetic
+            behind it. A row that never scored links from the same cell: its
+            reason and correctness grades are what its miner came to read. */}
+        <Link
+          href={roundEntryReportHref(campaignId, ordinal, entry.id)}
+          aria-label={`Score breakdown for ${entry.role.replaceAll("_", " ")}`}
+          className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {/* Null is "no score", never zero: 0.0 means the image matched
+              baseline speed, which is a real result. */}
+          {entry.score === null ? (
+            <span className="text-muted">—</span>
+          ) : (
+            <span className="tabular-nums">{formatScore(entry.score)}</span>
+          )}
+        </Link>
       </td>
       <td className="whitespace-nowrap px-3 py-3.5 font-mono text-body text-secondary">
         <EntryDuration entry={entry} nowIso={nowIso} />
-      </td>
-      <td className="whitespace-nowrap px-3 py-3.5 pr-4 text-right sm:pr-5">
-        <Link
-          href={roundEntryReportHref(campaignId, ordinal, entry.id)}
-          className={monoLinkClassName(
-            { tone: "muted" },
-            "underline decoration-border underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          )}
-        >
-          Breakdown
-        </Link>
       </td>
     </tr>
   );
@@ -167,9 +164,6 @@ export function RoundEntries({
                 <th className="px-3 py-2.5 font-normal">Status</th>
                 <th className="px-3 py-2.5 font-normal">Score</th>
                 <th className="px-3 py-2.5 font-normal">Duration</th>
-                <th className="px-3 py-2.5 pr-4 text-right font-normal sm:pr-5">
-                  <span className="sr-only">Score breakdown</span>
-                </th>
               </tr>
             </thead>
             <tbody>
