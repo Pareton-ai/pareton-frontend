@@ -330,11 +330,17 @@ async function SubmissionsSection({
       campaignId={id}
       view={view}
       sort={query.sort}
+      size={query.size}
       pageHref={(next) => campaignListHref(id, { ...query, submissions: next })}
       // Changing the sort returns to page 1: staying on page 4 of a reordered
       // list shows rows the reader never asked to skip past.
       sortHref={(next) =>
         campaignListHref(id, { ...query, sort: next, submissions: 1 })
+      }
+      // Same for page size: row 11 of a 10-row page is row 11 of a 25-row
+      // page, so the old page number no longer points at the same place.
+      sizeHref={(next) =>
+        campaignListHref(id, { ...query, size: next, submissions: 1 })
       }
     />
   );

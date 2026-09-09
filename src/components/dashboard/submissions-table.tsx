@@ -9,7 +9,9 @@ import { TablePageControls } from "@/components/dashboard/table-page-controls";
 import { EmptyState } from "@/components/ui/empty-state";
 import { submissionHref } from "@/lib/routes";
 import {
+  PAGE_SIZES,
   SUBMISSION_SORTS,
+  type PageSize,
   type SubmissionSort,
   type SubmissionsView,
 } from "@/lib/api/submissions-view";
@@ -53,14 +55,18 @@ export function SubmissionsTable({
   campaignId,
   view,
   sort,
+  size,
   pageHref,
   sortHref,
+  sizeHref,
 }: {
   campaignId: string;
   view: SubmissionsView;
   sort: SubmissionSort;
+  size: PageSize;
   pageHref: (page: number) => string;
   sortHref: (sort: SubmissionSort) => string;
+  sizeHref: (size: PageSize) => string;
 }) {
   const showingFrom = view.total === 0 ? 0 : view.offset + 1;
   const showingTo = Math.min(view.offset + view.rows.length, view.total);
@@ -69,6 +75,11 @@ export function SubmissionsTable({
     value,
     label: SORT_LABELS[value],
     href: sortHref(value),
+  }));
+  const sizeOptions: FilterOption[] = PAGE_SIZES.map((value) => ({
+    value: String(value),
+    label: String(value),
+    href: sizeHref(value),
   }));
 
   return (
@@ -87,6 +98,11 @@ export function SubmissionsTable({
 
       <TableFilterBar>
         <FilterGroup label="Sort" options={sortOptions} active={sort} />
+        <FilterGroup
+          label="Per page"
+          options={sizeOptions}
+          active={String(size)}
+        />
       </TableFilterBar>
 
       {/* contain-paint keeps transformed row overlays from expanding the page;
