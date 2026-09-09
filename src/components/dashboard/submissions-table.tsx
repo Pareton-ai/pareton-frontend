@@ -1,11 +1,26 @@
 import { Layers } from "lucide-react";
 import { SubmissionRow } from "@/components/dashboard/submission-row";
+import {
+  FilterGroup,
+  TableFilterBar,
+  type FilterOption,
+} from "@/components/dashboard/table-filter-bar";
 import { TablePageControls } from "@/components/dashboard/table-page-controls";
 import { EmptyState } from "@/components/ui/empty-state";
 import { submissionHref } from "@/lib/routes";
-import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
+import {
+  SUBMISSION_SORTS,
+  type SubmissionSort,
+  type SubmissionsView,
+} from "@/lib/api/submissions-view";
+import type { CampaignStatus } from "@/lib/api/types";
 
 export const PAGE_SIZE = 10;
+
+const SORT_LABELS: Record<SubmissionSort, string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+};
 
 export function EmptySubmissions({ status }: { status: CampaignStatus }) {
   const copy =
@@ -36,18 +51,25 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
  */
 export function SubmissionsTable({
   campaignId,
-  page,
-  data,
+  view,
+  sort,
   pageHref,
+  sortHref,
 }: {
   campaignId: string;
-  page: number;
-  data: SubmissionsPage;
+  view: SubmissionsView;
+  sort: SubmissionSort;
   pageHref: (page: number) => string;
+  sortHref: (sort: SubmissionSort) => string;
 }) {
-  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  const showingFrom = data.offset + 1;
-  const showingTo = Math.min(data.offset + data.submissions.length, data.total);
+  const showingFrom = view.total === 0 ? 0 : view.offset + 1;
+  const showingTo = Math.min(view.offset + view.rows.length, view.total);
+
+  const sortOptions: FilterOption[] = SUBMISSION_SORTS.map((value) => ({
+    value,
+    label: SORT_LABELS[value],
+    href: sortHref(value),
+  }));
 
   return (
     <section aria-label="Submissions" className="border border-border">
@@ -59,9 +81,13 @@ export function SubmissionsTable({
           </h2>
         </div>
         <p className="font-mono text-body text-muted">
-          {showingFrom}–{showingTo} of {data.total}
+          {showingFrom}–{showingTo} of {view.total}
         </p>
       </div>
+
+      <TableFilterBar>
+        <FilterGroup label="Sort" options={sortOptions} active={sort} />
+      </TableFilterBar>
 
       {/* contain-paint keeps transformed row overlays from expanding the page;
           the min-width table still scrolls inside this pane. */}
@@ -81,7 +107,7 @@ export function SubmissionsTable({
             </tr>
           </thead>
           <tbody>
-            {data.submissions.map((row) => (
+            {view.rows.map((row) => (
               <SubmissionRow
                 key={row.patch_hash}
                 href={submissionHref(campaignId, row.patch_hash)}
@@ -93,8 +119,8 @@ export function SubmissionsTable({
       </div>
 
       <TablePageControls
-        page={page}
-        totalPages={totalPages}
+        page={view.page}
+        totalPages={view.totalPages}
         pageHref={pageHref}
         label="Submissions pages"
       />

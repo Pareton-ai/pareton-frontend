@@ -36,6 +36,7 @@ import type {
   RoundsPage,
   ScoreProgressSeries,
   SubmissionDetail,
+  SubmissionRow,
   SubmissionsPage,
 } from "@/lib/api/types";
 
@@ -151,6 +152,40 @@ export async function getLeader(campaignId: string): Promise<Leader | null> {
     if (isLeaderVacant(error)) return null;
     throw error;
   }
+}
+
+/**
+ * Every submission in a campaign, newest page first.
+ *
+ * The table sorts and filters over the whole campaign, and the API offers
+ * neither, so the set has to be here in full. `limit` caps at 200 server side,
+ * so this pages; the ceiling stops a runaway campaign from pulling forever.
+ */
+const SUBMISSIONS_FETCH_LIMIT = 200;
+const SUBMISSIONS_FETCH_CEILING = 2000;
+
+export async function getAllCampaignSubmissions(
+  campaignId: string
+): Promise<{ rows: SubmissionRow[]; total: number }> {
+  const rows: SubmissionRow[] = [];
+  let offset = 0;
+  let total = 0;
+
+  for (;;) {
+    const page = await getCampaignSubmissions(campaignId, {
+      limit: SUBMISSIONS_FETCH_LIMIT,
+      offset,
+    });
+    total = page.total;
+    rows.push(...page.submissions);
+    offset += page.submissions.length;
+
+    if (page.submissions.length === 0) break;
+    if (offset >= page.total) break;
+    if (offset >= SUBMISSIONS_FETCH_CEILING) break;
+  }
+
+  return { rows, total };
 }
 
 export async function getRounds(

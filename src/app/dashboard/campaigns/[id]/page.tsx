@@ -19,7 +19,7 @@ import {
 } from "@/components/dashboard/submissions-table";
 import {
   getCampaign,
-  getCampaignSubmissions,
+  getAllCampaignSubmissions,
   getLeader,
   getRounds,
   getScoreProgress,
@@ -32,6 +32,14 @@ import {
   type CampaignTab,
 } from "@/lib/routes";
 import {
+  buildSubmissionsView,
+  parseOutcome,
+  parsePageSize,
+  parseSubmissionSort,
+  type PageSize,
+  type SubmissionSort,
+} from "@/lib/api/submissions-view";
+import {
   isLiveCampaignPage,
   type Campaign,
   type Leader,
@@ -42,7 +50,14 @@ import {
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string; submissions?: string; tab?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    submissions?: string;
+    tab?: string;
+    sort?: string;
+    outcome?: string;
+    size?: string;
+  }>;
 };
 
 /** Query state the page carries between tabs, so switching keeps your place. */
@@ -50,6 +65,10 @@ type PageQuery = {
   page: number;
   submissions: number;
   tab: CampaignTab;
+  /** Submissions-table view state, carried on every campaign link. */
+  sort: SubmissionSort;
+  outcome: string;
+  size: PageSize;
 };
 
 function parsePage(value: string | undefined): number {
@@ -92,18 +111,30 @@ async function loadRounds(
   }
 }
 
+/**
+ * Every submission in the campaign, not one page of them.
+ *
+ * The table sorts and filters across the whole set, and the API does neither,
+ * so the page needs all of it. It also completes the stats tile, which hides
+ * its pass/fail mix whenever the rows it holds are only part of the total.
+ */
 async function loadSubmissions(
-  id: string,
-  page: number
+  id: string
 ): Promise<
   { ok: true; data: SubmissionsPage } | { ok: false; error: unknown }
 > {
   try {
-    const data = await getCampaignSubmissions(id, {
-      limit: PAGE_SIZE,
-      offset: (safePageNumber(page) - 1) * PAGE_SIZE,
-    });
-    return { ok: true, data };
+    const { rows, total } = await getAllCampaignSubmissions(id);
+    return {
+      ok: true,
+      data: {
+        campaign_id: id,
+        total,
+        limit: rows.length,
+        offset: 0,
+        submissions: rows,
+      },
+    };
   } catch (error) {
     return { ok: false, error };
   }
@@ -183,7 +214,7 @@ async function CampaignPollGate({
   const [campaignResult, roundsResult, submissionsResult] = await Promise.all([
     loadCampaign(id),
     loadRounds(id, query.page),
-    loadSubmissions(id, query.submissions),
+    loadSubmissions(id),
   ]);
   if (!campaignResult.ok) {
     return <LiveCampaignPoll enabled />;
@@ -201,16 +232,10 @@ async function CampaignPollGate({
   );
 }
 
-async function CampaignStatsSection({
-  id,
-  query,
-}: {
-  id: string;
-  query: PageQuery;
-}) {
+async function CampaignStatsSection({ id }: { id: string }) {
   const [campaignResult, submissionsResult] = await Promise.all([
     loadCampaign(id),
-    loadSubmissions(id, query.submissions),
+    loadSubmissions(id),
   ]);
   if (!campaignResult.ok) {
     if (campaignResult.kind === "not_found") notFound();
@@ -233,7 +258,7 @@ async function CampaignTabsSection({
 }) {
   const [roundsResult, submissionsResult] = await Promise.all([
     loadRounds(id, query.page),
-    loadSubmissions(id, query.submissions),
+    loadSubmissions(id),
   ]);
   return (
     <CampaignTabs
@@ -282,7 +307,7 @@ async function SubmissionsSection({
 }) {
   const [campaignResult, submissionsResult] = await Promise.all([
     loadCampaign(id),
-    loadSubmissions(id, query.submissions),
+    loadSubmissions(id),
   ]);
   if (!campaignResult.ok) {
     if (campaignResult.kind === "not_found") notFound();
@@ -291,16 +316,26 @@ async function SubmissionsSection({
   if (!submissionsResult.ok) {
     return sectionUnavailable(submissionsResult.error, "Submissions");
   }
-  const { data } = submissionsResult;
-  if (data.total === 0) {
+  if (submissionsResult.data.total === 0) {
     return <EmptySubmissions status={campaignResult.campaign.status} />;
   }
+  const view = buildSubmissionsView(submissionsResult.data.submissions, {
+    page: safePageNumber(query.submissions),
+    size: query.size,
+    sort: query.sort,
+    outcome: query.outcome,
+  });
   return (
     <SubmissionsTable
       campaignId={id}
-      page={safePageNumber(query.submissions)}
-      data={data}
+      view={view}
+      sort={query.sort}
       pageHref={(next) => campaignListHref(id, { ...query, submissions: next })}
+      // Changing the sort returns to page 1: staying on page 4 of a reordered
+      // list shows rows the reader never asked to skip past.
+      sortHref={(next) =>
+        campaignListHref(id, { ...query, sort: next, submissions: 1 })
+      }
     />
   );
 }
@@ -354,17 +389,32 @@ async function redirectIfPagersOutOfRange(id: string, query: PageQuery) {
   if (query.page <= 1 && query.submissions <= 1) return;
   const [roundsResult, submissionsResult] = await Promise.all([
     loadRounds(id, query.page),
-    loadSubmissions(id, query.submissions),
+    loadSubmissions(id),
   ]);
+  const submissionsTotal = submissionsResult.ok
+    ? buildSubmissionsView(submissionsResult.data.submissions, {
+        page: 1,
+        size: query.size,
+        sort: query.sort,
+        outcome: query.outcome,
+      }).total
+    : null;
   const href = clampedCampaignListHref(
     id,
-    { page: query.page, submissions: query.submissions, tab: query.tab },
+    {
+      page: query.page,
+      submissions: query.submissions,
+      tab: query.tab,
+      sort: query.sort,
+      outcome: query.outcome,
+      size: query.size,
+    },
     {
       pageSize: PAGE_SIZE,
+      roundsPageSize: PAGE_SIZE,
+      submissionsPageSize: query.size,
       roundsTotal: roundsResult.ok ? roundsResult.data.total : null,
-      submissionsTotal: submissionsResult.ok
-        ? submissionsResult.data.total
-        : null,
+      submissionsTotal,
     }
   );
   if (href) redirect(href);
@@ -380,6 +430,9 @@ export default async function CampaignPage({
     page: parsePage(sp.page),
     submissions: parsePage(sp.submissions),
     tab: parseCampaignTab(sp.tab),
+    sort: parseSubmissionSort(sp.sort),
+    outcome: parseOutcome(sp.outcome),
+    size: parsePageSize(sp.size),
   };
   await redirectIfPagersOutOfRange(id, query);
 
@@ -409,7 +462,7 @@ export default async function CampaignPage({
             <div className="h-28 animate-pulse border border-border bg-border/10" />
           }
         >
-          <CampaignStatsSection id={id} query={query} />
+          <CampaignStatsSection id={id} />
         </Suspense>
 
         <div className="space-y-6">
