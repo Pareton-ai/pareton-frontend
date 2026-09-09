@@ -40,11 +40,20 @@ outcome. There is no separate verdict field.
 | ------------------------------------------------ | ------------------------------------------ |
 | `GET /v1/campaigns/{campaign_id}/rounds`         | Rounds, newest ordinal first, paginated    |
 | `GET /v1/rounds/{round_id}`                      | One round, every entry, and the live phase |
+| `GET /v1/rounds/{id}/entries/{entry_id}/report`  | One entry's per-prompt score breakdown     |
 | `GET /v1/campaigns/{campaign_id}/leader`         | The seated leader                          |
 | `GET /v1/campaigns/{campaign_id}/score-progress` | One point per ordinal, for charting        |
 
 `GET /v1/campaigns/{campaign_id}/leader` returns **404** when the crown is
 vacant. A vacant crown has no row, so this is the expected answer, not an error.
+
+The report endpoint is how you check a score rather than take it on trust. It
+returns each prompt's speedup, the token count both engines were compared at,
+both absolute end-to-end times, and the gate reason for any prompt that scored
+nothing. `prompt_summary` counts how many prompts scored and how many the
+tolerance gate zeroed. The baseline entry stores its SLA replay rather than a
+comparison against itself, so it returns `prompts: []` with `sla` populated.
+An entry that never reached scoring returns `prompts: []` and its `reason`.
 
 ## Weights
 
@@ -59,8 +68,9 @@ settled ones.
 
 ## What the API never returns
 
-Evidence stays behind its gate. `evidence_s3_url` and the raw round entry report
-are never selected, on any endpoint.
+Evidence stays behind its gate: `evidence_s3_url` is never selected, on any
+endpoint. The per-entry report is served, but only through the report endpoint
+above, so the round detail stays small enough to poll.
 
 Identity is the hotkey. List responses truncate it to 16 characters. Detail
 responses carry it in full.

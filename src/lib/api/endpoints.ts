@@ -7,6 +7,7 @@ import {
   mockGetCampaign,
   mockGetLeader,
   mockGetRound,
+  mockGetRoundEntryReport,
   mockGetScoreProgress,
   mockGetSubmission,
   mockGetSubmissionBuildLog,
@@ -19,6 +20,7 @@ import {
   parseCampaigns,
   parseLeader,
   parseRoundDetail,
+  parseRoundEntryReport,
   parseRoundsPage,
   parseScoreProgress,
   parseSubmissionDetail,
@@ -30,6 +32,7 @@ import type {
   CampaignStatus,
   Leader,
   RoundDetail,
+  RoundEntryReport,
   RoundsPage,
   ScoreProgressSeries,
   SubmissionDetail,
@@ -219,6 +222,31 @@ export async function getRound(roundId: string): Promise<RoundDetail> {
     }
   );
   return parseRoundDetail(data);
+}
+
+/**
+ * The per-prompt arithmetic behind one entry's score.
+ *
+ * Its own request rather than part of the round: a round holds one report per
+ * entry and each carries every prompt's timings, so the round detail the
+ * dashboard polls hardest stays small.
+ */
+export async function getRoundEntryReport(
+  roundId: string,
+  entryId: number
+): Promise<RoundEntryReport> {
+  if (apiMocksEnabled()) return mockGetRoundEntryReport(roundId, entryId);
+
+  const data = await apiFetch<unknown>(
+    `/v1/rounds/${encodeURIComponent(roundId)}/entries/${encodeURIComponent(
+      String(entryId)
+    )}/report`,
+    {
+      revalidate: LIVE_REVALIDATE,
+      tags: ["rounds", `round:${roundId}`],
+    }
+  );
+  return parseRoundEntryReport(data);
 }
 
 export async function getScoreProgress(

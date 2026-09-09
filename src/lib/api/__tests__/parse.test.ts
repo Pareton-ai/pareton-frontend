@@ -19,6 +19,7 @@ import {
   parseCampaign,
   parseLeader,
   parseRoundDetail,
+  parseRoundEntryReport,
   parseRoundsPage,
   parseScore,
   parseScoreProgress,
@@ -908,5 +909,125 @@ describe("patch reveal contract", () => {
       round: { round_id: "round", status: "infra_failed" },
     });
     expect(isAwaitingPatchRevealTime(detail)).toBe(false);
+  });
+});
+
+describe("parseRoundEntryReport", () => {
+  const scored = {
+    round_id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    round_ordinal: 12,
+    entry_id: 2,
+    submission_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    patch_hash: "sha256:win",
+    hotkey: "5FW49Uq9",
+    role: "challenger",
+    status: "scored",
+    engine_image_ref: "ghcr.io/example@sha256:11",
+    image_digest: "sha256:11",
+    score: 0.7194,
+    reason: null,
+    engine_crashed: false,
+    scoring_rule: { name: "median_e2e_speedup", tolerance: 0.9 },
+    prompt_summary: {
+      total: 2,
+      scored: 1,
+      zeroed: 1,
+      below_tolerance: 1,
+      zeroed_by_reason: { "candidate output below tolerance": 1 },
+    },
+    prompts: [
+      {
+        request_id: "req-0",
+        speedup: 0.7194,
+        aligned_tokens: 44,
+        baseline_e2e_s: 1.811,
+        candidate_e2e_s: 0.508,
+        reason: null,
+      },
+      {
+        request_id: "req-1",
+        speedup: 0,
+        aligned_tokens: 38,
+        baseline_e2e_s: null,
+        candidate_e2e_s: null,
+        reason: "candidate output below tolerance",
+      },
+    ],
+    sla: { metrics: { output_tokens_per_s: 91.2 } },
+    correctness: { verdict: "pass" },
+    started_at: null,
+    completed_at: null,
+  };
+
+  it("keeps the absolute seconds, not just the ratio", () => {
+    const report = parseRoundEntryReport(scored);
+    expect(report.prompts[0].baseline_e2e_s).toBe(1.811);
+    expect(report.prompts[0].candidate_e2e_s).toBe(0.508);
+    expect(report.prompt_summary.below_tolerance).toBe(1);
+  });
+
+  it("keeps a gated prompt's 0.0 as a real number", () => {
+    const report = parseRoundEntryReport(scored);
+    expect(report.prompts[1].speedup).toBe(0);
+    expect(report.prompts[1].reason).toBe("candidate output below tolerance");
+    expect(report.prompts[1].candidate_e2e_s).toBeNull();
+  });
+
+  it("reads the baseline shape: an sla replay and no prompts", () => {
+    const report = parseRoundEntryReport({
+      ...scored,
+      role: "baseline",
+      submission_id: null,
+      patch_hash: null,
+      hotkey: null,
+      score: 0,
+      prompts: [],
+      prompt_summary: {
+        total: 0,
+        scored: 0,
+        zeroed: 0,
+        below_tolerance: 0,
+        zeroed_by_reason: {},
+      },
+      correctness: null,
+    });
+    // 0.0 is a real score meaning baseline speed, never a missing one.
+    expect(report.score).toBe(0);
+    expect(report.prompts).toEqual([]);
+    expect(report.correctness).toBeNull();
+    expect(report.sla).not.toBeNull();
+  });
+
+  it("survives an entry that never reached scoring", () => {
+    const report = parseRoundEntryReport({
+      ...scored,
+      status: "disqualified",
+      score: null,
+      reason: "mean_logprob -3.9 below -2.0",
+      prompts: [],
+    });
+    expect(report.score).toBeNull();
+    expect(report.reason).toBe("mean_logprob -3.9 below -2.0");
+    expect(report.prompts).toEqual([]);
+  });
+
+  it("narrows a junk body instead of throwing", () => {
+    const report = parseRoundEntryReport({ prompts: "nope", sla: undefined });
+    expect(report.prompts).toEqual([]);
+    expect(report.sla).toBeNull();
+    expect(report.score).toBeNull();
+    expect(report.engine_crashed).toBe(false);
+    expect(report.prompt_summary.total).toBe(0);
+  });
+
+  it("drops non-numeric reason counts rather than coercing them to zero", () => {
+    const report = parseRoundEntryReport({
+      ...scored,
+      prompt_summary: {
+        ...scored.prompt_summary,
+        zeroed_by_reason: { a: 2, b: "x" },
+      },
+    });
+    expect(report.prompt_summary.zeroed_by_reason).toEqual({ a: 2 });
   });
 });
