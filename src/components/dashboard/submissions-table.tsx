@@ -4,6 +4,8 @@ import {
   FilterChips,
   SortToggle,
   TableFilterBar,
+  TONE_ICON_CLASS,
+  TONE_ICONS,
   type FilterOption,
 } from "@/components/dashboard/table-filter-bar";
 import { TablePageControls } from "@/components/dashboard/table-page-controls";
@@ -89,19 +91,26 @@ export function SubmissionsTable({
   }));
   // Only outcomes the campaign actually produced, so the bar never offers a
   // filter that leads to an empty table.
+  // Only outcomes the campaign actually produced, so the bar never offers a
+  // filter that leads to an empty table.
   const outcomeOptions: FilterOption[] = [
     {
       value: ALL_OUTCOMES,
       label: "All",
       href: outcomeHref(ALL_OUTCOMES),
-      count: view.outcomes.reduce((sum, entry) => sum + entry.count, 0),
+      icon: Layers,
+      iconClassName: "text-muted",
     },
-    ...view.outcomes.map((entry) => ({
-      value: entry.value,
-      label: getSubmissionStateMeta(entry.value).label,
-      href: outcomeHref(entry.value),
-      count: entry.count,
-    })),
+    ...view.outcomes.map((entry) => {
+      const meta = getSubmissionStateMeta(entry.value);
+      return {
+        value: entry.value,
+        label: meta.label,
+        href: outcomeHref(entry.value),
+        icon: TONE_ICONS[meta.tone],
+        iconClassName: TONE_ICON_CLASS[meta.tone],
+      };
+    }),
   ];
 
   return (

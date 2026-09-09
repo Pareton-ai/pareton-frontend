@@ -1,5 +1,14 @@
-import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+import {
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  CircleCheck,
+  CircleDashed,
+  CircleSlash,
+  LoaderCircle,
+} from "lucide-react";
 import Link from "next/link";
+import type { DashboardIcon } from "@/components/dashboard/panel";
+import { TabScroller } from "@/components/dashboard/tab-scroller";
 
 /**
  * Table controls as links rather than a select or client state, matching the
@@ -10,17 +19,48 @@ export type FilterOption = {
   value: string;
   label: string;
   href: string;
-  /** Row count for this option, when the set is known. */
-  count?: number;
+  icon?: DashboardIcon;
+  /** Tailwind text colour for the icon, so a tone reads before the word does. */
+  iconClassName?: string;
 };
 
 /**
- * One-of-N filter, styled as quiet text with only the active option marked.
+ * Icon per outcome tone rather than per state.
  *
- * Bordering every option would put more ink on the controls than on the rows
- * they filter, and with seven outcomes it reads as a second tab strip. Chips
- * are also laid out with a plain gap rather than hairlines over a background,
- * so a wrapped row leaves no filler behind the short line.
+ * `SUBMISSION_STATE_META` is partial on purpose so a state added on the
+ * backend needs no edit here. Keying on tone keeps that true: a new state
+ * arrives with the neutral fallback and still draws something sensible.
+ */
+export const TONE_ICONS: Record<string, DashboardIcon> = {
+  success: CircleCheck,
+  danger: CircleSlash,
+  progress: LoaderCircle,
+  neutral: CircleDashed,
+};
+
+/**
+ * Icon colour per tone, borrowed from the status chips in the rows below.
+ *
+ * Shape alone is not enough at 14px: a check and a slash inside the same
+ * circle read as the same mark until you look. Colour separates the outcome
+ * that failed from the one that passed at a glance, and transitional states
+ * stay grey so they do not compete with either.
+ */
+export const TONE_ICON_CLASS: Record<string, string> = {
+  success: "text-accent",
+  danger: "text-rust",
+  progress: "text-muted",
+  neutral: "text-muted",
+};
+
+/**
+ * One-of-N filter: a single scrolling row of icon chips.
+ *
+ * It scrolls rather than wraps for the reason the tab strip above it does.
+ * Seven outcomes wrap to three lines on a phone, which turns a control into a
+ * block of text taller than the rows it filters. Counts are left off: the
+ * header already reports the filtered total, and repeating it seven times
+ * competes with the labels.
  */
 export function FilterChips({
   label,
@@ -34,37 +74,43 @@ export function FilterChips({
   if (options.length < 2) return null;
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1">
-      <span className="mr-1 shrink-0 font-mono text-caption uppercase tracking-caps text-muted/70">
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      {/* The chips repeat the Outcome column's own words, so on a phone the
+          label is the first thing that can go. */}
+      <span className="hidden shrink-0 font-mono text-caption uppercase tracking-caps text-muted/70 sm:inline">
         {label}
       </span>
-      {options.map((option) => {
-        const isActive = option.value === active;
-        return (
-          <Link
-            key={option.value}
-            href={option.href}
-            aria-current={isActive ? "true" : undefined}
-            scroll={false}
-            className={`inline-flex items-center gap-1.5 px-2 py-1 font-mono text-caption uppercase tracking-caps transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-              isActive
-                ? "bg-accent-dim text-foreground"
-                : "text-muted hover:text-foreground"
-            }`}
-          >
-            {option.label}
-            {option.count != null ? (
-              <span
-                className={`font-serif text-body leading-none italic ${
-                  isActive ? "text-secondary" : "text-muted/70"
+      <TabScroller
+        activeKey={active}
+        className="-mx-1 flex min-w-0 items-center gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {options.map((option) => {
+          const isActive = option.value === active;
+          const Icon = option.icon;
+          return (
+            <li key={option.value} className="shrink-0">
+              <Link
+                href={option.href}
+                aria-current={isActive ? "true" : undefined}
+                scroll={false}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 font-mono text-caption uppercase tracking-caps transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
+                  isActive
+                    ? "bg-accent-dim text-foreground"
+                    : "text-muted hover:text-foreground"
                 }`}
               >
-                {option.count.toLocaleString("en-US")}
-              </span>
-            ) : null}
-          </Link>
-        );
-      })}
+                {Icon ? (
+                  <Icon
+                    className={`size-3.5 shrink-0 ${option.iconClassName ?? "text-muted"}`}
+                    aria-hidden
+                  />
+                ) : null}
+                {option.label}
+              </Link>
+            </li>
+          );
+        })}
+      </TabScroller>
     </div>
   );
 }
@@ -96,12 +142,17 @@ export function SortToggle({
       className="inline-flex min-h-8 shrink-0 items-center gap-1.5 border border-border px-2.5 font-mono text-caption uppercase tracking-caps text-secondary transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />
+      {/* The word is the state, not the action, so it is worth keeping on a
+          phone; the arrow alone would not say which way the rows run. */}
       {label}
     </Link>
   );
 }
 
-/** One bar above a table: filters on the left, sort and page size trailing. */
+/**
+ * One bar above a table: filters take the room they can, trailing controls
+ * keep their width so the row never breaks onto a second line.
+ */
 export function TableFilterBar({
   children,
   trailing,
@@ -110,15 +161,10 @@ export function TableFilterBar({
   trailing?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border px-4 py-2.5 sm:px-5">
+    <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 sm:gap-4 sm:px-5">
       {children}
       {trailing ? (
-        /* ml-auto rather than relying on justify-between: once the filters
-           fill the row the trailing group wraps, and without it that group
-           would restart at the left edge under them. */
-        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
-          {trailing}
-        </div>
+        <div className="flex shrink-0 items-center gap-2">{trailing}</div>
       ) : null}
     </div>
   );
