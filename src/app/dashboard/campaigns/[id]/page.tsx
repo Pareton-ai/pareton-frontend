@@ -331,6 +331,7 @@ async function SubmissionsSection({
       view={view}
       sort={query.sort}
       size={query.size}
+      outcome={query.outcome}
       pageHref={(next) => campaignListHref(id, { ...query, submissions: next })}
       // Changing the sort returns to page 1: staying on page 4 of a reordered
       // list shows rows the reader never asked to skip past.
@@ -341,6 +342,9 @@ async function SubmissionsSection({
       // page, so the old page number no longer points at the same place.
       sizeHref={(next) =>
         campaignListHref(id, { ...query, size: next, submissions: 1 })
+      }
+      outcomeHref={(next) =>
+        campaignListHref(id, { ...query, outcome: next, submissions: 1 })
       }
     />
   );

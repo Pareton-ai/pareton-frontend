@@ -9,13 +9,14 @@ import { TablePageControls } from "@/components/dashboard/table-page-controls";
 import { EmptyState } from "@/components/ui/empty-state";
 import { submissionHref } from "@/lib/routes";
 import {
+  ALL_OUTCOMES,
   PAGE_SIZES,
   SUBMISSION_SORTS,
   type PageSize,
   type SubmissionSort,
   type SubmissionsView,
 } from "@/lib/api/submissions-view";
-import type { CampaignStatus } from "@/lib/api/types";
+import { getSubmissionStateMeta, type CampaignStatus } from "@/lib/api/types";
 
 export const PAGE_SIZE = 10;
 
@@ -56,17 +57,21 @@ export function SubmissionsTable({
   view,
   sort,
   size,
+  outcome,
   pageHref,
   sortHref,
   sizeHref,
+  outcomeHref,
 }: {
   campaignId: string;
   view: SubmissionsView;
   sort: SubmissionSort;
   size: PageSize;
+  outcome: string;
   pageHref: (page: number) => string;
   sortHref: (sort: SubmissionSort) => string;
   sizeHref: (size: PageSize) => string;
+  outcomeHref: (outcome: string) => string;
 }) {
   const showingFrom = view.total === 0 ? 0 : view.offset + 1;
   const showingTo = Math.min(view.offset + view.rows.length, view.total);
@@ -81,6 +86,22 @@ export function SubmissionsTable({
     label: String(value),
     href: sizeHref(value),
   }));
+  // Only outcomes the campaign actually produced, so the bar never offers a
+  // filter that leads to an empty table.
+  const outcomeOptions: FilterOption[] = [
+    {
+      value: ALL_OUTCOMES,
+      label: "All",
+      href: outcomeHref(ALL_OUTCOMES),
+      count: view.outcomes.reduce((sum, entry) => sum + entry.count, 0),
+    },
+    ...view.outcomes.map((entry) => ({
+      value: entry.value,
+      label: getSubmissionStateMeta(entry.value).label,
+      href: outcomeHref(entry.value),
+      count: entry.count,
+    })),
+  ];
 
   return (
     <section aria-label="Submissions" className="border border-border">
@@ -95,6 +116,14 @@ export function SubmissionsTable({
           {showingFrom}–{showingTo} of {view.total}
         </p>
       </div>
+
+      <TableFilterBar>
+        <FilterGroup
+          label="Outcome"
+          options={outcomeOptions}
+          active={outcome}
+        />
+      </TableFilterBar>
 
       <TableFilterBar>
         <FilterGroup label="Sort" options={sortOptions} active={sort} />
@@ -123,13 +152,26 @@ export function SubmissionsTable({
             </tr>
           </thead>
           <tbody>
-            {view.rows.map((row) => (
-              <SubmissionRow
-                key={row.patch_hash}
-                href={submissionHref(campaignId, row.patch_hash)}
-                row={row}
-              />
-            ))}
+            {/* The chips only offer outcomes the campaign produced, so this is
+                reachable by a hand-typed filter rather than by clicking. */}
+            {view.rows.length === 0 ? (
+              <tr className="border-t border-border/80">
+                <td
+                  colSpan={5}
+                  className="px-4 py-10 text-center font-mono text-body text-muted sm:px-5"
+                >
+                  No submission matches this outcome.
+                </td>
+              </tr>
+            ) : (
+              view.rows.map((row) => (
+                <SubmissionRow
+                  key={row.patch_hash}
+                  href={submissionHref(campaignId, row.patch_hash)}
+                  row={row}
+                />
+              ))
+            )}
           </tbody>
         </table>
       </div>
