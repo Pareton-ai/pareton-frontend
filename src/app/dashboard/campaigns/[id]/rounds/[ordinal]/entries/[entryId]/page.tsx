@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 import { BackLink } from "@/components/dashboard/back-link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import {
@@ -13,8 +15,14 @@ import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import { EntryStatusChip } from "@/components/dashboard/status-chip";
 import { getRoundByOrdinal, getRoundEntryReport } from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
+import { monoLinkClassName } from "@/components/ui/mono-link";
 import { truncateMiddle } from "@/lib/api/format";
-import { parseEntryId, parseRoundOrdinal, roundHref } from "@/lib/routes";
+import {
+  parseEntryId,
+  parseRoundOrdinal,
+  roundHref,
+  submissionHref,
+} from "@/lib/routes";
 import type { RoundEntryReport } from "@/lib/api/types";
 
 type PageProps = {
@@ -142,6 +150,21 @@ async function ReportSections({
                 value={report.hotkey}
                 display={truncateMiddle(report.hotkey)}
               />
+            ) : null}
+            {/* A breakdown is one entry in one round; the submission is that
+                patch across every round it ran in. The baseline is campaign
+                infrastructure and has no submission to point at. */}
+            {report.patch_hash ? (
+              <Link
+                href={submissionHref(campaignId, report.patch_hash)}
+                className={monoLinkClassName(
+                  { tone: "muted" },
+                  "inline-flex items-center gap-1 underline decoration-border underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                )}
+              >
+                Submission
+                <ArrowUpRight className="size-3.5 shrink-0" aria-hidden />
+              </Link>
             ) : null}
           </div>
         </div>
