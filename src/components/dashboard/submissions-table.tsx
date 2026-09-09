@@ -1,7 +1,8 @@
 import { Layers } from "lucide-react";
 import { SubmissionRow } from "@/components/dashboard/submission-row";
 import {
-  FilterGroup,
+  FilterChips,
+  SortToggle,
   TableFilterBar,
   type FilterOption,
 } from "@/components/dashboard/table-filter-bar";
@@ -11,7 +12,6 @@ import { submissionHref } from "@/lib/routes";
 import {
   ALL_OUTCOMES,
   PAGE_SIZES,
-  SUBMISSION_SORTS,
   type PageSize,
   type SubmissionSort,
   type SubmissionsView,
@@ -23,6 +23,12 @@ export const PAGE_SIZE = 10;
 const SORT_LABELS: Record<SubmissionSort, string> = {
   newest: "Newest",
   oldest: "Oldest",
+};
+
+/** The order a click would switch to, which is the other one. */
+const NEXT_SORT: Record<SubmissionSort, SubmissionSort> = {
+  newest: "oldest",
+  oldest: "newest",
 };
 
 export function EmptySubmissions({ status }: { status: CampaignStatus }) {
@@ -76,11 +82,6 @@ export function SubmissionsTable({
   const showingFrom = view.total === 0 ? 0 : view.offset + 1;
   const showingTo = Math.min(view.offset + view.rows.length, view.total);
 
-  const sortOptions: FilterOption[] = SUBMISSION_SORTS.map((value) => ({
-    value,
-    label: SORT_LABELS[value],
-    href: sortHref(value),
-  }));
   const sizeOptions: FilterOption[] = PAGE_SIZES.map((value) => ({
     value: String(value),
     label: String(value),
@@ -117,20 +118,20 @@ export function SubmissionsTable({
         </p>
       </div>
 
-      <TableFilterBar>
-        <FilterGroup
+      <TableFilterBar
+        trailing={
+          <SortToggle
+            href={sortHref(NEXT_SORT[sort])}
+            label={SORT_LABELS[sort]}
+            descending={sort === "newest"}
+            title={`Sort by ${SORT_LABELS[NEXT_SORT[sort]].toLowerCase()} first`}
+          />
+        }
+      >
+        <FilterChips
           label="Outcome"
           options={outcomeOptions}
           active={outcome}
-        />
-      </TableFilterBar>
-
-      <TableFilterBar>
-        <FilterGroup label="Sort" options={sortOptions} active={sort} />
-        <FilterGroup
-          label="Per page"
-          options={sizeOptions}
-          active={String(size)}
         />
       </TableFilterBar>
 
@@ -181,6 +182,13 @@ export function SubmissionsTable({
         totalPages={view.totalPages}
         pageHref={pageHref}
         label="Submissions pages"
+        leading={
+          <FilterChips
+            label="Per page"
+            options={sizeOptions}
+            active={String(size)}
+          />
+        }
       />
     </section>
   );
