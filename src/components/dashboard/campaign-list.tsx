@@ -43,6 +43,11 @@ const GROUPS: {
 
 function CampaignRow({ campaign }: { campaign: Campaign }) {
   const { model } = campaign.bench;
+  const baselineRepo = campaign.baseline_repo.toLowerCase();
+  const engines = [
+    ...(baselineRepo.includes("vllm") ? ["vLLM"] : []),
+    ...(baselineRepo.includes("sglang") ? ["SGLang"] : []),
+  ];
 
   return (
     <div className="group relative px-5 py-5 transition-colors [clip-path:inset(0)] [transform:translate(0)] hover:bg-accent-dim/30 focus-within:bg-accent-dim/30">
@@ -65,6 +70,14 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
             />
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-body text-secondary">
+            {engines.map((engine) => (
+              <span
+                key={engine}
+                className="inline-flex items-center border border-border bg-accent-dim px-2 py-0.5 text-caption text-accent"
+              >
+                {engine}
+              </span>
+            ))}
             <span
               className="inline-flex w-32 shrink-0 items-center gap-1.5 truncate"
               title={campaign.gpu_skus.join(", ")}
