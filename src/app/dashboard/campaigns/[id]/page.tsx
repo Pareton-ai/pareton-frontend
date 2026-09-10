@@ -428,6 +428,9 @@ async function redirectIfPagersOutOfRange(id: string, query: PageQuery) {
       sort: query.sort,
       outcome: query.outcome,
       size: query.size,
+      // The clamp counts the filtered set, so the redirect has to carry the
+      // search that filtered it, or it lands on a different list.
+      search: query.search,
     },
     {
       pageSize: PAGE_SIZE,

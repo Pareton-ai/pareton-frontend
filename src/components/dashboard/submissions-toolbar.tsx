@@ -28,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import type { DashboardIcon } from "@/components/dashboard/panel";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 /**
@@ -53,11 +53,16 @@ const DEBOUNCE_MS = 250;
 function useParamWriter(key: string, clearWhen: string) {
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
 
   return useCallback(
     (value: string) => {
-      const next = new URLSearchParams(params.toString());
+      // Read the live URL rather than a `useSearchParams()` snapshot taken
+      // when this callback was built. A debounced write lands up to 250ms
+      // later, and the sort or outcome may have moved in between: rebuilding
+      // from the stale snapshot would silently revert whichever control the
+      // reader touched last. It also keeps this callback's identity stable,
+      // so a URL change cannot restart a caller's debounce mid-type.
+      const next = new URLSearchParams(window.location.search);
       if (value && value !== clearWhen) next.set(key, value);
       else next.delete(key);
       // Page 4 of the old list is not page 4 of the new one.
@@ -65,7 +70,7 @@ function useParamWriter(key: string, clearWhen: string) {
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, params, key, clearWhen]
+    [router, pathname, key, clearWhen]
   );
 }
 
@@ -87,6 +92,18 @@ export function SubmissionSearch({
   const [value, setValue] = useState(initialValue);
   const [isPending, startTransition] = useTransition();
   const latest = useRef(initialValue);
+  /** The last term this box put in the URL, as opposed to one it was handed. */
+  const written = useRef(initialValue);
+
+  // Adopt a search that changed somewhere else: Clear filters, the back
+  // button, a shared link. Without this the box still holds the old term,
+  // reads the difference as a keystroke, and writes it straight back, so
+  // Clear filters appears to do nothing.
+  useEffect(() => {
+    if (initialValue === written.current) return;
+    written.current = initialValue;
+    setValue(initialValue);
+  }, [initialValue]);
 
   useEffect(() => {
     latest.current = value;
@@ -94,11 +111,11 @@ export function SubmissionSearch({
     const id = setTimeout(() => {
       // Guard against a timer that outlived its keystroke.
       if (latest.current !== value) return;
+      written.current = value;
       startTransition(() => write(value));
     }, DEBOUNCE_MS);
     return () => clearTimeout(id);
-    // `write` is rebuilt whenever the URL changes, which would restart the
-    // timer mid-type; the typed value is what should retrigger this.
+    // `write` is stable by construction; the typed value drives this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, initialValue]);
 
