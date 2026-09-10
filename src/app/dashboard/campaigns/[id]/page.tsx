@@ -35,6 +35,7 @@ import {
   buildSubmissionsView,
   parseOutcome,
   parsePageSize,
+  parseSearch,
   parseSubmissionSort,
   type PageSize,
   type SubmissionSort,
@@ -57,6 +58,7 @@ type PageProps = {
     sort?: string;
     outcome?: string;
     size?: string;
+    q?: string;
   }>;
 };
 
@@ -68,6 +70,7 @@ type PageQuery = {
   /** Submissions-table view state, carried on every campaign link. */
   sort: SubmissionSort;
   outcome: string;
+  search: string;
   size: PageSize;
 };
 
@@ -324,6 +327,7 @@ async function SubmissionsSection({
     size: query.size,
     sort: query.sort,
     outcome: query.outcome,
+    search: query.search,
   });
   return (
     <SubmissionsTable
@@ -332,6 +336,7 @@ async function SubmissionsSection({
       sort={query.sort}
       size={query.size}
       outcome={query.outcome}
+      search={query.search}
       pageHref={(next) => campaignListHref(id, { ...query, submissions: next })}
       // Changing the sort returns to page 1: staying on page 4 of a reordered
       // list shows rows the reader never asked to skip past.
@@ -343,9 +348,13 @@ async function SubmissionsSection({
       sizeHref={(next) =>
         campaignListHref(id, { ...query, size: next, submissions: 1 })
       }
-      outcomeHref={(next) =>
-        campaignListHref(id, { ...query, outcome: next, submissions: 1 })
-      }
+      // Back to the unfiltered list, keeping the tab and page size the reader
+      // chose: those are how they like to look, not what they searched for.
+      resetHref={campaignListHref(id, {
+        tab: query.tab,
+        size: query.size,
+        sort: query.sort,
+      })}
     />
   );
 }
@@ -407,6 +416,7 @@ async function redirectIfPagersOutOfRange(id: string, query: PageQuery) {
         size: query.size,
         sort: query.sort,
         outcome: query.outcome,
+        search: query.search,
       }).total
     : null;
   const href = clampedCampaignListHref(
@@ -442,6 +452,7 @@ export default async function CampaignPage({
     tab: parseCampaignTab(sp.tab),
     sort: parseSubmissionSort(sp.sort),
     outcome: parseOutcome(sp.outcome),
+    search: parseSearch(sp.q),
     size: parsePageSize(sp.size),
   };
   await redirectIfPagersOutOfRange(id, query);

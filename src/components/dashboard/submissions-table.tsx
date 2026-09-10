@@ -1,15 +1,21 @@
 import { Layers } from "lucide-react";
+import Link from "next/link";
 import { SubmissionRow } from "@/components/dashboard/submission-row";
 import {
   FilterChips,
   SortToggle,
   TableFilterBar,
-  TONE_ICON_CLASS,
-  TONE_ICONS,
+  TONE_DOT_CLASS,
   type FilterOption,
 } from "@/components/dashboard/table-filter-bar";
+import {
+  OutcomeSelect,
+  SubmissionSearch,
+  type OutcomeChoice,
+} from "@/components/dashboard/submissions-toolbar";
 import { TablePageControls } from "@/components/dashboard/table-page-controls";
 import { EmptyState } from "@/components/ui/empty-state";
+import { monoLinkClassName } from "@/components/ui/mono-link";
 import { submissionHref } from "@/lib/routes";
 import {
   ALL_OUTCOMES,
@@ -66,20 +72,22 @@ export function SubmissionsTable({
   sort,
   size,
   outcome,
+  search,
   pageHref,
   sortHref,
   sizeHref,
-  outcomeHref,
+  resetHref,
 }: {
   campaignId: string;
   view: SubmissionsView;
   sort: SubmissionSort;
   size: PageSize;
   outcome: string;
+  search: string;
   pageHref: (page: number) => string;
   sortHref: (sort: SubmissionSort) => string;
   sizeHref: (size: PageSize) => string;
-  outcomeHref: (outcome: string) => string;
+  resetHref: string;
 }) {
   const showingFrom = view.total === 0 ? 0 : view.offset + 1;
   const showingTo = Math.min(view.offset + view.rows.length, view.total);
@@ -89,29 +97,17 @@ export function SubmissionsTable({
     label: String(value),
     href: sizeHref(value),
   }));
-  // Only outcomes the campaign actually produced, so the bar never offers a
-  // filter that leads to an empty table.
-  // Only outcomes the campaign actually produced, so the bar never offers a
-  // filter that leads to an empty table.
-  const outcomeOptions: FilterOption[] = [
-    {
-      value: ALL_OUTCOMES,
-      label: "All",
-      href: outcomeHref(ALL_OUTCOMES),
-      icon: Layers,
-      iconClassName: "text-muted",
-    },
-    ...view.outcomes.map((entry) => {
-      const meta = getSubmissionStateMeta(entry.value);
-      return {
-        value: entry.value,
-        label: meta.label,
-        href: outcomeHref(entry.value),
-        icon: TONE_ICONS[meta.tone],
-        iconClassName: TONE_ICON_CLASS[meta.tone],
-      };
-    }),
+  // Only outcomes the campaign actually produced, so the picker never offers
+  // a filter that leads to an empty table.
+  const outcomeChoices: OutcomeChoice[] = [
+    { value: ALL_OUTCOMES, label: "All outcomes" },
+    ...view.outcomes.map((entry) => ({
+      value: entry.value,
+      label: getSubmissionStateMeta(entry.value).label,
+    })),
   ];
+  const activeTone =
+    outcome === ALL_OUTCOMES ? "neutral" : getSubmissionStateMeta(outcome).tone;
 
   return (
     <section aria-label="Submissions" className="border border-border">
@@ -127,20 +123,22 @@ export function SubmissionsTable({
         </p>
       </div>
 
-      <TableFilterBar
-        trailing={
-          <SortToggle
-            href={sortHref(NEXT_SORT[sort])}
-            label={SORT_LABELS[sort]}
-            descending={sort === "newest"}
-            title={`Sort by ${SORT_LABELS[NEXT_SORT[sort]].toLowerCase()} first`}
-          />
-        }
-      >
-        <FilterChips
-          label="Outcome"
-          options={outcomeOptions}
-          active={outcome}
+      <TableFilterBar>
+        <SubmissionSearch
+          initialValue={search}
+          placeholder="Search miner or patch hash"
+        />
+        <OutcomeSelect
+          value={outcome}
+          choices={outcomeChoices}
+          allValue={ALL_OUTCOMES}
+          toneClassName={TONE_DOT_CLASS[activeTone] ?? TONE_DOT_CLASS.neutral}
+        />
+        <SortToggle
+          href={sortHref(NEXT_SORT[sort])}
+          label={SORT_LABELS[sort]}
+          descending={sort === "newest"}
+          title={`Sort by ${SORT_LABELS[NEXT_SORT[sort]].toLowerCase()} first`}
         />
       </TableFilterBar>
 
@@ -162,15 +160,24 @@ export function SubmissionsTable({
             </tr>
           </thead>
           <tbody>
-            {/* The chips only offer outcomes the campaign produced, so this is
-                reachable by a hand-typed filter rather than by clicking. */}
             {view.rows.length === 0 ? (
               <tr className="border-t border-border/80">
-                <td
-                  colSpan={5}
-                  className="px-4 py-10 text-center font-mono text-body text-muted sm:px-5"
-                >
-                  No submission matches this outcome.
+                <td colSpan={5} className="px-4 py-12 text-center sm:px-5">
+                  <p className="font-mono text-body text-secondary">
+                    No submission matches
+                    {search ? ` "${search}"` : " this outcome"}.
+                  </p>
+                  {/* A dead end is the one place a reader needs a way out
+                      more than they need the control that got them here. */}
+                  <Link
+                    href={resetHref}
+                    className={monoLinkClassName(
+                      { tone: "accent" },
+                      "mt-3 inline-block underline decoration-border underline-offset-4"
+                    )}
+                  >
+                    Clear filters
+                  </Link>
                 </td>
               </tr>
             ) : (

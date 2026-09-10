@@ -54,6 +54,7 @@ export function campaignListHref(
     sort?: SubmissionSort;
     outcome?: string;
     size?: PageSize;
+    search?: string;
   } = {}
 ): string {
   const params = new URLSearchParams();
@@ -76,6 +77,10 @@ export function campaignListHref(
   }
   if (query.size != null && query.size !== DEFAULT_PAGE_SIZE) {
     params.set("size", String(query.size));
+  }
+  // `q` rather than `search`: it is the one param a reader may type by hand.
+  if (query.search) {
+    params.set("q", query.search);
   }
   const qs = params.toString();
   const base = campaignHref(campaignId);
@@ -100,6 +105,7 @@ export function clampedCampaignListHref(
     sort?: SubmissionSort;
     outcome?: string;
     size?: PageSize;
+    search?: string;
   },
   totals: {
     pageSize: number;
@@ -144,6 +150,7 @@ export function clampedCampaignListHref(
     sort: query.sort,
     outcome: query.outcome,
     size: query.size,
+    search: query.search,
   });
 }
 

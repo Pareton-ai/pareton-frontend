@@ -53,6 +53,14 @@ export const TONE_ICON_CLASS: Record<string, string> = {
   neutral: "text-muted",
 };
 
+/** The same tones as a background, for the dot beside the outcome picker. */
+export const TONE_DOT_CLASS: Record<string, string> = {
+  success: "bg-accent",
+  danger: "bg-rust",
+  progress: "bg-muted",
+  neutral: "bg-muted/50",
+};
+
 /**
  * One-of-N filter: a single scrolling row of icon chips.
  *
@@ -150,8 +158,12 @@ export function SortToggle({
 }
 
 /**
- * One bar above a table: filters take the room they can, trailing controls
- * keep their width so the row never breaks onto a second line.
+ * Toolbar above a table.
+ *
+ * Search grows and the pickers keep their width, so on a desktop the row reads
+ * left to right in one line and on a phone the search takes the first line
+ * with the pickers under it. Nothing scrolls sideways, which is what a row of
+ * chips could not promise.
  */
 export function TableFilterBar({
   children,
@@ -161,7 +173,7 @@ export function TableFilterBar({
   trailing?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 sm:gap-4 sm:px-5">
+    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 sm:gap-3 sm:px-5">
       {children}
       {trailing ? (
         <div className="flex shrink-0 items-center gap-2">{trailing}</div>

@@ -22,7 +22,12 @@ export const DEFAULT_PAGE_SIZE: PageSize = 10;
 /** `all` is the absence of a filter, not a state a submission can be in. */
 export const ALL_OUTCOMES = "all";
 
+/** Longer than any hotkey or patch hash; anything past this is not a search. */
+const MAX_QUERY = 128;
+
 export type SubmissionsView = {
+  /** True when a filter or search is narrowing the list. */
+  filtered: boolean;
   /** The rows for the requested page, already filtered and sorted. */
   rows: SubmissionRow[];
   /** Rows matching the filter, which is what the pager counts. */
@@ -57,6 +62,27 @@ export function parseOutcome(value: string | undefined): string {
   return value && value !== ALL_OUTCOMES ? value : ALL_OUTCOMES;
 }
 
+/** Read a search box value. Trimmed and bounded; empty means no search. */
+export function parseSearch(value: string | undefined): string {
+  return (value ?? "").trim().slice(0, MAX_QUERY);
+}
+
+/**
+ * Does this row answer the search?
+ *
+ * Hotkey and patch hash both match, because a miner arrives holding one or the
+ * other: their own key when scanning for their runs, a hash when chasing one
+ * submission someone quoted. Matching is case-insensitive and anywhere in the
+ * string, so a pasted hash finds its row with or without the `sha256:` prefix
+ * and a partial key still narrows.
+ */
+function matchesSearch(row: SubmissionRow, needle: string): boolean {
+  return (
+    row.hotkey.toLowerCase().includes(needle) ||
+    row.patch_hash.toLowerCase().includes(needle)
+  );
+}
+
 /** Newest first by commit time, with the chain block breaking ties. */
 function byCommittedAt(a: SubmissionRow, b: SubmissionRow): number {
   const at = Date.parse(a.committed_at);
@@ -83,14 +109,23 @@ function countOutcomes(rows: readonly SubmissionRow[]) {
 
 export function buildSubmissionsView(
   all: readonly SubmissionRow[],
-  query: { page: number; size: PageSize; sort: SubmissionSort; outcome: string }
+  query: {
+    page: number;
+    size: PageSize;
+    sort: SubmissionSort;
+    outcome: string;
+    search?: string;
+  }
 ): SubmissionsView {
   const outcomes = countOutcomes(all);
+  const needle = (query.search ?? "").trim().toLowerCase();
 
-  const filtered =
+  let rows =
     query.outcome === ALL_OUTCOMES
       ? [...all]
       : all.filter((row) => row.latest_state === query.outcome);
+  if (needle) rows = rows.filter((row) => matchesSearch(row, needle));
+  const filtered = rows;
 
   // One comparator, reversed for "oldest": two sorts would be two chances to
   // disagree about how ties break.
@@ -104,6 +139,7 @@ export function buildSubmissionsView(
 
   return {
     rows: filtered.slice(offset, offset + query.size),
+    filtered: query.outcome !== ALL_OUTCOMES || needle.length > 0,
     total,
     totalPages,
     page,

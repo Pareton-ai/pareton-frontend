@@ -5,6 +5,7 @@ import {
   DEFAULT_PAGE_SIZE,
   DEFAULT_SUBMISSION_SORT,
   parsePageSize,
+  parseSearch,
   parseSubmissionSort,
 } from "@/lib/api/submissions-view";
 import type { SubmissionRow } from "@/lib/api/types";
@@ -177,5 +178,92 @@ describe("buildSubmissionsView outcomes", () => {
     });
     expect(view.page).toBe(1);
     expect(view.rows).toHaveLength(2);
+  });
+});
+
+describe("parseSearch", () => {
+  it("trims and keeps what was typed", () => {
+    expect(parseSearch("  5Fake ")).toBe("5Fake");
+    expect(parseSearch(undefined)).toBe("");
+    expect(parseSearch("   ")).toBe("");
+  });
+
+  it("bounds a pasted wall of text", () => {
+    expect(parseSearch("x".repeat(500))).toHaveLength(128);
+  });
+});
+
+describe("buildSubmissionsView search", () => {
+  const people = [
+    row({ patch_hash: "sha256:aaa", hotkey: "5MinerAlice" }),
+    row({ patch_hash: "sha256:bbb", hotkey: "5MinerBob" }),
+    row({ patch_hash: "sha256:ccc", hotkey: "5Carol" }),
+  ];
+
+  it("matches a miner hotkey anywhere, case-insensitively", () => {
+    const view = buildSubmissionsView(people, { ...BASE, search: "bob" });
+    expect(view.rows.map((r) => r.hotkey)).toEqual(["5MinerBob"]);
+  });
+
+  it("narrows to several miners on a shared prefix", () => {
+    const view = buildSubmissionsView(people, { ...BASE, search: "5Miner" });
+    expect(view.total).toBe(2);
+  });
+
+  it("matches a patch hash, which is how one submission gets quoted", () => {
+    const view = buildSubmissionsView(people, { ...BASE, search: "ccc" });
+    expect(view.rows.map((r) => r.hotkey)).toEqual(["5Carol"]);
+  });
+
+  it("finds a hash pasted with its sha256 prefix", () => {
+    const view = buildSubmissionsView(people, {
+      ...BASE,
+      search: "sha256:bbb",
+    });
+    expect(view.rows.map((r) => r.hotkey)).toEqual(["5MinerBob"]);
+  });
+
+  it("combines with an outcome filter rather than replacing it", () => {
+    const mixed = [
+      row({ patch_hash: "p1", hotkey: "5Ann", latest_state: "scored" }),
+      row({ patch_hash: "p2", hotkey: "5Ann", latest_state: "rejected" }),
+      row({ patch_hash: "p3", hotkey: "5Bob", latest_state: "scored" }),
+    ];
+    const view = buildSubmissionsView(mixed, {
+      ...BASE,
+      search: "5Ann",
+      outcome: "scored",
+    });
+    expect(view.rows.map((r) => r.patch_hash)).toEqual(["p1"]);
+  });
+
+  it("reports nothing found rather than falling back to everything", () => {
+    const view = buildSubmissionsView(people, { ...BASE, search: "nobody" });
+    expect(view.rows).toEqual([]);
+    expect(view.total).toBe(0);
+  });
+
+  it("keeps every outcome in the picker while a search narrows the rows", () => {
+    // The picker is built from the unfiltered set, so searching must not make
+    // outcomes disappear from it and strand the reader.
+    const mixed = [
+      row({ patch_hash: "p1", hotkey: "5Ann", latest_state: "scored" }),
+      row({ patch_hash: "p2", hotkey: "5Bob", latest_state: "rejected" }),
+    ];
+    const view = buildSubmissionsView(mixed, { ...BASE, search: "5Ann" });
+    expect(view.outcomes.map((o) => o.value).sort()).toEqual([
+      "rejected",
+      "scored",
+    ]);
+  });
+
+  it("marks the view filtered so the page can offer a way out", () => {
+    expect(buildSubmissionsView(people, BASE).filtered).toBe(false);
+    expect(
+      buildSubmissionsView(people, { ...BASE, search: "a" }).filtered
+    ).toBe(true);
+    expect(
+      buildSubmissionsView(people, { ...BASE, outcome: "scored" }).filtered
+    ).toBe(true);
   });
 });
