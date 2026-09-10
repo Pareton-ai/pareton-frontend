@@ -1,5 +1,13 @@
 /** Dashboard URL builders. Patch hashes contain a colon, so they are encoded. */
 
+import {
+  ALL_OUTCOMES,
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_SUBMISSION_SORT,
+  type PageSize,
+  type SubmissionSort,
+} from "@/lib/api/submissions-view";
+
 const PATCH_HASH_RE = /^sha256:[0-9a-f]{64}$/;
 
 export function campaignHref(campaignId: string): string {
@@ -39,7 +47,15 @@ export function parseCampaignTab(value: string | undefined): CampaignTab {
  */
 export function campaignListHref(
   campaignId: string,
-  query: { page?: number; submissions?: number; tab?: CampaignTab } = {}
+  query: {
+    page?: number;
+    submissions?: number;
+    tab?: CampaignTab;
+    sort?: SubmissionSort;
+    outcome?: string;
+    size?: PageSize;
+    search?: string;
+  } = {}
 ): string {
   const params = new URLSearchParams();
   if (query.tab != null && query.tab !== DEFAULT_CAMPAIGN_TAB) {
@@ -50,6 +66,21 @@ export function campaignListHref(
   }
   if (query.submissions != null && query.submissions > 1) {
     params.set("submissions", String(query.submissions));
+  }
+  // Submissions-table view state. Defaults stay out of the URL so the bare
+  // campaign link remains the canonical first view.
+  if (query.sort != null && query.sort !== DEFAULT_SUBMISSION_SORT) {
+    params.set("sort", query.sort);
+  }
+  if (query.outcome != null && query.outcome !== ALL_OUTCOMES) {
+    params.set("outcome", query.outcome);
+  }
+  if (query.size != null && query.size !== DEFAULT_PAGE_SIZE) {
+    params.set("size", String(query.size));
+  }
+  // `q` rather than `search`: it is the one param a reader may type by hand.
+  if (query.search) {
+    params.set("q", query.search);
   }
   const qs = params.toString();
   const base = campaignHref(campaignId);
@@ -67,9 +98,20 @@ function totalPages(total: number, pageSize: number): number {
  */
 export function clampedCampaignListHref(
   campaignId: string,
-  query: { page: number; submissions: number; tab?: CampaignTab },
+  query: {
+    page: number;
+    submissions: number;
+    tab?: CampaignTab;
+    sort?: SubmissionSort;
+    outcome?: string;
+    size?: PageSize;
+    search?: string;
+  },
   totals: {
     pageSize: number;
+    /** Falls back to `pageSize`; the two tables page independently. */
+    roundsPageSize?: number;
+    submissionsPageSize?: number;
     roundsTotal?: number | null;
     submissionsTotal?: number | null;
   }
@@ -83,19 +125,32 @@ export function clampedCampaignListHref(
   const nextPage =
     totals.roundsTotal == null
       ? page
-      : Math.min(page, totalPages(totals.roundsTotal, totals.pageSize));
+      : Math.min(
+          page,
+          totalPages(
+            totals.roundsTotal,
+            totals.roundsPageSize ?? totals.pageSize
+          )
+        );
   const nextSubmissions =
     totals.submissionsTotal == null
       ? submissions
       : Math.min(
           submissions,
-          totalPages(totals.submissionsTotal, totals.pageSize)
+          totalPages(
+            totals.submissionsTotal,
+            totals.submissionsPageSize ?? totals.pageSize
+          )
         );
   if (nextPage === page && nextSubmissions === submissions) return null;
   return campaignListHref(campaignId, {
     page: nextPage,
     submissions: nextSubmissions,
     tab: query.tab,
+    sort: query.sort,
+    outcome: query.outcome,
+    size: query.size,
+    search: query.search,
   });
 }
 

@@ -25,7 +25,9 @@ export function TabScroller({
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
-    const current = node.querySelector('[aria-current="page"]');
+    // Any aria-current value: the tab strip marks "page", a filter marks
+    // "true", and both want the same "keep the choice in view" behaviour.
+    const current = node.querySelector("[aria-current]");
     if (!(current instanceof HTMLElement)) return;
     // Already fully visible (the common desktop case): leave it alone.
     if (

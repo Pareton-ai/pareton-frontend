@@ -1,11 +1,42 @@
 import { Layers } from "lucide-react";
+import Link from "next/link";
 import { SubmissionRow } from "@/components/dashboard/submission-row";
+import {
+  FilterChips,
+  SortToggle,
+  TableFilterBar,
+  type FilterOption,
+} from "@/components/dashboard/table-filter-bar";
+import {
+  OutcomeSelect,
+  SubmissionSearch,
+  type OutcomeChoice,
+} from "@/components/dashboard/submissions-toolbar";
 import { TablePageControls } from "@/components/dashboard/table-page-controls";
 import { EmptyState } from "@/components/ui/empty-state";
+import { monoLinkClassName } from "@/components/ui/mono-link";
 import { submissionHref } from "@/lib/routes";
-import type { CampaignStatus, SubmissionsPage } from "@/lib/api/types";
+import {
+  ALL_OUTCOMES,
+  PAGE_SIZES,
+  type PageSize,
+  type SubmissionSort,
+  type SubmissionsView,
+} from "@/lib/api/submissions-view";
+import { getSubmissionStateMeta, type CampaignStatus } from "@/lib/api/types";
 
 export const PAGE_SIZE = 10;
+
+const SORT_LABELS: Record<SubmissionSort, string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+};
+
+/** The order a click would switch to, which is the other one. */
+const NEXT_SORT: Record<SubmissionSort, SubmissionSort> = {
+  newest: "oldest",
+  oldest: "newest",
+};
 
 export function EmptySubmissions({ status }: { status: CampaignStatus }) {
   const copy =
@@ -36,18 +67,44 @@ export function EmptySubmissions({ status }: { status: CampaignStatus }) {
  */
 export function SubmissionsTable({
   campaignId,
-  page,
-  data,
+  view,
+  sort,
+  size,
+  outcome,
+  search,
   pageHref,
+  sortHref,
+  sizeHref,
+  resetHref,
 }: {
   campaignId: string;
-  page: number;
-  data: SubmissionsPage;
+  view: SubmissionsView;
+  sort: SubmissionSort;
+  size: PageSize;
+  outcome: string;
+  search: string;
   pageHref: (page: number) => string;
+  sortHref: (sort: SubmissionSort) => string;
+  sizeHref: (size: PageSize) => string;
+  resetHref: string;
 }) {
-  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  const showingFrom = data.offset + 1;
-  const showingTo = Math.min(data.offset + data.submissions.length, data.total);
+  const showingFrom = view.total === 0 ? 0 : view.offset + 1;
+  const showingTo = Math.min(view.offset + view.rows.length, view.total);
+
+  const sizeOptions: FilterOption[] = PAGE_SIZES.map((value) => ({
+    value: String(value),
+    label: String(value),
+    href: sizeHref(value),
+  }));
+  // Only outcomes the campaign actually produced, so the picker never offers
+  // a filter that leads to an empty table.
+  const outcomeChoices: OutcomeChoice[] = [
+    { value: ALL_OUTCOMES, label: "All outcomes", tone: "all" },
+    ...view.outcomes.map((entry) => {
+      const meta = getSubmissionStateMeta(entry.value);
+      return { value: entry.value, label: meta.label, tone: meta.tone };
+    }),
+  ];
 
   return (
     <section aria-label="Submissions" className="border border-border">
@@ -59,9 +116,27 @@ export function SubmissionsTable({
           </h2>
         </div>
         <p className="font-mono text-body text-muted">
-          {showingFrom}–{showingTo} of {data.total}
+          {showingFrom}–{showingTo} of {view.total}
         </p>
       </div>
+
+      <TableFilterBar>
+        <SubmissionSearch
+          initialValue={search}
+          placeholder="Search miner or patch hash"
+        />
+        <OutcomeSelect
+          value={outcome}
+          choices={outcomeChoices}
+          allValue={ALL_OUTCOMES}
+        />
+        <SortToggle
+          href={sortHref(NEXT_SORT[sort])}
+          label={SORT_LABELS[sort]}
+          descending={sort === "newest"}
+          title={`Sort by ${SORT_LABELS[NEXT_SORT[sort]].toLowerCase()} first`}
+        />
+      </TableFilterBar>
 
       {/* contain-paint keeps transformed row overlays from expanding the page;
           the min-width table still scrolls inside this pane. */}
@@ -81,22 +156,51 @@ export function SubmissionsTable({
             </tr>
           </thead>
           <tbody>
-            {data.submissions.map((row) => (
-              <SubmissionRow
-                key={row.patch_hash}
-                href={submissionHref(campaignId, row.patch_hash)}
-                row={row}
-              />
-            ))}
+            {view.rows.length === 0 ? (
+              <tr className="border-t border-border/80">
+                <td colSpan={5} className="px-4 py-12 text-center sm:px-5">
+                  <p className="font-mono text-body text-secondary">
+                    No submission matches
+                    {search ? ` "${search}"` : " this outcome"}.
+                  </p>
+                  {/* A dead end is the one place a reader needs a way out
+                      more than they need the control that got them here. */}
+                  <Link
+                    href={resetHref}
+                    className={monoLinkClassName(
+                      { tone: "accent" },
+                      "mt-3 inline-block underline decoration-border underline-offset-4"
+                    )}
+                  >
+                    Clear filters
+                  </Link>
+                </td>
+              </tr>
+            ) : (
+              view.rows.map((row) => (
+                <SubmissionRow
+                  key={row.patch_hash}
+                  href={submissionHref(campaignId, row.patch_hash)}
+                  row={row}
+                />
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <TablePageControls
-        page={page}
-        totalPages={totalPages}
+        page={view.page}
+        totalPages={view.totalPages}
         pageHref={pageHref}
         label="Submissions pages"
+        leading={
+          <FilterChips
+            label="Per page"
+            options={sizeOptions}
+            active={String(size)}
+          />
+        }
       />
     </section>
   );

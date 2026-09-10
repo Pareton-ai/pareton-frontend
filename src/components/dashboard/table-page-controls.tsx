@@ -39,44 +39,59 @@ function PageControl({
   );
 }
 
-/** Prev/next row for a paged dashboard table. Hidden when there is one page. */
+/**
+ * Footer row for a paged dashboard table.
+ *
+ * `leading` carries controls that belong with paging rather than with
+ * filtering, page size above all: it decides how many pages there are, so it
+ * reads here next to the page count rather than up in the filter bar.
+ *
+ * Hidden only when there is nothing at all to show: a single page still needs
+ * its footer when a page-size control lives in it, or the reader who chose the
+ * largest size has no way back.
+ */
 export function TablePageControls({
   page,
   totalPages,
   pageHref,
   label,
+  leading,
 }: {
   page: number;
   totalPages: number;
   pageHref: (page: number) => string;
   label: string;
+  leading?: React.ReactNode;
 }) {
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1 && !leading) return null;
 
   return (
     <nav
       aria-label={label}
-      className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 sm:px-5"
+      className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-border px-4 py-3 sm:px-5"
     >
-      <p className="font-mono text-body text-muted">
-        Page{" "}
-        <span className="text-foreground">
-          {page} / {totalPages}
-        </span>
-      </p>
-      <div className="flex items-center gap-2">
-        <PageControl
-          href={page > 1 ? pageHref(page - 1) : null}
-          direction="prev"
-        >
-          Prev
-        </PageControl>
-        <PageControl
-          href={page < totalPages ? pageHref(page + 1) : null}
-          direction="next"
-        >
-          Next
-        </PageControl>
+      {leading ?? <span />}
+      <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
+        <p className="font-mono text-body text-muted">
+          Page{" "}
+          <span className="text-foreground">
+            {page} / {totalPages}
+          </span>
+        </p>
+        <div className="flex items-center gap-2">
+          <PageControl
+            href={page > 1 ? pageHref(page - 1) : null}
+            direction="prev"
+          >
+            Prev
+          </PageControl>
+          <PageControl
+            href={page < totalPages ? pageHref(page + 1) : null}
+            direction="next"
+          >
+            Next
+          </PageControl>
+        </div>
       </div>
     </nav>
   );

@@ -1,6 +1,7 @@
 import { Crown, Layers, Repeat2, ScrollText } from "lucide-react";
 import Link from "next/link";
 import type { DashboardIcon } from "@/components/dashboard/panel";
+import { LinkPendingCount } from "@/components/dashboard/link-pending";
 import { TabScroller } from "@/components/dashboard/tab-scroller";
 import { CAMPAIGN_TABS, type CampaignTab } from "@/lib/routes";
 
@@ -80,15 +81,13 @@ export function CampaignTabs({
                   aria-hidden
                 />
                 {label}
-                {count != null ? (
-                  <span
-                    className={`font-serif text-body leading-none italic ${
-                      isActive ? "text-secondary" : "text-muted"
-                    }`}
-                  >
-                    {count.toLocaleString("en-US")}
-                  </span>
-                ) : null}
+                {/* Becomes a spinner while this tab's panel is loading. A
+                    campaign tab is a real link, so without it the click has no
+                    feedback until the server answers. */}
+                <LinkPendingCount
+                  count={count}
+                  className={isActive ? "text-secondary" : "text-muted"}
+                />
               </Link>
             </li>
           );
