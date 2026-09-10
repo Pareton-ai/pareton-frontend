@@ -5,7 +5,6 @@ import {
   FilterChips,
   SortToggle,
   TableFilterBar,
-  TONE_DOT_CLASS,
   type FilterOption,
 } from "@/components/dashboard/table-filter-bar";
 import {
@@ -100,14 +99,12 @@ export function SubmissionsTable({
   // Only outcomes the campaign actually produced, so the picker never offers
   // a filter that leads to an empty table.
   const outcomeChoices: OutcomeChoice[] = [
-    { value: ALL_OUTCOMES, label: "All outcomes" },
-    ...view.outcomes.map((entry) => ({
-      value: entry.value,
-      label: getSubmissionStateMeta(entry.value).label,
-    })),
+    { value: ALL_OUTCOMES, label: "All outcomes", tone: "all" },
+    ...view.outcomes.map((entry) => {
+      const meta = getSubmissionStateMeta(entry.value);
+      return { value: entry.value, label: meta.label, tone: meta.tone };
+    }),
   ];
-  const activeTone =
-    outcome === ALL_OUTCOMES ? "neutral" : getSubmissionStateMeta(outcome).tone;
 
   return (
     <section aria-label="Submissions" className="border border-border">
@@ -132,7 +129,6 @@ export function SubmissionsTable({
           value={outcome}
           choices={outcomeChoices}
           allValue={ALL_OUTCOMES}
-          toneClassName={TONE_DOT_CLASS[activeTone] ?? TONE_DOT_CLASS.neutral}
         />
         <SortToggle
           href={sortHref(NEXT_SORT[sort])}

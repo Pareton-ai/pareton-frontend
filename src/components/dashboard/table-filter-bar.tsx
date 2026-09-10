@@ -1,13 +1,5 @@
-import {
-  ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
-  CircleCheck,
-  CircleDashed,
-  CircleSlash,
-  LoaderCircle,
-} from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import Link from "next/link";
-import type { DashboardIcon } from "@/components/dashboard/panel";
 import { TabScroller } from "@/components/dashboard/tab-scroller";
 
 /**
@@ -19,46 +11,6 @@ export type FilterOption = {
   value: string;
   label: string;
   href: string;
-  icon?: DashboardIcon;
-  /** Tailwind text colour for the icon, so a tone reads before the word does. */
-  iconClassName?: string;
-};
-
-/**
- * Icon per outcome tone rather than per state.
- *
- * `SUBMISSION_STATE_META` is partial on purpose so a state added on the
- * backend needs no edit here. Keying on tone keeps that true: a new state
- * arrives with the neutral fallback and still draws something sensible.
- */
-export const TONE_ICONS: Record<string, DashboardIcon> = {
-  success: CircleCheck,
-  danger: CircleSlash,
-  progress: LoaderCircle,
-  neutral: CircleDashed,
-};
-
-/**
- * Icon colour per tone, borrowed from the status chips in the rows below.
- *
- * Shape alone is not enough at 14px: a check and a slash inside the same
- * circle read as the same mark until you look. Colour separates the outcome
- * that failed from the one that passed at a glance, and transitional states
- * stay grey so they do not compete with either.
- */
-export const TONE_ICON_CLASS: Record<string, string> = {
-  success: "text-accent",
-  danger: "text-rust",
-  progress: "text-muted",
-  neutral: "text-muted",
-};
-
-/** The same tones as a background, for the dot beside the outcome picker. */
-export const TONE_DOT_CLASS: Record<string, string> = {
-  success: "bg-accent",
-  danger: "bg-rust",
-  progress: "bg-muted",
-  neutral: "bg-muted/50",
 };
 
 /**
@@ -94,7 +46,6 @@ export function FilterChips({
       >
         {options.map((option) => {
           const isActive = option.value === active;
-          const Icon = option.icon;
           return (
             <li key={option.value} className="shrink-0">
               <Link
@@ -107,12 +58,6 @@ export function FilterChips({
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                {Icon ? (
-                  <Icon
-                    className={`size-3.5 shrink-0 ${option.iconClassName ?? "text-muted"}`}
-                    aria-hidden
-                  />
-                ) : null}
                 {option.label}
               </Link>
             </li>

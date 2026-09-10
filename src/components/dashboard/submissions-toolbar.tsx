@@ -1,6 +1,33 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { Select } from "@base-ui/react/select";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  CircleCheck,
+  CircleDashed,
+  CircleSlash,
+  CircleX,
+  Clock,
+  Container,
+  Copy,
+  Download,
+  FileCheck,
+  FileDiff,
+  GitCommitHorizontal,
+  Hammer,
+  Hand,
+  Layers,
+  LoaderCircle,
+  Package,
+  Search,
+  ShieldCheck,
+  Swords,
+  Unplug,
+  X,
+} from "lucide-react";
+import type { DashboardIcon } from "@/components/dashboard/panel";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
@@ -109,75 +136,172 @@ export function SubmissionSearch({
   );
 }
 
-export type OutcomeChoice = { value: string; label: string };
+/**
+ * A choice carries its tone, not its icon.
+ *
+ * An icon is a React component, and a component is a function, so it cannot
+ * cross the server/client boundary any more than a callback can. The server
+ * sends the tone name and the lookup happens here.
+ */
+export type OutcomeChoice = { value: string; label: string; tone: string };
 
 /**
- * Outcome picker as a native select.
+ * A distinct mark per pipeline state, so the list reads as stages rather than
+ * as four repeated circles.
  *
- * Native because it is the one control that is already correct on every
- * device: a real picker sheet on a phone, type-ahead and arrow keys on a
- * desktop, and no focus trap of our own to get wrong. The colour that a chip
- * row carried lives on the dot beside it instead, which is the only tone that
- * matters once one is chosen.
+ * `SUBMISSION_STATE_META` is partial on purpose, and this is too: a state the
+ * backend adds later falls through to its tone below and still draws
+ * something sensible, so neither map has to be edited in lockstep.
+ */
+const STATE_ICONS: Record<string, DashboardIcon> = {
+  committed: GitCommitHorizontal,
+  picked_up: Hand,
+  fetched: Download,
+  verified: ShieldCheck,
+  applied: FileDiff,
+  surface_ok: FileCheck,
+  building: Hammer,
+  image_pushed: Container,
+  built: Package,
+  bench_queued: Clock,
+  round_assigned: Swords,
+  infra_failed: Unplug,
+  scored: CircleCheck,
+  disqualified: Ban,
+  rejected: CircleX,
+  rejected_duplicate: Copy,
+};
+
+/** Fallback per tone. `all` is the absence of a filter, so it keeps its own. */
+const TONE_ICONS: Record<string, DashboardIcon> = {
+  all: Layers,
+  success: CircleCheck,
+  danger: CircleSlash,
+  progress: LoaderCircle,
+  neutral: CircleDashed,
+};
+
+/**
+ * Colour per tone, borrowed from the status chips in the rows below.
+ *
+ * Shape alone is not enough at 14px: a check and a slash inside the same
+ * circle read as the same mark until you look. Colour separates the outcome
+ * that failed from the one that passed, and transitional states stay grey so
+ * they compete with neither.
+ */
+const TONE_CLASS: Record<string, string> = {
+  all: "text-muted",
+  success: "text-accent",
+  danger: "text-rust",
+  progress: "text-muted",
+  neutral: "text-muted",
+};
+
+function choiceIcon(choice: OutcomeChoice): DashboardIcon {
+  return (
+    STATE_ICONS[choice.value] ?? TONE_ICONS[choice.tone] ?? TONE_ICONS.neutral
+  );
+}
+
+function toneClass(tone: string): string {
+  return TONE_CLASS[tone] ?? TONE_CLASS.neutral;
+}
+
+/**
+ * Outcome picker.
+ *
+ * Built on Base UI's Select rather than a bare `<select>`: the native control
+ * renders its menu through the operating system, which arrives light, in a
+ * system font, and with no room for the tone icons that make the list
+ * scannable. This keeps the keyboard behaviour, focus handling and screen
+ * reader semantics of the native one and lets the popup match the dashboard.
  */
 export function OutcomeSelect({
   value,
   choices,
   allValue,
-  toneClassName,
 }: {
   value: string;
   choices: readonly OutcomeChoice[];
   /** The choice that means "no filter", so it drops out of the URL. */
   allValue: string;
-  toneClassName: string;
 }) {
   const write = useParamWriter("outcome", allValue);
   const [isPending, startTransition] = useTransition();
+  const byValue = new Map(choices.map((choice) => [choice.value, choice]));
 
   return (
-    /* A native select is as wide as its longest option, and "Round assigned"
-       is wide enough to push the sort control onto a third row. Flexing on a
-       phone lets it give way instead; from `sm` up it sizes to content. */
-    <label className="inline-flex min-h-8 min-w-0 flex-1 items-center gap-2 border border-border pl-2.5 pr-1 transition-colors focus-within:border-border-strong hover:border-border-strong sm:flex-none">
-      <span
-        aria-hidden
-        className={`size-2 shrink-0 rounded-full ${
-          isPending ? "animate-pulse bg-accent" : toneClassName
-        }`}
-      />
-      <span className="sr-only">Filter by outcome</span>
-      <select
-        value={value}
-        onChange={(event) => {
-          const next = event.target.value;
-          startTransition(() => write(next));
-        }}
-        className="w-full min-w-0 cursor-pointer appearance-none truncate bg-transparent py-1 pr-5 font-mono text-caption uppercase tracking-caps text-secondary focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    <Select.Root
+      value={value}
+      onValueChange={(next) => startTransition(() => write(String(next)))}
+    >
+      <Select.Trigger
+        aria-label="Filter by outcome"
+        className="inline-flex min-h-8 min-w-0 flex-1 items-center gap-2 border border-border pl-2.5 pr-2 font-mono text-caption uppercase tracking-caps text-secondary transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent data-[popup-open]:border-border-strong sm:flex-none"
       >
-        {choices.map((choice) => (
-          <option
-            key={choice.value}
-            value={choice.value}
-            className="bg-background"
-          >
-            {choice.label}
-          </option>
-        ))}
-      </select>
-      {/* The select's own arrow is hidden by appearance-none, so draw one. */}
-      <svg
-        aria-hidden
-        viewBox="0 0 10 6"
-        className="pointer-events-none -ml-5 size-2.5 shrink-0 text-muted"
-      >
-        <path
-          d="M1 1l4 4 4-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-      </svg>
-    </label>
+        <Select.Value>
+          {(current: string) => {
+            const choice = byValue.get(current) ?? byValue.get(allValue);
+            if (!choice) return null;
+            const Icon = choiceIcon(choice);
+            return (
+              <span className="flex min-w-0 items-center gap-2">
+                <Icon
+                  className={`size-3.5 shrink-0 ${
+                    isPending
+                      ? "animate-pulse text-accent"
+                      : toneClass(choice.tone)
+                  }`}
+                  aria-hidden
+                />
+                <span className="truncate">{choice.label}</span>
+              </span>
+            );
+          }}
+        </Select.Value>
+        <Select.Icon className="ml-auto flex shrink-0">
+          <ChevronDown className="size-3 text-muted" aria-hidden />
+        </Select.Icon>
+      </Select.Trigger>
+
+      <Select.Portal>
+        <Select.Positioner
+          side="bottom"
+          align="start"
+          sideOffset={4}
+          /* A plain dropdown under the trigger. The default overlaps the
+             trigger to sit the chosen row over its own label, which reads as
+             a misplaced popup against a bordered flat toolbar. */
+          alignItemWithTrigger={false}
+          className="z-50"
+        >
+          <Select.Popup className="min-w-[var(--anchor-width)] border border-border-strong bg-background py-1 shadow-lg">
+            <Select.List>
+              {choices.map((choice) => {
+                const Icon = choiceIcon(choice);
+                return (
+                  <Select.Item
+                    key={choice.value}
+                    value={choice.value}
+                    className="flex cursor-pointer items-center gap-2 py-1.5 pl-2.5 pr-8 font-mono text-caption uppercase tracking-caps text-secondary outline-none select-none data-[highlighted]:bg-accent-dim data-[highlighted]:text-foreground data-[selected]:text-foreground"
+                  >
+                    <Icon
+                      className={`size-3.5 shrink-0 ${toneClass(choice.tone)}`}
+                      aria-hidden
+                    />
+                    <Select.ItemText className="truncate">
+                      {choice.label}
+                    </Select.ItemText>
+                    <Select.ItemIndicator className="ml-auto flex shrink-0 pl-3">
+                      <Check className="size-3.5 text-accent" aria-hidden />
+                    </Select.ItemIndicator>
+                  </Select.Item>
+                );
+              })}
+            </Select.List>
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
   );
 }
