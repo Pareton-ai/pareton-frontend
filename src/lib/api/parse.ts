@@ -16,6 +16,8 @@ import {
   type RoundDetail,
   type RoundEntry,
   type RoundEntryReport,
+  type ScoreBreakdown,
+  type ReportWorkload,
   type RoundsPage,
   type SamplingRule,
   type ScoreProgressEntry,
@@ -149,6 +151,12 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
     n_prompts,
     max_tokens,
     algo_version,
+    ...(typeof o.request_interval_ms === "number"
+      ? { request_interval_ms: asNullableNumber(o.request_interval_ms) }
+      : {}),
+    ...(typeof o.enable_thinking === "boolean"
+      ? { enable_thinking: o.enable_thinking }
+      : {}),
   };
 }
 
@@ -433,6 +441,11 @@ function parsePromptScore(value: unknown): PromptScore {
     baseline_e2e_s: asNullableNumber(o.baseline_e2e_s),
     candidate_e2e_s: asNullableNumber(o.candidate_e2e_s),
     reason: asNullableString(o.reason),
+    candidate_failed:
+      typeof o.candidate_failed === "boolean" ? o.candidate_failed : null,
+    input_tokens: asNullableNumber(o.input_tokens),
+    max_tokens: asNullableNumber(o.max_tokens),
+    input_length_group: asNullableString(o.input_length_group),
   };
 }
 
@@ -457,6 +470,34 @@ function parsePromptSummary(value: unknown): PromptSummary {
   };
 }
 
+function parseScoreBreakdown(value: unknown): ScoreBreakdown | null {
+  const o = asRecord(value);
+  const keys = [
+    "median_speedup",
+    "scheduled_requests",
+    "failed_requests",
+    "failure_rate",
+    "failure_penalty",
+    "penalty",
+  ] as const;
+  if (keys.some((key) => asNullableNumber(o[key]) === null)) return null;
+  return Object.fromEntries(keys.map((key) => [key, o[key]])) as ScoreBreakdown;
+}
+
+function parseReportWorkload(value: unknown): ReportWorkload | null {
+  const o = asRecord(value);
+  const version = asNullableNumber(o.algo_version);
+  const interval = asNullableNumber(o.request_interval_ms);
+  if (version === null || interval === null) return null;
+  return {
+    algo_version: version,
+    request_interval_ms: interval,
+    enable_thinking:
+      typeof o.enable_thinking === "boolean" ? o.enable_thinking : null,
+    max_model_len: asNullableNumber(o.max_model_len),
+  };
+}
+
 export function parseRoundEntryReport(value: unknown): RoundEntryReport {
   const o = asRecord(value);
   return {
@@ -475,6 +516,8 @@ export function parseRoundEntryReport(value: unknown): RoundEntryReport {
     engine_crashed: o.engine_crashed === true,
     scoring_rule: asRecord(o.scoring_rule),
     prompt_summary: parsePromptSummary(o.prompt_summary),
+    score_breakdown: parseScoreBreakdown(o.score_breakdown),
+    workload: parseReportWorkload(o.workload),
     prompts: asArray(o.prompts).map(parsePromptScore),
     // Harness blobs are rendered as key/value, not modelled field by field:
     // they carry different keys per campaign profile. null stays null so the

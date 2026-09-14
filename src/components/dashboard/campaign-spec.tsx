@@ -125,8 +125,16 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       />
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
-        · {rule.max_tokens} max tokens
+        · {rule.max_tokens} max output tokens
       </p>
+      {rule.request_interval_ms != null ? (
+        <p className="text-muted">
+          {rule.request_interval_ms} ms between requests
+          {rule.enable_thinking != null
+            ? ` · thinking ${rule.enable_thinking ? "enabled" : "disabled"}`
+            : ""}
+        </p>
+      ) : null}
     </div>
   );
 }

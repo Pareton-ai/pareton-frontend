@@ -32,7 +32,7 @@ function entry(
 
 function roundOver(
   base: unknown,
-  over: Partial<RoundDetail> & { entries?: RoundEntry[] }
+  over: Omit<Partial<RoundDetail>, "entries"> & { entries?: unknown[] }
 ): RoundDetail {
   return parseRoundDetail({
     ...(base as object),

@@ -13,6 +13,8 @@ export type EngineTiming = {
   requestId: string;
   ttftS: number;
   completionTokens: number;
+  inputTokens: number | null;
+  maxTokens: number | null;
   /** Inter-token gaps actually recorded. Normally `completionTokens - 1`. */
   gapCount: number;
   /** ttft plus every recorded gap: this request's wall time end to end. */
@@ -71,6 +73,15 @@ export function readEngineTimings(
       requestId,
       ttftS,
       completionTokens,
+      inputTokens:
+        typeof row.input_tokens === "number" &&
+        Number.isFinite(row.input_tokens)
+          ? row.input_tokens
+          : null,
+      maxTokens:
+        typeof row.max_tokens === "number" && Number.isFinite(row.max_tokens)
+          ? row.max_tokens
+          : null,
       gapCount: gaps.length,
       totalS: gaps.reduce((sum, gap) => sum + gap, ttftS),
       maxItlS: gaps.length > 0 ? Math.max(...gaps) : null,

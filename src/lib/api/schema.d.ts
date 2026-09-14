@@ -458,6 +458,14 @@ export interface components {
       candidate_e2e_s?: number | null;
       /** Reason */
       reason?: string | null;
+      /** Candidate Failed */
+      candidate_failed?: boolean | null;
+      /** Input Tokens */
+      input_tokens?: number | null;
+      /** Max Tokens */
+      max_tokens?: number | null;
+      /** Input Length Group */
+      input_length_group?: string | null;
     };
     /**
      * PromptSummaryModel
@@ -476,6 +484,17 @@ export interface components {
       zeroed_by_reason: {
         [key: string]: number;
       };
+    };
+    /** ReportWorkloadModel */
+    ReportWorkloadModel: {
+      /** Algo Version */
+      algo_version: number;
+      /** Request Interval Ms */
+      request_interval_ms: number;
+      /** Enable Thinking */
+      enable_thinking?: boolean | null;
+      /** Max Model Len */
+      max_model_len?: number | null;
     };
     /**
      * RoundDetailModel
@@ -610,6 +629,8 @@ export interface components {
         [key: string]: unknown;
       };
       prompt_summary: components["schemas"]["PromptSummaryModel"];
+      score_breakdown?: components["schemas"]["ScoreBreakdownModel"] | null;
+      workload?: components["schemas"]["ReportWorkloadModel"] | null;
       /** Prompts */
       prompts: components["schemas"]["PromptScoreModel"][];
       /** Sla */
@@ -667,6 +688,21 @@ export interface components {
       offset: number;
       /** Rounds */
       rounds: components["schemas"]["RoundSummaryModel"][];
+    };
+    /** ScoreBreakdownModel */
+    ScoreBreakdownModel: {
+      /** Median Speedup */
+      median_speedup: number;
+      /** Scheduled Requests */
+      scheduled_requests: number;
+      /** Failed Requests */
+      failed_requests: number;
+      /** Failure Rate */
+      failure_rate: number;
+      /** Failure Penalty */
+      failure_penalty: number;
+      /** Penalty */
+      penalty: number;
     };
     /**
      * ScorePointEntryModel

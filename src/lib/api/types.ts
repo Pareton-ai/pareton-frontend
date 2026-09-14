@@ -179,6 +179,8 @@ export type SamplingRule = {
   n_prompts: number;
   max_tokens: number;
   algo_version: number;
+  request_interval_ms?: number | null;
+  enable_thinking?: boolean | null;
 };
 
 export type CustomerSignoff = {
@@ -430,6 +432,26 @@ export type PromptScore = {
   baseline_e2e_s: number | null;
   candidate_e2e_s: number | null;
   reason: string | null;
+  candidate_failed?: boolean | null;
+  input_tokens?: number | null;
+  max_tokens?: number | null;
+  input_length_group?: string | null;
+};
+
+export type ScoreBreakdown = {
+  median_speedup: number;
+  scheduled_requests: number;
+  failed_requests: number;
+  failure_rate: number;
+  failure_penalty: number;
+  penalty: number;
+};
+
+export type ReportWorkload = {
+  algo_version: number;
+  request_interval_ms: number;
+  enable_thinking: boolean | null;
+  max_model_len: number | null;
 };
 
 /** Counts over `prompts`, so the headline needs no client-side math. */
@@ -464,6 +486,8 @@ export type RoundEntryReport = {
   engine_crashed: boolean;
   scoring_rule: Record<string, unknown>;
   prompt_summary: PromptSummary;
+  score_breakdown: ScoreBreakdown | null;
+  workload: ReportWorkload | null;
   prompts: PromptScore[];
   sla: Record<string, unknown> | null;
   correctness: Record<string, unknown> | null;
