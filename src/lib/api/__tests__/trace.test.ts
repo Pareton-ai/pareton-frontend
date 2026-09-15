@@ -19,6 +19,20 @@ const SLA = {
 };
 
 describe("readEngineTimings", () => {
+  it("preserves input counts and output limits for baseline and candidate traces", () => {
+    const [timing] = readEngineTimings({
+      timings: {
+        "hf-000": {
+          ...SLA.timings["hf-000"],
+          input_tokens: 2048,
+          max_tokens: 5120,
+        },
+      },
+    });
+    expect(timing.inputTokens).toBe(2048);
+    expect(timing.maxTokens).toBe(5120);
+    expect(readEngineTimings(SLA)[0].inputTokens).toBeNull();
+  });
   it("reads each request and orders them by id", () => {
     const rows = readEngineTimings(SLA);
     expect(rows.map((r) => r.requestId)).toEqual(["hf-000", "hf-001"]);

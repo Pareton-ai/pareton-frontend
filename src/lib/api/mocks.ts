@@ -1246,6 +1246,30 @@ export function mockGetRoundEntryReport(
   // The baseline stores its SLA replay, not a comparison against itself.
   const isBaseline = entry.role === "baseline";
   const prompts = isBaseline ? [] : mockPromptScores(entry.id, entry.score);
+  const inputSizes = [2048, 4096, 6144, 7782];
+  for (const [slot, prompt] of prompts.entries()) {
+    prompt.input_tokens = inputSizes[slot % 4];
+    prompt.max_tokens = Math.min(5120, 8192 - prompt.input_tokens);
+    prompt.candidate_failed = prompt.reason !== null;
+  }
+  const sorted = prompts.map((p) => p.speedup).sort((a, b) => a - b);
+  const median = sorted.length
+    ? (sorted[Math.floor((sorted.length - 1) / 2)] +
+        sorted[Math.floor(sorted.length / 2)]) /
+      2
+    : 0;
+  const failed = prompts.filter((p) => p.candidate_failed).length;
+  const rate = prompts.length ? failed / prompts.length : 0;
+  const breakdown = prompts.length
+    ? {
+        median_speedup: median,
+        scheduled_requests: prompts.length,
+        failed_requests: failed,
+        failure_rate: rate,
+        failure_penalty: 0.1,
+        penalty: 0.1 * rate,
+      }
+    : null;
 
   return {
     round_id: round.id,
@@ -1258,11 +1282,18 @@ export function mockGetRoundEntryReport(
     status: entry.status,
     engine_image_ref: entry.engine_image_ref,
     image_digest: entry.engine_image_ref.split("@")[1] ?? null,
-    score: entry.score,
+    score: breakdown ? median - breakdown.penalty : entry.score,
     reason: entry.disqualify_reason,
     engine_crashed: false,
-    scoring_rule: round.scoring_rule,
+    scoring_rule: { ...round.scoring_rule, failure_penalty: 0.1 },
     prompt_summary: mockPromptSummary(prompts),
+    score_breakdown: breakdown,
+    workload: {
+      algo_version: 3,
+      request_interval_ms: 0,
+      enable_thinking: true,
+      max_model_len: 8192,
+    },
     prompts,
     sla: {
       role: isBaseline ? "baseline" : "candidate",
@@ -1283,6 +1314,8 @@ export function mockGetRoundEntryReport(
                 index % 7 === 0 ? 0.014 + jitter * 0.002 : 0.00001
               ),
               completion_tokens: tokens,
+              input_tokens: inputSizes[slot % 4],
+              max_tokens: Math.min(5120, 8192 - inputSizes[slot % 4]),
             },
           ];
         })

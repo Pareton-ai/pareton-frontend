@@ -966,6 +966,56 @@ describe("parseRoundEntryReport", () => {
     expect(report.prompt_summary.below_tolerance).toBe(1);
   });
 
+  it("keeps zero arrival spacing, thinking mode, and reliability arithmetic", () => {
+    const breakdown = {
+      median_speedup: 0.5,
+      scheduled_requests: 32,
+      failed_requests: 6,
+      failure_rate: 6 / 32,
+      failure_penalty: 0.1,
+      penalty: 0.01875,
+    };
+    const report = parseRoundEntryReport({
+      ...scored,
+      score: 0.48125,
+      score_breakdown: breakdown,
+      workload: {
+        algo_version: 3,
+        request_interval_ms: 0,
+        enable_thinking: true,
+        max_model_len: 8192,
+      },
+      prompts: [
+        {
+          ...scored.prompts[0],
+          input_tokens: 7782,
+          max_tokens: 410,
+          candidate_failed: false,
+        },
+      ],
+    });
+    expect(report.score_breakdown).toEqual(breakdown);
+    expect(report.score).toBeCloseTo(
+      breakdown.median_speedup - breakdown.penalty
+    );
+    expect(report.workload?.request_interval_ms).toBe(0);
+    expect(report.workload?.enable_thinking).toBe(true);
+    expect(report.prompts[0].input_tokens).toBe(7782);
+    expect(report.prompts[0].max_tokens).toBe(410);
+    expect(report.prompts[0].candidate_failed).toBe(false);
+  });
+
+  it("does not invent workload details or a deduction for historical reports", () => {
+    const report = parseRoundEntryReport(scored);
+    expect(report.workload).toBeNull();
+    expect(report.score_breakdown).toBeNull();
+    expect(report.prompts[0].input_tokens).toBeNull();
+    expect(
+      parseRoundEntryReport({ ...scored, score_breakdown: { penalty: NaN } })
+        .score_breakdown
+    ).toBeNull();
+  });
+
   it("keeps a gated prompt's 0.0 as a real number", () => {
     const report = parseRoundEntryReport(scored);
     expect(report.prompts[1].speedup).toBe(0);

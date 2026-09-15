@@ -98,7 +98,7 @@ function PromptTable({ prompts }: { prompts: readonly PromptScore[] }) {
               Candidate
             </th>
             <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
-              Tokens
+              Aligned output
             </th>
             <th className="px-3 py-3 pr-4 font-mono text-caption uppercase tracking-caps text-muted sm:pr-5">
               Gate
@@ -133,12 +133,28 @@ function BlobRows({ blob }: { blob: Record<string, unknown> }) {
   );
 }
 
-function TimingRow({ timing }: { timing: EngineTiming }) {
+function TimingRow({
+  timing,
+  showWorkload,
+}: {
+  timing: EngineTiming;
+  showWorkload: boolean;
+}) {
   return (
     <tr className="border-t border-border/80">
       <td className="whitespace-nowrap px-4 py-3 font-mono text-body text-secondary sm:px-5">
         {timing.requestId}
       </td>
+      {showWorkload ? (
+        <>
+          <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
+            {timing.inputTokens?.toLocaleString("en-US") ?? "n/a"}
+          </td>
+          <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
+            {timing.maxTokens?.toLocaleString("en-US") ?? "n/a"}
+          </td>
+        </>
+      ) : null}
       <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-foreground">
         {formatMs(timing.ttftS)}
       </td>
@@ -174,6 +190,7 @@ function TimingRow({ timing }: { timing: EngineTiming }) {
 export function EntryReportTrace({ report }: { report: RoundEntryReport }) {
   const timings = readEngineTimings(report.sla);
   if (timings.length === 0) return null;
+  const showWorkload = timings.some((t) => t.inputTokens !== null);
 
   return (
     <Panel
@@ -189,6 +206,16 @@ export function EntryReportTrace({ report }: { report: RoundEntryReport }) {
               <th className="px-4 py-3 font-mono text-caption uppercase tracking-caps text-muted sm:px-5">
                 Request
               </th>
+              {showWorkload ? (
+                <>
+                  <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
+                    Input tokens
+                  </th>
+                  <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
+                    Output limit
+                  </th>
+                </>
+              ) : null}
               <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
                 TTFT
               </th>
@@ -208,7 +235,11 @@ export function EntryReportTrace({ report }: { report: RoundEntryReport }) {
           </thead>
           <tbody>
             {timings.map((timing) => (
-              <TimingRow key={timing.requestId} timing={timing} />
+              <TimingRow
+                key={timing.requestId}
+                timing={timing}
+                showWorkload={showWorkload}
+              />
             ))}
           </tbody>
         </table>
@@ -233,7 +264,9 @@ export function EntryReportStats({ report }: { report: RoundEntryReport }) {
         hint={
           report.score === null
             ? (report.reason ?? "did not score")
-            : formatPercent(report.score)
+            : report.score_breakdown
+              ? "median speedup minus reliability deduction"
+              : formatPercent(report.score)
         }
       />
       <StatTile
@@ -263,6 +296,59 @@ export function EntryReportStats({ report }: { report: RoundEntryReport }) {
         hint="scored 0.0 without measuring"
       />
     </StatStrip>
+  );
+}
+
+export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
+  const { workload, score_breakdown: score } = report;
+  if (!workload && !score) return null;
+  return (
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      {workload ? (
+        <Panel icon={Timer} title="Workload">
+          <PanelRow label="Request interval">
+            {workload.request_interval_ms} ms
+            {workload.request_interval_ms === 0 ? " (burst)" : ""}
+          </PanelRow>
+          {workload.enable_thinking !== null ? (
+            <PanelRow label="Thinking">
+              {workload.enable_thinking ? "Enabled" : "Disabled"}
+            </PanelRow>
+          ) : null}
+          {workload.max_model_len !== null ? (
+            <PanelRow label="Context limit">
+              {workload.max_model_len.toLocaleString("en-US")} tokens
+            </PanelRow>
+          ) : null}
+          <p className="px-4 py-3 text-body leading-relaxed text-secondary sm:px-5">
+            The same inputs and output limits apply to every engine. Actual
+            concurrency depends on response duration and engine scheduling.
+            {workload.enable_thinking
+              ? " TTFT includes the start of reasoning; it is not time to the final answer."
+              : ""}
+          </p>
+        </Panel>
+      ) : null}
+      {score && report.score !== null ? (
+        <Panel icon={Gauge} title="Score calculation">
+          <PanelRow label="Median speedup">
+            {formatPercent(score.median_speedup)}
+          </PanelRow>
+          <PanelRow label="Failed requests">
+            {score.failed_requests} / {score.scheduled_requests} (
+            {(score.failure_rate * 100).toFixed(2)}%)
+          </PanelRow>
+          <PanelRow label="Deduction">
+            {score.failure_penalty} × {score.failure_rate.toFixed(4)} ={" "}
+            {score.penalty.toFixed(6)}
+          </PanelRow>
+          <PanelRow label="Final score">
+            {score.median_speedup.toFixed(6)} - {score.penalty.toFixed(6)} ={" "}
+            {report.score.toFixed(6)}
+          </PanelRow>
+        </Panel>
+      ) : null}
+    </div>
   );
 }
 

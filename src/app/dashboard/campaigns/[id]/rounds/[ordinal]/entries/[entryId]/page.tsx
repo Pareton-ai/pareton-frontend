@@ -9,6 +9,7 @@ import {
   EntryReportEvidence,
   EntryReportPrompts,
   EntryReportStats,
+  EntryReportWorkload,
   EntryReportTrace,
 } from "@/components/dashboard/entry-report";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
@@ -171,6 +172,7 @@ async function ReportSections({
       </TitleRow>
 
       <EntryReportStats report={report} />
+      <EntryReportWorkload report={report} />
 
       <p className="max-w-2xl text-body leading-relaxed text-secondary">
         The round score is the scoring rule applied to the prompts below. Both
