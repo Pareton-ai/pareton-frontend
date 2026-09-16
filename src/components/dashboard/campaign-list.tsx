@@ -42,7 +42,7 @@ const GROUPS: {
 ];
 
 function CampaignRow({ campaign }: { campaign: Campaign }) {
-  const { model } = campaign.bench;
+  const { model, gpu_count } = campaign.bench;
   const baselineRepo = campaign.baseline_repo.toLowerCase();
   const engines = [
     ...(baselineRepo.includes("vllm") ? ["vLLM"] : []),
@@ -79,14 +79,14 @@ function CampaignRow({ campaign }: { campaign: Campaign }) {
               </span>
             ))}
             <span
-              className="inline-flex w-32 shrink-0 items-center gap-1.5 truncate"
-              title={campaign.gpu_skus.join(", ")}
+              className="inline-flex items-center gap-1.5"
+              title={`${gpu_count}× GPU per bench: ${campaign.gpu_skus.join(", ") || "—"}`}
             >
               <GpuMark
                 skus={campaign.gpu_skus}
                 className="size-3.5 shrink-0 text-muted"
               />
-              {campaign.gpu_skus.map(shortSku).join(" · ") || "—"}
+              {`${gpu_count}× ${campaign.gpu_skus.map(shortSku).join(" · ") || "—"}`}
             </span>
             <span
               className="inline-flex items-center gap-1.5"
