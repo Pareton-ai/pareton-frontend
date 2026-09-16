@@ -14,7 +14,7 @@ know what that command is doing with your coldkey before you run it.
 
 |            |                                                    |
 | ---------- | -------------------------------------------------- |
-| Amount     | **0.1 TAO** per submission                         |
+| Amount     | **0.15 TAO** per submission                        |
 | Recipient  | `5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K` |
 | Signed by  | your **coldkey**                                   |
 | Refundable | no                                                 |
@@ -45,7 +45,7 @@ transfer is coldkey-signed. See
 A successful run prints the payment before it prints the commitment:
 
 ```
-paid fee 0.1 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K (payment 6123456-2)
+paid fee 0.15 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K (payment 6123456-2)
 ```
 
 `6123456-2` is the block number and the extrinsic index inside
@@ -75,7 +75,7 @@ python -m miner.commit_patch ... --dry-run
 ```
 
 ```
-dry-run: would transfer 0.1 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K
+dry-run: would transfer 0.15 TAO to 5CiieAa5nzSMbw4LPkh2hqv9rfMPZX9ZfEcSjh3SYWNBzk3K
 dry-run: not submitting on-chain
 ```
 
