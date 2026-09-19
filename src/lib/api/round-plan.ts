@@ -310,6 +310,16 @@ function entryGroupId(entry: RoundEntry): string {
   return `entry:${entry.id}`;
 }
 
+function nextEngineIndex(
+  steps: readonly RoundPlanStep[],
+  entry: RoundEntry
+): number {
+  const finished = indexOf(steps, entryGroupId(entry), "sla_bench");
+  return steps.findIndex(
+    (step, index) => index > finished && step.phase === "starting_engine"
+  );
+}
+
 function inferEntryIndex(
   entries: readonly RoundEntry[],
   hint: ProgressHint
@@ -366,14 +376,11 @@ function locatePosition(
   }
 
   if (phase === "starting_engine" || phase === "sla_bench") {
-    // Scorer and drift have no entry row. A leftover seated progress.entry
+    // Legacy scorer and drift have no entry row. A leftover seated progress.entry
     // after the cohort has settled is not a position. Scorer start is
     // `role` / `step` / `entry === N`; anything else in starting_engine is
     // the drift baseline, including the all-pass case with no fail_correctness.
-    if (allEntriesFinished(entries)) {
-      if (round.progress?.plan_version === 2 && phase === "starting_engine") {
-        return at(indexOf(steps, "scorer", "starting_engine"));
-      }
+    if (round.progress?.plan_version !== 2 && allEntriesFinished(entries)) {
       if (phase === "starting_engine") {
         return at(indexOf(steps, "drift", "starting_engine"));
       }
@@ -386,19 +393,8 @@ function locatePosition(
       const hintedHere = hint.entryIndex === entryIndex;
       // Live sla_bench still belongs to this image. Jumping to the next
       // starting_engine would drop the phase we are actually in.
-      if (
-        !hintedHere &&
-        entryFinished(entry) &&
-        entryIndex < entries.length - 1 &&
-        phase === "starting_engine"
-      ) {
-        return at(
-          indexOf(
-            steps,
-            entryGroupId(entries[entryIndex + 1]),
-            "starting_engine"
-          )
-        );
+      if (!hintedHere && entryFinished(entry) && phase === "starting_engine") {
+        return at(nextEngineIndex(steps, entry));
       }
       return at(indexOf(steps, entryGroupId(entry), phase));
     }
@@ -421,14 +417,7 @@ function locatePosition(
       }
       return at(index);
     }
-    if (entryFinished(entry) && reached === entries.length - 1) {
-      return at(indexOf(steps, "scorer", "starting_engine"));
-    }
-    if (entryFinished(entry) && reached < entries.length - 1) {
-      return at(
-        indexOf(steps, entryGroupId(entries[reached + 1]), "starting_engine")
-      );
-    }
+    if (entryFinished(entry)) return at(nextEngineIndex(steps, entry));
     return at(indexOf(steps, entryGroupId(entry), "sla_bench"));
   }
 
