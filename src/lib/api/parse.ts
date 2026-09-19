@@ -490,6 +490,15 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
   const interval = asNullableNumber(o.request_interval_ms);
   if (version === null || interval === null) return null;
   return {
+    temperature: asNullableNumber(o.temperature),
+    temperature_range:
+      Array.isArray(o.temperature_range) &&
+      o.temperature_range.length === 2 &&
+      o.temperature_range.every(
+        (v) => typeof v === "number" && Number.isFinite(v)
+      )
+        ? [o.temperature_range[0], o.temperature_range[1]]
+        : null,
     algo_version: version,
     request_interval_ms: interval,
     enable_thinking:
