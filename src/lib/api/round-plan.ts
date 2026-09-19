@@ -3,7 +3,7 @@
  *
  * The shape is fixed (`bench/main.py` `plan_round_starts`): four setup
  * phases, one `starting_engine` + bench pair per seated entry, the shared
- * scorer, the closing drift baseline, then teardown. Scorer and drift have
+ * scorer and second baseline (ordered by progress.plan_version), then teardown. Both have
  * no `round_entries` row. Engine starts = `entries.length + 2`.
  *
  * Locating "now" prefers `rounds.phase` plus `progress`, then entry
@@ -149,9 +149,16 @@ function setupStep(phase: BenchPhase): RoundPlanStep {
 
 /** Full plan for this cohort, including steps not yet reached. */
 export function buildRoundPlan(
-  entries: readonly RoundEntry[]
+  entries: readonly RoundEntry[],
+  planVersion = 1
 ): RoundPlanStep[] {
   const steps: RoundPlanStep[] = SETUP_PHASES.map(setupStep);
+  const baselineLabel =
+    planVersion === 2 ? "Second baseline" : "Drift baseline";
+  const baselineCheck = [
+    engineStep("drift", baselineLabel, baselineLabel, "starting_engine", null),
+    engineStep("drift", baselineLabel, baselineLabel, "sla_bench", null),
+  ];
 
   for (const entry of entries) {
     const subject = entrySubject(entry, entries);
@@ -160,22 +167,13 @@ export function buildRoundPlan(
       engineStep(groupId, subject, subject, "starting_engine", entry.id)
     );
     steps.push(engineStep(groupId, subject, subject, "sla_bench", entry.id));
+    if (planVersion === 2 && entry.role === "baseline")
+      steps.push(...baselineCheck);
   }
 
   steps.push(engineStep("scorer", "Scorer", "Scorer", "starting_engine", null));
   steps.push(engineStep("scorer", "Scorer", "Scorer", "correctness", null));
-  steps.push(
-    engineStep(
-      "drift",
-      "Drift baseline",
-      "Drift baseline",
-      "starting_engine",
-      null
-    )
-  );
-  steps.push(
-    engineStep("drift", "Drift baseline", "Drift baseline", "sla_bench", null)
-  );
+  if (planVersion !== 2) steps.push(...baselineCheck);
 
   const teardown = BENCH_PHASE_META.teardown;
   steps.push({
@@ -204,7 +202,8 @@ type ProgressHint = {
  * `EngineStart.role` when that lands: `baseline`, `candidate-N`, `scorer`,
  * `baseline-drift`. `step` is the 1-based plan position the harness stamps
  * (`enumerate(starts, 1)`); seated rows are `1..N`, scorer is `N+1`, drift
- * is `N+2`.
+ * is `N+2` in legacy plans. Version 2 uses baseline, second baseline,
+ * candidates, scorer. Missing versions preserve historical round ordering.
  */
 export function readProgressHint(
   progress: Record<string, unknown> | null,
@@ -258,6 +257,25 @@ export function readProgressHint(
 
   if (typeof progress.step === "number" && Number.isInteger(progress.step)) {
     const step = progress.step;
+    if (progress.plan_version === 2) {
+      const candidateIndexes = entries
+        .map((entry, index) => ({ entry, index }))
+        .filter(({ entry }) => entry.role !== "baseline");
+      if (step === 1) {
+        kind = "entry";
+        entryIndex = entries.findIndex((entry) => entry.role === "baseline");
+      } else if (step === 2) {
+        kind = "drift";
+        entryIndex = null;
+      } else if (step >= 3 && step < candidateIndexes.length + 3) {
+        kind = "entry";
+        entryIndex = candidateIndexes[step - 3].index;
+      } else if (step === candidateIndexes.length + 3) {
+        kind = "scorer";
+        entryIndex = null;
+      }
+      return { entryIndex, kind };
+    }
     if (step >= 1 && step <= entries.length) {
       entryIndex = entryIndex ?? step - 1;
       kind = kind ?? "entry";
@@ -353,6 +371,9 @@ function locatePosition(
     // `role` / `step` / `entry === N`; anything else in starting_engine is
     // the drift baseline, including the all-pass case with no fail_correctness.
     if (allEntriesFinished(entries)) {
+      if (round.progress?.plan_version === 2 && phase === "starting_engine") {
+        return at(indexOf(steps, "scorer", "starting_engine"));
+      }
       if (phase === "starting_engine") {
         return at(indexOf(steps, "drift", "starting_engine"));
       }
@@ -468,7 +489,10 @@ export function annotateRoundPlan(
   round: RoundDetail,
   now: string
 ): AnnotatedRoundPlanStep[] {
-  const steps = buildRoundPlan(round.entries);
+  const steps = buildRoundPlan(
+    round.entries,
+    round.progress?.plan_version === 2 ? 2 : 1
+  );
   const position = locatePosition(round, steps);
   const stale = heartbeatStale(round, now);
 

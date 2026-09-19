@@ -355,7 +355,13 @@ export function RoundMetadata({
             {scoringRuleLabel(round.scoring_rule)}
           </span>
         </PanelRow>
-        <PanelRow label="Baseline drift">
+        <PanelRow
+          label={
+            round.progress?.plan_version === 2
+              ? "Baseline repeatability"
+              : "Baseline drift"
+          }
+        >
           {round.baseline_drift === null ? (
             <span className="text-muted">—</span>
           ) : (
