@@ -8,6 +8,7 @@ import {
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatScore, truncateDigest } from "@/lib/api/format";
+import { readSampling, readRepetitionChecks } from "@/lib/api/generation";
 import { readEngineTimings, type EngineTiming } from "@/lib/api/trace";
 import type { PromptScore, RoundEntryReport } from "@/lib/api/types";
 
@@ -306,6 +307,20 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
     <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
       {workload ? (
         <Panel icon={Timer} title="Workload">
+          {workload.temperature_range ? (
+            <PanelRow label="Temperature range">
+              {workload.temperature_range.join(" to ")} (per prompt)
+            </PanelRow>
+          ) : workload.temperature != null ? (
+            <PanelRow label="Temperature">{workload.temperature}</PanelRow>
+          ) : null}
+          {workload.randomize_seed != null ? (
+            <PanelRow label="Generation seeds">
+              {workload.randomize_seed
+                ? "Vary by prompt and repetition; matched across engines"
+                : "Fixed"}
+            </PanelRow>
+          ) : null}
           <PanelRow label="Request interval">
             {workload.request_interval_ms} ms
             {workload.request_interval_ms === 0 ? " (burst)" : ""}
@@ -386,6 +401,7 @@ export function EntryReportPrompts({ report }: { report: RoundEntryReport }) {
 export function EntryReportEvidence({ report }: { report: RoundEntryReport }) {
   return (
     <div className="space-y-8">
+      <GenerationDiagnostics report={report} />
       {report.correctness ? (
         <Panel icon={ShieldCheck} title="Correctness">
           <BlobRows blob={report.correctness} />
@@ -437,5 +453,114 @@ export function EntryReportEvidence({ report }: { report: RoundEntryReport }) {
         ) : null}
       </Panel>
     </div>
+  );
+}
+
+function GenerationDiagnostics({ report }: { report: RoundEntryReport }) {
+  const samples = readSampling(report.sla?.sampling);
+  const checks = readRepetitionChecks(report.correctness?.prompt_checks);
+  const ratio = (value: number | null) =>
+    value === null ? "Not recorded" : value.toFixed(4);
+  const cell = "px-4 py-3 font-mono text-body tabular-nums";
+  return (
+    <>
+      {checks.length > 0 ? (
+        <Panel
+          icon={ShieldCheck}
+          title="Per-prompt repetition checks"
+          bodyClassName=""
+        >
+          <p className="px-4 py-3 text-body text-secondary">
+            Each latency-median response is compared with the lowest valid
+            opening-baseline ratio for the same prompt. Drops above the recorded
+            limit fail; absolute checks also apply. These checks detect
+            repetition, not overall writing quality.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[48rem] text-left">
+              <thead>
+                <tr>
+                  {[
+                    "Prompt",
+                    "Candidate char-16",
+                    "Baseline char-16",
+                    "Drop",
+                    "Limit",
+                    "Result",
+                  ].map((label) => (
+                    <th key={label} className={cell}>
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {checks.map((row) => (
+                  <tr key={row.requestId} className="border-t border-border/80">
+                    <td className={cell}>{row.requestId}</td>
+                    <td className={cell}>{ratio(row.distinct)}</td>
+                    <td className={cell}>{ratio(row.baseline)}</td>
+                    <td className={cell}>{ratio(row.drop)}</td>
+                    <td className={cell}>{ratio(row.limit)}</td>
+                    <td className={cell}>
+                      <span
+                        className={
+                          row.status === "Failed"
+                            ? "text-rust"
+                            : "text-secondary"
+                        }
+                      >
+                        {row.status}
+                      </span>
+                      {row.reason ? (
+                        <p className="max-w-sm font-sans">{row.reason}</p>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
+      {samples.length > 0 ? (
+        <Panel icon={ListChecks} title="Replay sampling" bodyClassName="">
+          <p className="px-4 py-3 text-body text-secondary">
+            Actual settings for each measured request. Baseline and candidate
+            receive matching temperature and seed for each prompt and
+            repetition.
+          </p>
+          <div className="max-h-96 overflow-auto">
+            <table className="w-full min-w-[35rem] text-left">
+              <thead>
+                <tr>
+                  {["Prompt", "Repetition", "Temperature", "Top p", "Seed"].map(
+                    (label) => (
+                      <th key={label} className={cell}>
+                        {label}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {samples.map((row) => (
+                  <tr
+                    key={`${row.requestId}-${row.rep}`}
+                    className="border-t border-border/80"
+                  >
+                    <td className={cell}>{row.requestId}</td>
+                    <td className={cell}>{row.rep}</td>
+                    <td className={cell}>{row.temperature}</td>
+                    <td className={cell}>{row.topP}</td>
+                    <td className={cell}>{row.seed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
+    </>
   );
 }
