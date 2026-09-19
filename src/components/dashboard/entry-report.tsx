@@ -314,13 +314,6 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
           ) : workload.temperature != null ? (
             <PanelRow label="Temperature">{workload.temperature}</PanelRow>
           ) : null}
-          {workload.randomize_seed != null ? (
-            <PanelRow label="Generation seeds">
-              {workload.randomize_seed
-                ? "Vary by prompt and repetition; matched across engines"
-                : "Fixed"}
-            </PanelRow>
-          ) : null}
           <PanelRow label="Request interval">
             {workload.request_interval_ms} ms
             {workload.request_interval_ms === 0 ? " (burst)" : ""}
@@ -526,9 +519,10 @@ function GenerationDiagnostics({ report }: { report: RoundEntryReport }) {
       {samples.length > 0 ? (
         <Panel icon={ListChecks} title="Replay sampling" bodyClassName="">
           <p className="px-4 py-3 text-body text-secondary">
-            Actual settings for each measured request. Baseline and candidate
-            receive matching temperature and seed for each prompt and
-            repetition.
+            Actual settings for each measured request. Each prompt keeps its
+            temperature across repetitions and engines. Generation uses seed 0
+            throughout qualification, warmups and measured repetitions; fixed
+            settings do not guarantee identical output text.
           </p>
           <div className="max-h-96 overflow-auto">
             <table className="w-full min-w-[35rem] text-left">

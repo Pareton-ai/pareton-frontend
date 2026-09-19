@@ -491,8 +491,6 @@ export interface components {
       temperature?: number | null;
       /** Temperature Range */
       temperature_range?: number[] | null;
-      /** Randomize Seed */
-      randomize_seed?: boolean | null;
       /** Algo Version */
       algo_version: number;
       /** Request Interval Ms */

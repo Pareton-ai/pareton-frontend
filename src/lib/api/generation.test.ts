@@ -8,7 +8,6 @@ describe("optional generation diagnostics", () => {
       workload: { algo_version: 4, request_interval_ms: 2 },
     });
     expect(report.workload?.temperature_range).toBeNull();
-    expect(report.workload?.randomize_seed).toBeNull();
     expect(readSampling(report.sla?.sampling)).toEqual([]);
     expect(readRepetitionChecks(report.correctness?.prompt_checks)).toEqual([]);
     expect(readRepetitionChecks([{ request_id: "a" }])[0].status).toBe(
@@ -22,7 +21,6 @@ describe("optional generation diagnostics", () => {
         algo_version: 4,
         request_interval_ms: 2,
         temperature_range: [0.1, 1.5],
-        randomize_seed: true,
       },
       correctness: {
         prompt_checks: [
@@ -51,7 +49,6 @@ describe("optional generation diagnostics", () => {
     });
     expect(report.prompts).toEqual([]);
     expect(report.workload?.temperature_range).toEqual([0.1, 1.5]);
-    expect(report.workload?.randomize_seed).toBe(true);
     const rows = readRepetitionChecks(report.correctness?.prompt_checks);
     expect(rows.map((r) => r.status)).toEqual([
       "Failed",
@@ -66,6 +63,28 @@ describe("optional generation diagnostics", () => {
       limit: 0.1,
     });
     expect(rows[1].baseline).toBe(0.65);
+  });
+  it("preserves fixed seed zero across all three nonzero-temperature repetitions", () => {
+    const report = parseRoundEntryReport({
+      sla: {
+        sampling: [1, 2, 3].map((rep) => ({
+          request_id: "hf-028",
+          rep,
+          seed: 0,
+          temperature: 0.73,
+          top_p: 1,
+        })),
+      },
+    });
+    expect(readSampling(report.sla?.sampling)).toEqual(
+      [1, 2, 3].map((rep) => ({
+        requestId: "hf-028",
+        rep,
+        seed: 0,
+        temperature: 0.73,
+        topP: 1,
+      }))
+    );
   });
   it("accepts seed zero and ignores malformed rows", () => {
     expect(

@@ -1290,7 +1290,6 @@ export function mockGetRoundEntryReport(
     score_breakdown: breakdown,
     workload: {
       temperature_range: [0.1, 1.5],
-      randomize_seed: true,
       algo_version: 4,
       request_interval_ms: 0,
       enable_thinking: true,
@@ -1303,7 +1302,7 @@ export function mockGetRoundEntryReport(
           request_id: `req-${slot}`,
           rep,
           temperature: (1 + (slot % 15)) / 10,
-          seed: 12345 + slot * 100 + rep,
+          seed: 0,
           top_p: 1,
         }))
       ).flat(),

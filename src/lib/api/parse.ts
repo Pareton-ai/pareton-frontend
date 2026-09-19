@@ -499,8 +499,6 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
       )
         ? [o.temperature_range[0], o.temperature_range[1]]
         : null,
-    randomize_seed:
-      typeof o.randomize_seed === "boolean" ? o.randomize_seed : null,
     algo_version: version,
     request_interval_ms: interval,
     enable_thinking:

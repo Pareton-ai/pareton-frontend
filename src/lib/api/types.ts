@@ -450,7 +450,6 @@ export type ScoreBreakdown = {
 export type ReportWorkload = {
   temperature?: number | null;
   temperature_range?: [number, number] | null;
-  randomize_seed?: boolean | null;
   algo_version: number;
   request_interval_ms: number;
   enable_thinking: boolean | null;
