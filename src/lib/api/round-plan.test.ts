@@ -49,6 +49,81 @@ function currentLabel(round: RoundDetail, now = NOW): string | null {
 }
 
 describe("buildRoundPlan", () => {
+  it("places both baseline runs before candidates for version 2", () => {
+    const entries = [
+      entry({ id: 1, role: "baseline", status: "pending" }),
+      entry({ id: 2, role: "challenger", status: "pending" }),
+    ];
+    const groups = buildRoundPlan(entries, 2).filter(
+      (s) => s.phase === "starting_engine"
+    );
+    expect(groups.map((s) => s.groupId)).toEqual([
+      "entry:1",
+      "drift",
+      "entry:2",
+      "scorer",
+    ]);
+    expect(groups[1].groupLabel).toBe("Second baseline");
+    expect(
+      buildRoundPlan(entries)
+        .filter((s) => s.phase === "starting_engine")
+        .map((s) => s.groupId)
+    ).toEqual(["entry:1", "entry:2", "scorer", "drift"]);
+  });
+
+  it("keeps version 2 order after completion when only the plan marker remains", () => {
+    const round = roundOver(roundRunning, {
+      status: "complete",
+      phase: "teardown",
+      progress: { plan_version: 2 },
+    });
+    const steps = annotateRoundPlan(round, NOW);
+    const groups = steps.filter((s) => s.phase === "starting_engine");
+    expect(groups[1].groupId).toBe("drift");
+    expect(groups.at(-1)?.groupId).toBe("scorer");
+    expect(steps.every((s) => s.status === "done")).toBe(true);
+  });
+
+  it.each([
+    ["baseline", 1, "entry"],
+    ["baseline-drift", 2, "drift"],
+    ["candidate-0", 3, "entry"],
+    ["scorer", 4, "scorer"],
+  ])(
+    "maps version 2 %s at step %s without legacy offsets",
+    (role, step, kind) => {
+      const entries = [
+        entry({ id: 1, role: "baseline", status: "scored" }),
+        entry({ id: 2, role: "challenger", status: "running" }),
+      ];
+      expect(
+        readProgressHint({ plan_version: 2, role, step }, entries).kind
+      ).toBe(kind);
+      expect(readProgressHint({ plan_version: 2, step }, entries).kind).toBe(
+        kind
+      );
+    }
+  );
+
+  it("shows the second baseline before any candidate has started", () => {
+    const round = roundOver(roundRunning, {
+      phase: "sla_bench",
+      progress: { plan_version: 2, role: "baseline-drift", step: 2 },
+      entries: [
+        entry({ id: 1, role: "baseline", status: "scored" }),
+        entry({ id: 2, role: "challenger", status: "pending" }),
+      ],
+    });
+    expect(currentLabel(round)).toBe("Second baseline, running SLA");
+    const steps = annotateRoundPlan(round, NOW);
+    expect(steps.find((s) => s.id === "entry:2:starting_engine")?.status).toBe(
+      "pending"
+    );
+    expect(steps.find((s) => s.id === "scorer:correctness")?.status).toBe(
+      "pending"
+    );
+  });
+
   it("is 4 setup + 2 per entry + scorer + drift + teardown", () => {
     const entries = [
       entry({ id: 1, role: "baseline", status: "pending" }),
@@ -142,6 +217,91 @@ describe("readProgressHint", () => {
 });
 
 describe("annotateRoundPlan", () => {
+  it.each([
+    ["starting_engine", true],
+    ["starting_engine", false],
+    [null, true],
+    [null, false],
+  ] as const)(
+    "keeps the unhinted second baseline next with phase %s and candidate present %s",
+    (phase, hasCandidate) => {
+      const round = roundOver(roundRunning, {
+        phase,
+        progress: { plan_version: 2 },
+        entries: [
+          entry({ id: 1, role: "baseline", status: "scored" }),
+          ...(hasCandidate
+            ? [entry({ id: 2, role: "challenger", status: "pending" })]
+            : []),
+        ],
+      });
+      expect(currentLabel(round)).toBe("Second baseline, starting the engine");
+      const steps = annotateRoundPlan(round, NOW);
+      expect(steps.find((s) => s.id === "scorer:starting_engine")?.status).toBe(
+        "pending"
+      );
+      if (hasCandidate)
+        expect(
+          steps.find((s) => s.id === "entry:2:starting_engine")?.status
+        ).toBe("pending");
+    }
+  );
+
+  it.each(["running", "scored"] as const)(
+    "keeps version 2 SLA on the last candidate when it is %s",
+    (status) => {
+      for (const hint of [{}, { role: "candidate-0", step: 3 }]) {
+        const round = roundOver(roundRunning, {
+          phase: "sla_bench",
+          progress: { plan_version: 2, ...hint },
+          entries: [
+            entry({ id: 1, role: "baseline", status: "scored" }),
+            entry({ id: 2, role: "challenger", status }),
+          ],
+        });
+        expect(currentLabel(round)).toBe("Candidate 1 of 1, running SLA");
+        const steps = annotateRoundPlan(round, NOW);
+        expect(steps.find((s) => s.id === "drift:sla_bench")?.status).toBe(
+          "done"
+        );
+        expect(
+          steps.find((s) => s.id === "scorer:starting_engine")?.status
+        ).toBe("pending");
+      }
+    }
+  );
+
+  it("keeps unhinted version 2 SLA on a finished baseline-only entry", () => {
+    const round = roundOver(roundRunning, {
+      phase: "sla_bench",
+      progress: { plan_version: 2 },
+      entries: [entry({ id: 1, role: "baseline", status: "scored" })],
+    });
+    expect(currentLabel(round)).toBe("Baseline, running SLA");
+  });
+
+  it("retains the plan marker without stale engine hints when the phase is absent", () => {
+    const round = roundOver(roundRunning, {
+      phase: null,
+      progress: { plan_version: 2, role: "candidate-0", step: 3 },
+      entries: [entry({ id: 1, role: "baseline", status: "scored" })],
+    });
+    expect(round.progress).toEqual({ plan_version: 2 });
+    expect(currentLabel(round)).toBe("Second baseline, starting the engine");
+  });
+
+  it("advances a finished version 2 candidate to the scorer without hints", () => {
+    const round = roundOver(roundRunning, {
+      phase: "starting_engine",
+      progress: { plan_version: 2 },
+      entries: [
+        entry({ id: 1, role: "baseline", status: "scored" }),
+        entry({ id: 2, role: "challenger", status: "scored" }),
+      ],
+    });
+    expect(currentLabel(round)).toBe("Scorer, starting the engine");
+  });
+
   it("keeps a pending round fully unreached", () => {
     const round = roundOver(roundRunning, { status: "pending", phase: null });
     const steps = annotateRoundPlan(round, NOW);
