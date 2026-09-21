@@ -154,16 +154,16 @@ async function RoundSections({
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
         <div className="min-w-0">
-          <RoundPlan round={round} now={now} />
-          {activity ? <LiveActivityLine activity={activity} now={now} /> : null}
+          <RoundEntries
+            campaignId={campaignId}
+            ordinal={round.ordinal}
+            entries={round.entries}
+            nowIso={now}
+          />
           <div className="mt-8">
-            <RoundEntries
-              campaignId={campaignId}
-              ordinal={round.ordinal}
-              entries={round.entries}
-              nowIso={now}
-            />
+            <RoundPlan round={round} now={now} />
           </div>
+          {activity ? <LiveActivityLine activity={activity} now={now} /> : null}
         </div>
 
         <RoundMetadata campaignId={campaignId} round={round} />
