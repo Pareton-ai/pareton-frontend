@@ -1289,13 +1289,25 @@ export function mockGetRoundEntryReport(
     prompt_summary: mockPromptSummary(prompts),
     score_breakdown: breakdown,
     workload: {
-      algo_version: 3,
+      temperature_range: [0.1, 1.01],
+      algo_version: 4,
       request_interval_ms: 0,
       enable_thinking: true,
       max_model_len: 8192,
     },
     prompts,
     sla: {
+      sampling: Array.from({ length: MOCK_PROMPT_COUNT }, (_, slot) =>
+        [1, 2, 3].map((rep) => ({
+          request_id: `req-${slot}`,
+          rep,
+          temperature: Number(
+            (0.1 + (slot * 0.91) / (MOCK_PROMPT_COUNT - 1)).toFixed(6)
+          ),
+          seed: 0,
+          top_p: 1,
+        }))
+      ).flat(),
       role: isBaseline ? "baseline" : "candidate",
       metrics: { output_tokens_per_s: isBaseline ? 24.1 : 41.7 },
       cross_rep_variance: { p99_e2e_ms_rel_range: 0.018 },
@@ -1328,6 +1340,23 @@ export function mockGetRoundEntryReport(
             entry.status === "disqualified" ? "fail_correctness" : "pass",
           mean_logprob: entry.status === "disqualified" ? -3.9 : -0.42,
           coverage_ratio: 1,
+          prompt_checks: Array.from(
+            { length: MOCK_PROMPT_COUNT },
+            (_, slot) => {
+              const failed = entry.status === "disqualified" && slot === 0;
+              return {
+                request_id: `req-${slot}`,
+                output_selection: "latency_median",
+                distinct_ngram_ratio: failed ? 0.6808 : 0.91,
+                baseline_distinct_ngram_ratio: 0.8953,
+                distinct_ngram_ratio_drop: failed ? 0.2145 : -0.0147,
+                max_distinct_ngram_ratio_drop: 0.1,
+                degenerate: failed
+                  ? "Distinct char-16 ratio more than 0.10 below baseline"
+                  : null,
+              };
+            }
+          ),
         },
     started_at: entry.started_at,
     completed_at: entry.completed_at,

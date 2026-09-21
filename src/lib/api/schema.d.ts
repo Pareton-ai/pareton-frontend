@@ -487,6 +487,10 @@ export interface components {
     };
     /** ReportWorkloadModel */
     ReportWorkloadModel: {
+      /** Temperature */
+      temperature?: number | null;
+      /** Temperature Range */
+      temperature_range?: number[] | null;
       /** Algo Version */
       algo_version: number;
       /** Request Interval Ms */
