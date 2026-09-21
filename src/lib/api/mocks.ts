@@ -1289,7 +1289,7 @@ export function mockGetRoundEntryReport(
     prompt_summary: mockPromptSummary(prompts),
     score_breakdown: breakdown,
     workload: {
-      temperature_range: [0.1, 1.5],
+      temperature_range: [0.1, 1.01],
       algo_version: 4,
       request_interval_ms: 0,
       enable_thinking: true,
@@ -1301,7 +1301,9 @@ export function mockGetRoundEntryReport(
         [1, 2, 3].map((rep) => ({
           request_id: `req-${slot}`,
           rep,
-          temperature: (1 + (slot % 15)) / 10,
+          temperature: Number(
+            (0.1 + (slot * 0.91) / (MOCK_PROMPT_COUNT - 1)).toFixed(6)
+          ),
           seed: 0,
           top_p: 1,
         }))

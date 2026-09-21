@@ -1,5 +1,12 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { parseRoundDetail } from "@/lib/api/parse";
+import roundVoid from "@/lib/api/__tests__/fixtures/round-void.json";
 import { describe, expect, it } from "vitest";
-import { topChallengerScore } from "@/components/dashboard/round-detail";
+import {
+  RoundMetadata,
+  topChallengerScore,
+} from "@/components/dashboard/round-detail";
 import type { RoundEntry } from "@/lib/api/types";
 
 function entry(
@@ -40,4 +47,30 @@ describe("topChallengerScore", () => {
       ])
     ).toBe(0.31);
   });
+});
+
+describe("baseline comparison metadata", () => {
+  it.each([null, { plan_version: 2 }])(
+    "preserves the historical meaning for progress=%j",
+    (progress) => {
+      const round = parseRoundDetail({ ...roundVoid, progress });
+      const html = renderToStaticMarkup(
+        createElement(RoundMetadata, {
+          campaignId: round.campaign_id,
+          round,
+        })
+      );
+      if (progress?.plan_version === 2) {
+        expect(html).toContain("Baseline repeatability");
+        expect(html).toContain(
+          "Does not measure hardware drift during candidates."
+        );
+        expect(html).not.toContain("Baseline drift");
+      } else {
+        expect(html).toContain("Baseline drift");
+        expect(html).toContain("opening and closing baseline");
+        expect(html).not.toContain("Baseline repeatability");
+      }
+    }
+  );
 });

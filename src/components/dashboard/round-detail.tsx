@@ -355,11 +355,24 @@ export function RoundMetadata({
             {scoringRuleLabel(round.scoring_rule)}
           </span>
         </PanelRow>
-        <PanelRow label="Baseline drift">
+        <PanelRow
+          label={
+            round.progress?.plan_version === 2
+              ? "Baseline repeatability"
+              : "Baseline drift"
+          }
+        >
           {round.baseline_drift === null ? (
             <span className="text-muted">—</span>
           ) : (
-            <span className="tabular-nums text-secondary">
+            <span
+              className="tabular-nums text-secondary"
+              title={
+                round.progress?.plan_version === 2
+                  ? "Compares two baseline runs before candidates. Does not measure hardware drift during candidates."
+                  : "Compares the opening and closing baseline runs."
+              }
+            >
               {round.baseline_drift}
             </span>
           )}

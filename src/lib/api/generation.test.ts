@@ -20,7 +20,7 @@ describe("optional generation diagnostics", () => {
       workload: {
         algo_version: 4,
         request_interval_ms: 2,
-        temperature_range: [0.1, 1.5],
+        temperature_range: [0.1, 1.01],
       },
       correctness: {
         prompt_checks: [
@@ -48,7 +48,7 @@ describe("optional generation diagnostics", () => {
       },
     });
     expect(report.prompts).toEqual([]);
-    expect(report.workload?.temperature_range).toEqual([0.1, 1.5]);
+    expect(report.workload?.temperature_range).toEqual([0.1, 1.01]);
     const rows = readRepetitionChecks(report.correctness?.prompt_checks);
     expect(rows.map((r) => r.status)).toEqual([
       "Failed",

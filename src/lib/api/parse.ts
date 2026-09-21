@@ -398,6 +398,10 @@ export function parseRoundEntry(value: unknown): RoundEntry {
 export function parseRoundDetail(value: unknown): RoundDetail {
   const o = asRecord(value);
   const phase = isBenchPhase(o.phase) ? o.phase : null;
+  const progress =
+    o.progress !== null && typeof o.progress === "object"
+      ? asRecord(o.progress)
+      : null;
   return {
     id: asString(o.id),
     campaign_id: asString(o.campaign_id),
@@ -419,10 +423,13 @@ export function parseRoundDetail(value: unknown): RoundDetail {
     phase_started_at:
       phase === null ? null : asNullableString(o.phase_started_at),
     heartbeat_at: asNullableString(o.heartbeat_at),
+    // The plan version is durable metadata, even without a live phase.
     progress:
-      phase !== null && o.progress !== null && typeof o.progress === "object"
-        ? asRecord(o.progress)
-        : null,
+      phase !== null
+        ? progress
+        : progress?.plan_version === 2
+          ? { plan_version: 2 }
+          : null,
     created_at: asString(o.created_at),
     started_at: asNullableString(o.started_at),
     completed_at: asNullableString(o.completed_at),
