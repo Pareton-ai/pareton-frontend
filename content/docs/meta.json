@@ -1,4 +1,11 @@
 {
   "title": "Docs",
-  "pages": ["index", "platform", "miner", "validator", "policies"]
+  "pages": [
+    "index",
+    "platform",
+    "miner",
+    "validator",
+    "policies",
+    "base-and-robinhood"
+  ]
 }
