@@ -2,10 +2,10 @@
   "title": "Docs",
   "pages": [
     "index",
-    "base-and-robinhood",
     "platform",
     "miner",
     "validator",
-    "policies"
+    "policies",
+    "base-and-robinhood"
   ]
 }
