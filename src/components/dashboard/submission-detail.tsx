@@ -18,8 +18,6 @@ import {
 } from "@/components/dashboard/panel";
 import { PipelineChip } from "@/components/dashboard/status-chip";
 import { monoLinkClassName } from "@/components/ui/mono-link";
-import { isSafeArtifactUrl } from "@/lib/api/artifacts";
-import { PatchArtifact } from "./patch-artifact";
 import {
   elapsedBetween,
   formatDuration,
@@ -322,11 +320,9 @@ export function SubmissionStats({
 export function SubmissionMetadata({
   submission,
   campaign,
-  awaitingRevealTime,
 }: {
   submission: SubmissionDetail["submission"];
   campaign: Campaign | null;
-  awaitingRevealTime: boolean;
 }) {
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
@@ -358,19 +354,6 @@ export function SubmissionMetadata({
       </Panel>
 
       <Panel icon={GitBranch} title="Build inputs">
-        <PanelRow label="Patch artifact">
-          <PatchArtifact
-            key={`${submission.id}:${submission.retrieval_url}:${submission.patch_reveal_at}:${awaitingRevealTime}`}
-            campaignId={submission.campaign_id}
-            patchHash={submission.patch_hash}
-            initial={{
-              url: submission.retrieval_url,
-              downloadable: isSafeArtifactUrl(submission.retrieval_url),
-              revealAt: submission.patch_reveal_at,
-              awaitingRevealTime,
-            }}
-          />
-        </PanelRow>
         <PanelRow label="Baseline commit">
           <CopyableMono
             value={submission.baseline_commit}

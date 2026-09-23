@@ -21,7 +21,6 @@ import { campaignHref, decodePatchHash, isPatchHash } from "@/lib/routes";
 import {
   getFailedSubmissionJob,
   getLiveActivity,
-  isAwaitingPatchRevealTime,
   isStalled,
   isTerminalState,
   reachedBuild,
@@ -162,7 +161,6 @@ async function SubmissionSections({
         <SubmissionMetadata
           submission={detail.submission}
           campaign={campaign}
-          awaitingRevealTime={isAwaitingPatchRevealTime(detail)}
         />
       </div>
 
