@@ -1,6 +1,6 @@
 import {
   Archive,
-  CalendarClock,
+  CheckCircle2,
   ChevronRight,
   CircleDot,
   Hash,
@@ -8,7 +8,7 @@ import {
 import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark, shortSku } from "@/components/dashboard/gpu";
-import { Panel, type DashboardIcon } from "@/components/dashboard/panel";
+import { type DashboardIcon } from "@/components/dashboard/panel";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getCampaigns } from "@/lib/api/endpoints";
@@ -30,15 +30,26 @@ function byNewest(a: Campaign, b: Campaign): number {
   return msAt(b.created_at) - msAt(a.created_at);
 }
 
-/** Reading order: what is live, what is coming, what is history. */
+/** Reading order: what is live, what finished, what is history. */
 const GROUPS: {
   status: CampaignStatus;
   title: string;
   icon: DashboardIcon;
+  defaultOpen: boolean;
 }[] = [
-  { status: "open", title: "Open", icon: CircleDot },
-  { status: "draft", title: "Upcoming", icon: CalendarClock },
-  { status: "closed", title: "Closed", icon: Archive },
+  { status: "open", title: "Open", icon: CircleDot, defaultOpen: true },
+  {
+    status: "closed",
+    title: "Closed",
+    icon: CheckCircle2,
+    defaultOpen: false,
+  },
+  {
+    status: "archived",
+    title: "Archived",
+    icon: Archive,
+    defaultOpen: false,
+  },
 ];
 
 function CampaignRow({ campaign }: { campaign: Campaign }) {
@@ -129,27 +140,57 @@ function CampaignListView({ campaigns }: { campaigns: Campaign[] }) {
         if (rows.length === 0) return null;
 
         return (
-          <Panel
+          <details
             key={group.status}
-            icon={group.icon}
-            title={group.title}
-            meta={`${rows.length} campaign${rows.length === 1 ? "" : "s"}`}
+            open={group.defaultOpen}
+            aria-label={group.title}
+            className="group border border-border"
           >
-            {rows.map((campaign) => (
-              <CampaignRow key={campaign.campaign_id} campaign={campaign} />
-            ))}
-          </Panel>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+              <div className="flex items-center gap-2">
+                <group.icon
+                  className="size-3.5 shrink-0 text-muted"
+                  aria-hidden
+                />
+                <h2 className="font-mono text-caption uppercase tracking-caps text-muted">
+                  {group.title}
+                </h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-serif text-body-lg italic text-muted">
+                  {`${rows.length} campaign${rows.length === 1 ? "" : "s"}`}
+                </span>
+                <ChevronRight
+                  className="size-4 shrink-0 text-muted transition-transform group-open:rotate-90"
+                  aria-hidden
+                />
+              </div>
+            </summary>
+            <div className="divide-y divide-border border-t border-border">
+              {rows.map((campaign) => (
+                <CampaignRow key={campaign.campaign_id} campaign={campaign} />
+              ))}
+            </div>
+          </details>
         );
       })}
     </div>
   );
 }
 
+const statuses = ["open", "closed", "archived"] as const;
+
 export async function CampaignList() {
   let campaigns: Campaign[] | null = null;
   let error: unknown = null;
   try {
-    campaigns = await getCampaigns();
+    const groups = await Promise.all(
+      statuses.map(async (status) => ({
+        status,
+        campaigns: await getCampaigns({ status }),
+      }))
+    );
+    campaigns = groups.flatMap((group) => group.campaigns);
   } catch (err) {
     error = err;
   }

@@ -17,8 +17,7 @@ export default function DashboardPage() {
           Campaigns
         </h1>
         <p className="mt-4 max-w-[46ch] text-body-lg leading-relaxed text-secondary">
-          Public snapshot of open campaigns, hardware targets, and miner
-          submissions.
+          Public snapshot of campaigns, hardware targets, and miner submissions.
         </p>
       </header>
 

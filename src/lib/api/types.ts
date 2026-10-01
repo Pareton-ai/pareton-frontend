@@ -130,7 +130,7 @@ export const VOID_REASONS = [
 
 export type VoidReason = (typeof VOID_REASONS)[number] | string;
 
-export type CampaignStatus = "draft" | "open" | "closed";
+export type CampaignStatus = "draft" | "open" | "closed" | "archived";
 
 export type CampaignSla = {
   p99_ttft_ms: number;
