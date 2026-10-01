@@ -79,7 +79,13 @@ export function parseScore(value: unknown): number | null {
 }
 
 function parseStatus(value: unknown): CampaignStatus {
-  if (value === "draft" || value === "open" || value === "closed") return value;
+  if (
+    value === "draft" ||
+    value === "open" ||
+    value === "closed" ||
+    value === "archived"
+  )
+    return value;
   return "draft";
 }
 

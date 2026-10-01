@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     // Parsers live in parse.ts so they can run outside RSC / server-only.
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     environment: "node",
   },
 });

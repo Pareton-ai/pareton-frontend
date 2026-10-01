@@ -725,6 +725,12 @@ const LIVE_SAMPLING_RULE = {
   algo_version: 1,
 };
 
+describe("parseCampaign status", () => {
+  it("preserves archived campaign status", () => {
+    expect(parseCampaign({ status: "archived" }).status).toBe("archived");
+  });
+});
+
 describe("parseCampaign sampling_rule", () => {
   it("keeps the hf_rows pin and ignores leftover workload_trace fields", () => {
     const campaign = parseCampaign({

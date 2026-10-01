@@ -28,6 +28,7 @@ import type {
 export const MOCK_CAMPAIGN_ID = "mock-campaign";
 export const MOCK_DRAFT_CAMPAIGN_ID = "mock-campaign-draft";
 export const MOCK_CLOSED_CAMPAIGN_ID = "mock-campaign-closed";
+export const MOCK_ARCHIVED_CAMPAIGN_ID = "mock-campaign-archived";
 
 const MOCK_ROUND_1 = "11111111-1111-1111-1111-111111111111";
 const MOCK_ROUND_2 = "22222222-2222-2222-2222-222222222222";
@@ -176,10 +177,21 @@ export const MOCK_CLOSED_CAMPAIGN: Campaign = {
   },
 };
 
+export const MOCK_ARCHIVED_CAMPAIGN: Campaign = {
+  ...MOCK_CLOSED_CAMPAIGN,
+  campaign_id: MOCK_ARCHIVED_CAMPAIGN_ID,
+  profile_id: "mock-profile-archived",
+  status: "archived",
+  created_at: hoursAgo(60 * 24),
+  manifest_hash:
+    "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+};
+
 const MOCK_CAMPAIGNS: Campaign[] = [
   MOCK_CAMPAIGN,
   MOCK_DRAFT_CAMPAIGN,
   MOCK_CLOSED_CAMPAIGN,
+  MOCK_ARCHIVED_CAMPAIGN,
 ];
 
 type PipelineTerminal =
