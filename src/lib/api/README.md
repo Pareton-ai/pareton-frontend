@@ -119,3 +119,25 @@ Publication failures retry at that same cadence while the patch control displays
 a temporary error. Client requests time out after 12 seconds, do not overlap,
 and are aborted on unmount. Once the URL arrives, checks stop. Pipeline polling,
 build-log polling, and campaign-list caching are unchanged.
+
+## Campaign-controlled patch disclosure
+
+Campaign and submission models include `patch_visibility`: `private`, or
+`public_after_reveal` with `reveal_delay_s`. The effective policy returned with
+submission detail controls the artifact UI and proxy; the campaign response is
+used to display campaign terms. Missing, unknown, or malformed policy defaults
+to private, including during a mixed-version rollout. Old URL fields alone never
+enable a download.
+
+The restored Patch artifact row shows private, awaiting-finalized-evaluation,
+scheduled, downloadable, and retry states. The availability proxy derives this
+from a fresh submission read, checks the artifact URL allowlist, and uses
+`Cache-Control: no-store`. Public pages check for policy/deadline edits every
+15 seconds while visible and at the reveal deadline, with one in-flight request
+and a 65-second browser timeout around the proxy's 60-second backend read.
+Private pages do not poll; they recheck once when the tab becomes visible.
+Switching to private removes a displayed link on the next successful refresh.
+Published files themselves cannot be revoked by this UI.
+
+Deploy the backend migration and compatible API before enabling public campaigns.
+See the companion backend `docs/patch-visibility.md` and this PR's rollout steps.

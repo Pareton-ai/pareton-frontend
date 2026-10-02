@@ -20,6 +20,7 @@ function fixture(url = "", deadline: string | null = revealAt) {
   return parseSubmissionDetail({
     submission: {
       campaign_id: "campaign",
+      patch_visibility: { mode: "public_after_reveal", reveal_delay_s: 172800 },
       retrieval_url: url,
       patch_reveal_at: deadline,
     },
@@ -45,14 +46,15 @@ describe("patch availability proxy", () => {
       url: "",
       revealAt,
       downloadable: false,
-      awaitingRevealTime: false,
+      mode: "public_after_reveal",
     });
   });
 
   it("signals a measured entry awaiting its round's reveal timestamp", async () => {
     vi.mocked(getSubmission).mockResolvedValue(fixture("", null));
     expect(await (await request()).json()).toMatchObject({
-      awaitingRevealTime: true,
+      mode: "public_after_reveal",
+      revealAt: null,
     });
   });
 
@@ -62,7 +64,7 @@ describe("patch availability proxy", () => {
       url: publicUrl,
       revealAt,
       downloadable: true,
-      awaitingRevealTime: false,
+      mode: "public_after_reveal",
     });
   });
 
@@ -92,6 +94,49 @@ describe("patch availability proxy", () => {
     expect(response.status).toBe(503);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.text()).not.toContain("private source locator");
+  });
+
+  it("never returns stale artifact fields for a private campaign", async () => {
+    const detail = fixture(publicUrl);
+    detail.submission.patch_visibility = { mode: "private" };
+    vi.mocked(getSubmission).mockResolvedValue(detail);
+    const response = await request();
+    expect(await response.json()).toEqual({
+      mode: "private",
+      url: "",
+      revealAt: null,
+      downloadable: false,
+    });
+  });
+
+  it("defaults an older backend response to private", async () => {
+    vi.mocked(getSubmission).mockResolvedValue(
+      parseSubmissionDetail({
+        submission: {
+          campaign_id: "campaign",
+          retrieval_url: publicUrl,
+        },
+      })
+    );
+    expect(await (await request()).json()).toMatchObject({
+      mode: "private",
+      url: "",
+    });
+  });
+
+  it("observes public-to-private policy updates on subsequent reads", async () => {
+    vi.mocked(getSubmission).mockResolvedValueOnce(fixture(publicUrl));
+    expect(await (await request()).json()).toMatchObject({
+      downloadable: true,
+    });
+    const detail = fixture(publicUrl);
+    detail.submission.patch_visibility = { mode: "private" };
+    vi.mocked(getSubmission).mockResolvedValueOnce(detail);
+    expect(await (await request()).json()).toMatchObject({
+      mode: "private",
+      downloadable: false,
+      url: "",
+    });
   });
 
   it("rejects invalid hashes before making API calls", async () => {

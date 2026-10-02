@@ -77,6 +77,7 @@ function mockId(n: number): string {
 }
 
 export const MOCK_CAMPAIGN: Campaign = {
+  patch_visibility: { mode: "private" },
   campaign_id: MOCK_CAMPAIGN_ID,
   profile_id: "mock-profile",
   status: "open",
@@ -358,6 +359,7 @@ function baseSubmission(
     patch_hash: row.patch_hash,
     hotkey: row.hotkey,
     baseline_commit: MOCK_CAMPAIGN.baseline_commit,
+    patch_visibility: { mode: "private" },
     retrieval_url: `https://example.com/patches/${row.patch_hash}.diff`,
     patch_reveal_at: null,
     patch_download_url: null,

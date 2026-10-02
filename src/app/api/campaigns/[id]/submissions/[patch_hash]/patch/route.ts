@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { isSafeArtifactUrl } from "@/lib/api/artifacts";
+import { getPatchAvailability } from "@/lib/api/patch-availability";
 import { getSubmission } from "@/lib/api/endpoints";
 import { isNotFound } from "@/lib/api/errors";
-import { isAwaitingPatchRevealTime } from "@/lib/api/types";
 import { decodePatchHash, isPatchHash } from "@/lib/routes";
 
 /** Server-only bridge for the patch control, like the existing build-log proxy. */
@@ -28,16 +27,9 @@ export async function GET(
         { status: 404, headers }
       );
     }
-    const { retrieval_url: url, patch_reveal_at: revealAt } = detail.submission;
-    return NextResponse.json(
-      {
-        url,
-        revealAt,
-        downloadable: isSafeArtifactUrl(url),
-        awaitingRevealTime: isAwaitingPatchRevealTime(detail),
-      },
-      { headers }
-    );
+    return NextResponse.json(getPatchAvailability(detail.submission), {
+      headers,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Patch availability is temporarily unavailable." },
