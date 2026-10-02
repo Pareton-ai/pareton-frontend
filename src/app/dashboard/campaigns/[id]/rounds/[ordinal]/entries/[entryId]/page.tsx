@@ -10,6 +10,7 @@ import {
   EntryReportPrompts,
   EntryReportStats,
   EntryReportWorkload,
+  EntryReportExplanation,
   EntryReportTrace,
 } from "@/components/dashboard/entry-report";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
@@ -174,12 +175,7 @@ async function ReportSections({
       <EntryReportStats report={report} />
       <EntryReportWorkload report={report} />
 
-      <p className="max-w-2xl text-body leading-relaxed text-secondary">
-        The round score is the scoring rule applied to the prompts below. Both
-        engines are compared at the same output token count, so a candidate that
-        stops early cannot buy speed by answering less: a prompt under the
-        tolerance bar scores nothing and shows its gate reason.
-      </p>
+      <EntryReportExplanation report={report} />
 
       <EntryReportPrompts report={report} />
       <EntryReportTrace report={report} />

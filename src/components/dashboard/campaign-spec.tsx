@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
 import { truncateHash, truncateMiddle } from "@/lib/api/format";
+import { tierGrouping, isWeightedTierRule } from "@/lib/api/scoring";
+import { INPUT_TIERS } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import type {
   Campaign,
@@ -125,9 +127,20 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       />
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
-        · {rule.max_tokens} max output tokens
+        ·{" "}
+        {rule.algo_version === 5
+          ? `${rule.output_tokens?.toLocaleString("en-US") ?? "Unknown"} timed output tokens · ${rule.max_tokens.toLocaleString("en-US")} qualification limit`
+          : `${rule.max_tokens} max output tokens`}
       </p>
-      {rule.request_interval_ms != null ? (
+      {rule.algo_version === 5 ? (
+        <p className="text-muted">
+          {rule.request_concurrency != null
+            ? `C${rule.request_concurrency} request concurrency`
+            : "Concurrency unavailable"}
+          {" · "}
+          {tierGrouping(rule.request_concurrency)}
+        </p>
+      ) : rule.request_interval_ms != null ? (
         <p className="text-muted">
           {rule.request_interval_ms} ms between requests
           {rule.enable_thinking != null
@@ -158,6 +171,29 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
           <span className="text-secondary">
             {campaign.scoring_rule.name.replaceAll("_", " ") || "—"}
           </span>
+          {isWeightedTierRule(campaign.scoring_rule) ? (
+            <div className="mt-2 space-y-1 text-secondary">
+              {campaign.scoring_rule.tier_weights ? (
+                <p>
+                  Tier weights:{" "}
+                  {INPUT_TIERS.map(
+                    (tier) =>
+                      `${tier}: ${((campaign.scoring_rule.tier_weights?.[tier] ?? 0) * 100).toLocaleString("en-US")}%`
+                  ).join(" · ")}
+                </p>
+              ) : null}
+              {campaign.scoring_rule.failure_penalty != null ? (
+                <p>
+                  Failure penalty: {campaign.scoring_rule.failure_penalty} ×
+                  failed eligible fraction
+                </p>
+              ) : null}
+              <p>
+                Any scored request failure caps speed credit at zero before the
+                deduction.
+              </p>
+            </div>
+          ) : null}
         </Row>
         <Row label="Correctness">
           {correctness ? (

@@ -4,7 +4,8 @@
  * The shape is fixed (`bench/main.py` `plan_round_starts`): four setup
  * phases, one `starting_engine` + bench pair per seated entry, the shared
  * scorer and second baseline (ordered by progress.plan_version), then teardown. Both have
- * no `round_entries` row. Engine starts = `entries.length + 2`.
+ * no `round_entries` row. Version 3 adds two qualification starts before measured work.
+ * Engine starts = `entries.length + 2` (v1/v2) or `entries.length + 4` (v3).
  *
  * Locating "now" prefers `rounds.phase` plus `progress`, then entry
  * `started_at` / status. A step is done when the next one has started.
@@ -153,12 +154,26 @@ export function buildRoundPlan(
   planVersion = 1
 ): RoundPlanStep[] {
   const steps: RoundPlanStep[] = SETUP_PHASES.map(setupStep);
-  const baselineLabel =
-    planVersion === 2 ? "Second baseline" : "Drift baseline";
+  const baselineLabel = planVersion >= 2 ? "Second baseline" : "Drift baseline";
   const baselineCheck = [
     engineStep("drift", baselineLabel, baselineLabel, "starting_engine", null),
     engineStep("drift", baselineLabel, baselineLabel, "sla_bench", null),
   ];
+
+  if (planVersion === 3) {
+    for (const n of [1, 2]) {
+      const label = `Baseline qualification ${n}`;
+      steps.push(
+        engineStep(`qualification-${n}`, label, label, "starting_engine", null)
+      );
+      steps.push({
+        ...engineStep(`qualification-${n}`, label, label, "sla_bench", null),
+        label: `${label}, checking natural outputs`,
+        description:
+          "Screen for short or degenerate baseline outputs before freezing the eligible workload.",
+      });
+    }
+  }
 
   for (const entry of entries) {
     const subject = entrySubject(entry, entries);
@@ -167,13 +182,13 @@ export function buildRoundPlan(
       engineStep(groupId, subject, subject, "starting_engine", entry.id)
     );
     steps.push(engineStep(groupId, subject, subject, "sla_bench", entry.id));
-    if (planVersion === 2 && entry.role === "baseline")
+    if (planVersion >= 2 && entry.role === "baseline")
       steps.push(...baselineCheck);
   }
 
   steps.push(engineStep("scorer", "Scorer", "Scorer", "starting_engine", null));
   steps.push(engineStep("scorer", "Scorer", "Scorer", "correctness", null));
-  if (planVersion !== 2) steps.push(...baselineCheck);
+  if (planVersion < 2) steps.push(...baselineCheck);
 
   const teardown = BENCH_PHASE_META.teardown;
   steps.push({
@@ -189,7 +204,8 @@ export function buildRoundPlan(
   return steps;
 }
 
-type EngineKind = "entry" | "scorer" | "drift";
+type EngineKind =
+  "entry" | "scorer" | "drift" | "qualification-1" | "qualification-2";
 
 type ProgressHint = {
   entryIndex: number | null;
@@ -220,6 +236,29 @@ export function readProgressHint(
       : typeof progress.kind === "string"
         ? progress.kind
         : null;
+
+  if (
+    progress.plan_version === 3 &&
+    (role === "qualification-1" || role === "qualification-2")
+  ) {
+    return { kind: role, entryIndex: null };
+  }
+  if (
+    progress.plan_version === 3 &&
+    typeof progress.step === "number" &&
+    Number.isInteger(progress.step) &&
+    progress.step >= 1
+  ) {
+    if (progress.step <= 2)
+      return {
+        kind: progress.step === 1 ? "qualification-1" : "qualification-2",
+        entryIndex: null,
+      };
+    return readProgressHint(
+      { ...progress, plan_version: 2, step: progress.step - 2 },
+      entries
+    );
+  }
 
   if (role === "scorer") {
     kind = "scorer";
@@ -361,6 +400,15 @@ function locatePosition(
     return at(indexOf(steps, "scorer", "correctness"));
   }
 
+  if (hint.kind === "qualification-1" || hint.kind === "qualification-2") {
+    return at(
+      indexOf(
+        steps,
+        hint.kind,
+        phase === "starting_engine" ? "starting_engine" : "sla_bench"
+      )
+    );
+  }
   if (hint.kind === "scorer") {
     if (phase === "sla_bench") {
       return at(indexOf(steps, "drift", "sla_bench"));
@@ -380,7 +428,11 @@ function locatePosition(
     // after the cohort has settled is not a position. Scorer start is
     // `role` / `step` / `entry === N`; anything else in starting_engine is
     // the drift baseline, including the all-pass case with no fail_correctness.
-    if (round.progress?.plan_version !== 2 && allEntriesFinished(entries)) {
+    if (
+      round.progress?.plan_version !== 2 &&
+      round.progress?.plan_version !== 3 &&
+      allEntriesFinished(entries)
+    ) {
       if (phase === "starting_engine") {
         return at(indexOf(steps, "drift", "starting_engine"));
       }
@@ -399,6 +451,9 @@ function locatePosition(
       return at(indexOf(steps, entryGroupId(entry), phase));
     }
 
+    if (round.progress?.plan_version === 3) {
+      return at(indexOf(steps, "qualification-1", phase));
+    }
     if (entries.length > 0) {
       return at(indexOf(steps, entryGroupId(entries[0]), phase));
     }
@@ -480,7 +535,11 @@ export function annotateRoundPlan(
 ): AnnotatedRoundPlanStep[] {
   const steps = buildRoundPlan(
     round.entries,
-    round.progress?.plan_version === 2 ? 2 : 1
+    round.progress?.plan_version === 3
+      ? 3
+      : round.progress?.plan_version === 2
+        ? 2
+        : 1
   );
   const position = locatePosition(round, steps);
   const stale = heartbeatStale(round, now);
