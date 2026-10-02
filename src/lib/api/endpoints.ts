@@ -35,6 +35,7 @@ import type {
   RoundEntryReport,
   RoundsPage,
   ScoreProgressSeries,
+  Submission,
   SubmissionDetail,
   SubmissionRow,
   SubmissionsPage,
@@ -128,6 +129,21 @@ export async function getSubmission(
     }
   );
   return parseSubmissionDetail(data);
+}
+
+/** Publish/check one patch without putting S3 work on ordinary list/detail reads. */
+export async function getSubmissionPatchAvailability(
+  campaignId: string,
+  patchHash: string
+): Promise<Submission> {
+  if (apiMocksEnabled())
+    return mockGetSubmission(campaignId, patchHash).submission;
+
+  const data = await apiFetch<unknown>(
+    `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/patch-availability`,
+    { revalidate: LIVE_REVALIDATE, timeoutMs: 60_000 }
+  );
+  return parseSubmissionDetail(data).submission;
 }
 
 /**

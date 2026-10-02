@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPatchAvailability } from "@/lib/api/patch-availability";
-import { getSubmission } from "@/lib/api/endpoints";
+import { getSubmissionPatchAvailability } from "@/lib/api/endpoints";
 import { isNotFound } from "@/lib/api/errors";
 import { decodePatchHash, isPatchHash } from "@/lib/routes";
 
@@ -19,15 +19,14 @@ export async function GET(
     );
   }
   try {
-    // This read can publish the diff to S3; allow longer than an ordinary read.
-    const detail = await getSubmission(id, patchHash, { timeoutMs: 60_000 });
-    if (detail.submission.campaign_id !== id) {
+    const submission = await getSubmissionPatchAvailability(id, patchHash);
+    if (submission.campaign_id !== id) {
       return NextResponse.json(
         { error: "Submission not found." },
         { status: 404, headers }
       );
     }
-    return NextResponse.json(getPatchAvailability(detail.submission), {
+    return NextResponse.json(getPatchAvailability(submission), {
       headers,
     });
   } catch (error) {
