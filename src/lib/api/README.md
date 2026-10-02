@@ -106,11 +106,13 @@ timers never authorize downloads or construct a public URL.
 
 The client patch control calls
 `GET /api/campaigns/{id}/submissions/{hash}/patch`, a frontend JSON proxy, to
-refresh just its availability. The proxy returns `{ url, revealAt, downloadable,
-awaitingRevealTime }`. It validates the campaign/hash and checks the artifact
+refresh just its availability. The proxy returns `{ mode, url, downloadable,
+revealAt }`. It validates the campaign/hash and checks the artifact
 allowlist on the server, where `PARETON_ARTIFACT_BASE_URL` is available. It never
-forwards backend error diagnostics. A deadline request may cause the backend to
-create the public copy; there is no scheduled backend publisher in this change.
+forwards backend error diagnostics. It reads the backend's campaign-scoped
+`/v1/campaigns/{id}/submissions/{hash}/patch-availability` endpoint. A deadline
+request may cause the backend to create the public copy; there is no scheduled
+backend publisher in this change.
 
 A future deadline uses one timer, re-armed in chunks for waits beyond the browser
 timeout limit. Hidden tabs pause requests and refresh on return. A measured entry
@@ -119,3 +121,30 @@ Publication failures retry at that same cadence while the patch control displays
 a temporary error. Client requests time out after 12 seconds, do not overlap,
 and are aborted on unmount. Once the URL arrives, checks stop. Pipeline polling,
 build-log polling, and campaign-list caching are unchanged.
+
+## Campaign-controlled patch disclosure
+
+Campaign and submission models include `patch_visibility`: `private`, or
+`public_after_reveal` with `reveal_delay_s`. The effective policy returned with
+submission detail controls the artifact UI and proxy; the campaign response is
+used to display campaign terms. Missing, unknown, or malformed policy defaults
+to private, including during a mixed-version rollout. Old URL fields alone never
+enable a download.
+
+The restored Patch artifact row shows private, awaiting-finalized-evaluation,
+scheduled, downloadable, and retry states. The availability proxy derives this
+from the explicit backend availability endpoint, checks the artifact URL allowlist,
+and uses `Cache-Control: no-store`. Public pages check for policy/deadline edits every
+15 seconds while visible and at the reveal deadline, with one in-flight request
+and a 65-second browser timeout around the proxy's 60-second backend read.
+Private pages do not poll; they recheck once when the tab becomes visible.
+Switching to private removes a displayed link on the next successful refresh.
+Published files themselves cannot be revoked by this UI.
+
+Ordinary backend submission list/detail reads withhold download locations and
+never contact S3. A revealed patch's initial render therefore refreshes its
+availability through the proxy; only this request or a direct patch download can
+publish/check the object. S3 outages cannot hold up the initial page's API reads.
+
+Deploy the backend migration and compatible API before enabling public campaigns.
+See the companion backend `docs/patch-visibility.md` and this PR's rollout steps.

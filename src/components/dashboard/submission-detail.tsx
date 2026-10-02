@@ -1,3 +1,5 @@
+import { PatchArtifact } from "./patch-artifact";
+import { getPatchAvailability } from "@/lib/api/patch-availability";
 import {
   Activity,
   Clock,
@@ -354,6 +356,14 @@ export function SubmissionMetadata({
       </Panel>
 
       <Panel icon={GitBranch} title="Build inputs">
+        <PanelRow label="Patch artifact">
+          <PatchArtifact
+            key={`${submission.id}:${JSON.stringify(getPatchAvailability(submission))}`}
+            campaignId={submission.campaign_id}
+            patchHash={submission.patch_hash}
+            initial={getPatchAvailability(submission)}
+          />
+        </PanelRow>
         <PanelRow label="Baseline commit">
           <CopyableMono
             value={submission.baseline_commit}

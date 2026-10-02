@@ -2,7 +2,7 @@ import { Cpu, ExternalLink, FolderTree, GitBranch, Target } from "lucide-react";
 import type { ReactNode } from "react";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
-import { truncateHash, truncateMiddle } from "@/lib/api/format";
+import { formatDuration, truncateHash, truncateMiddle } from "@/lib/api/format";
 import { cn } from "@/lib/cn";
 import type {
   Campaign,
@@ -227,6 +227,13 @@ export function CampaignReference({ campaign }: { campaign: Campaign }) {
             value={campaign.baseline_commit}
             display={truncateMiddle(campaign.baseline_commit, 12, 8)}
           />
+        </GridRow>
+        <GridRow label="Patch visibility">
+          <span className="text-secondary">
+            {campaign.patch_visibility.mode === "private"
+              ? "Private for this campaign"
+              : `Public after ${formatDuration(campaign.patch_visibility.reveal_delay_s * 1000)} from finalized evaluation`}
+          </span>
         </GridRow>
         <GridRow label="Manifest hash">
           <CopyableMono

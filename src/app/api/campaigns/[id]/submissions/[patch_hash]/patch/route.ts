@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { isSafeArtifactUrl } from "@/lib/api/artifacts";
-import { getSubmission } from "@/lib/api/endpoints";
+import { getPatchAvailability } from "@/lib/api/patch-availability";
+import { getSubmissionPatchAvailability } from "@/lib/api/endpoints";
 import { isNotFound } from "@/lib/api/errors";
-import { isAwaitingPatchRevealTime } from "@/lib/api/types";
 import { decodePatchHash, isPatchHash } from "@/lib/routes";
 
 /** Server-only bridge for the patch control, like the existing build-log proxy. */
@@ -20,24 +19,16 @@ export async function GET(
     );
   }
   try {
-    // This read can publish the diff to S3; allow longer than an ordinary read.
-    const detail = await getSubmission(id, patchHash, { timeoutMs: 60_000 });
-    if (detail.submission.campaign_id !== id) {
+    const submission = await getSubmissionPatchAvailability(id, patchHash);
+    if (submission.campaign_id !== id) {
       return NextResponse.json(
         { error: "Submission not found." },
         { status: 404, headers }
       );
     }
-    const { retrieval_url: url, patch_reveal_at: revealAt } = detail.submission;
-    return NextResponse.json(
-      {
-        url,
-        revealAt,
-        downloadable: isSafeArtifactUrl(url),
-        awaitingRevealTime: isAwaitingPatchRevealTime(detail),
-      },
-      { headers }
-    );
+    return NextResponse.json(getPatchAvailability(submission), {
+      headers,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Patch availability is temporarily unavailable." },

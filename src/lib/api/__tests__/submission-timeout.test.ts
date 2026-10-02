@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getSubmission } from "../endpoints";
+import { getSubmission, getSubmissionPatchAvailability } from "../endpoints";
 
 vi.mock("server-only", () => ({}));
 
@@ -36,16 +36,24 @@ describe("submission request timeout", () => {
         });
       })
     );
-    const result = getSubmission("campaign", "patch", { timeoutMs: 60_000 });
+    const result = getSubmissionPatchAvailability("campaign", "sha256:patch");
     const assertion = expect(result).resolves.toMatchObject({
-      submission: { retrieval_url: "https://artifacts.example/public.diff" },
+      retrieval_url: "https://artifacts.example/public.diff",
     });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "/v1/campaigns/campaign/submissions/sha256%3Apatch/patch-availability"
+      ),
+      expect.objectContaining({
+        next: expect.objectContaining({ revalidate: 0 }),
+      })
+    );
     await vi.advanceTimersByTimeAsync(55_000);
     await assertion;
   });
 
-  it.each([undefined, 60_000])(
-    "still aborts stalled requests with timeout override %s",
+  it.each([10_000, 60_000])(
+    "still aborts stalled metadata/availability requests after %s ms",
     async (timeoutMs) => {
       let signal: AbortSignal | null | undefined;
       vi.stubGlobal(
@@ -59,9 +67,12 @@ describe("submission request timeout", () => {
           });
         })
       );
-      const result = getSubmission("campaign", "patch", { timeoutMs });
+      const result =
+        timeoutMs === 60_000
+          ? getSubmissionPatchAvailability("campaign", "patch")
+          : getSubmission("campaign", "patch");
       const assertion = expect(result).rejects.toMatchObject({ status: 408 });
-      await vi.advanceTimersByTimeAsync((timeoutMs ?? 10_000) - 1);
+      await vi.advanceTimersByTimeAsync(timeoutMs - 1);
       expect(signal?.aborted).toBe(false);
       await vi.advanceTimersByTimeAsync(1);
       await assertion;
