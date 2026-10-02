@@ -106,8 +106,8 @@ timers never authorize downloads or construct a public URL.
 
 The client patch control calls
 `GET /api/campaigns/{id}/submissions/{hash}/patch`, a frontend JSON proxy, to
-refresh just its availability. The proxy returns `{ url, revealAt, downloadable,
-awaitingRevealTime }`. It validates the campaign/hash and checks the artifact
+refresh just its availability. The proxy returns `{ mode, url, downloadable,
+revealAt }`. It validates the campaign/hash and checks the artifact
 allowlist on the server, where `PARETON_ARTIFACT_BASE_URL` is available. It never
 forwards backend error diagnostics. A deadline request may cause the backend to
 create the public copy; there is no scheduled backend publisher in this change.
