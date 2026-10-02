@@ -119,3 +119,46 @@ Publication failures retry at that same cadence while the patch control displays
 a temporary error. Client requests time out after 12 seconds, do not overlap,
 and are aborted on unmount. Once the URL arrives, checks stop. Pipeline polling,
 build-log polling, and campaign-list caching are unchanged.
+
+## Concurrency and tier completion reports (v5)
+
+Companion backend: [Pareton PR #187](https://github.com/Pareton-ai/pareton/pull/187).
+Deploy this frontend before activating a v5 campaign. Either code deployment can
+happen first: historical interval/median reports remain supported. No frontend
+ranking or scoring calculation changes the authoritative API score.
+
+- V5 workload parsing accepts `request_concurrency` and `output_tokens` without
+  requiring `request_interval_ms`. Campaign details distinguish the fixed timed
+  output from the natural-output qualification allowance.
+- Weighted reports retain every tier's weight, eligible count, baseline and
+  candidate duration, raw speedup, eligible speedup and failure deduction.
+  Incomplete arithmetic stays unavailable; missing fields never become zeros.
+- Per-request comparisons are diagnostics under the weighted rule. Tier durations
+  include client queueing from group start, and the API's `eligible_speedup`
+  captures the failure cap before `failure_penalty * failure_rate` is deducted.
+- Optional observed concurrency shows each repetition/group's requested cap,
+  effective cap, peak and time-weighted mean; it does not promise full occupancy
+  during final drain or after baseline exclusions.
+- Plan version 3 adds two natural-output qualification starts before measured
+  baseline, second baseline, candidates and scorer. Versions 1 and 2 retain
+  their historical ordering, including completed reports without a live phase.
+- The generated workload and score-breakdown models were refreshed from PR
+  #187's local OpenAPI schema. Existing unrelated API declarations remain intact
+  while patch-visibility work evolves independently.
+
+### Local preview
+
+Synthetic fixtures only; these are not GPU qualification evidence. Enable both
+mock variables only for local review, never in production:
+
+```bash
+npm ci
+PARETON_USE_MOCKS=1 PARETON_MOCK_SCORING=v5 npm run build
+PARETON_USE_MOCKS=1 PARETON_MOCK_SCORING=v5 npm start -- --hostname 127.0.0.1 --port 3015
+```
+
+Open `/dashboard/campaigns/mock-campaign/rounds/3/entries/2` for the failure-cap
+example, `/dashboard/campaigns/mock-campaign/rounds/1/entries/3` for a successful
+weighted report, and entry `1` for the baseline without a score breakdown.
+The v5 switch changes campaign/report previews; other mock lists remain their
+legacy illustrative data. Omit `PARETON_MOCK_SCORING` to review historical reports.
