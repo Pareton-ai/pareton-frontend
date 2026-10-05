@@ -50,7 +50,7 @@ describe("topChallengerScore", () => {
 });
 
 describe("baseline comparison metadata", () => {
-  it.each([null, { plan_version: 2 }, { plan_version: 3 }])(
+  it.each([null, { plan_version: 2 }])(
     "preserves the historical meaning for progress=%j",
     (progress) => {
       const round = parseRoundDetail({ ...roundVoid, progress });
@@ -60,7 +60,7 @@ describe("baseline comparison metadata", () => {
           round,
         })
       );
-      if (progress?.plan_version === 2 || progress?.plan_version === 3) {
+      if (progress?.plan_version === 2) {
         expect(html).toContain("Baseline repeatability");
         expect(html).toContain(
           "Does not measure hardware drift during candidates."

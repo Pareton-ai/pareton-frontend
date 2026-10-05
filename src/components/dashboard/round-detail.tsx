@@ -357,8 +357,7 @@ export function RoundMetadata({
         </PanelRow>
         <PanelRow
           label={
-            round.progress?.plan_version === 2 ||
-            round.progress?.plan_version === 3
+            round.progress?.plan_version === 2
               ? "Baseline repeatability"
               : "Baseline drift"
           }
@@ -369,11 +368,8 @@ export function RoundMetadata({
             <span
               className="tabular-nums text-secondary"
               title={
-                round.progress?.plan_version === 2 ||
-                round.progress?.plan_version === 3
-                  ? round.progress?.plan_version === 3
-                    ? "Worst absolute tier completion speedup between measured baseline runs before candidates. Does not measure hardware drift during candidates."
-                    : "Compares two baseline runs before candidates. Does not measure hardware drift during candidates."
+                round.progress?.plan_version === 2
+                  ? "Compares two baseline runs before candidates. Does not measure hardware drift during candidates."
                   : "Compares the opening and closing baseline runs."
               }
             >

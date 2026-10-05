@@ -139,12 +139,8 @@ ranking or scoring calculation changes the authoritative API score.
 - Optional observed concurrency shows each repetition/group's requested cap,
   effective cap, peak and time-weighted mean; it does not promise full occupancy
   during final drain or after baseline exclusions.
-- Plan version 3 adds two natural-output qualification starts before measured
-  baseline, second baseline, candidates and scorer. Versions 1 and 2 retain
-  their historical ordering, including completed reports without a live phase.
-- The generated workload and score-breakdown models were refreshed from PR
-  #187's local OpenAPI schema. Existing unrelated API declarations remain intact
-  while patch-visibility work evolves independently.
+- Keep the existing version 2 round plan: baseline, baseline-drift, leader and
+  challengers, then the shared scorer. No extra qualification stages.
 
 ### Local preview
 

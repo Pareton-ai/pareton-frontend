@@ -102,7 +102,7 @@ describe("weighted tier report rendering", () => {
       renderToStaticMarkup(<EntryReportConcurrency report={report} />)
     ).toBe("");
   });
-  it("shows campaign weights, failure penalty and separate timed/qualification output budgets", () => {
+  it("shows campaign weights, failure penalty and natural output ceiling", () => {
     const campaign = parseCampaign({
       ...MOCK_CAMPAIGN,
       scoring_rule: MOCK_TIER_RULE,

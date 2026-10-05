@@ -464,7 +464,7 @@ export function parseRoundDetail(value: unknown): RoundDetail {
     progress:
       phase !== null
         ? progress
-        : progress?.plan_version === 2 || progress?.plan_version === 3
+        : progress?.plan_version === 2
           ? { plan_version: progress.plan_version }
           : null,
     created_at: asString(o.created_at),
