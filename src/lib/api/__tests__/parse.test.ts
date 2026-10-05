@@ -884,7 +884,14 @@ describe("patch reveal contract", () => {
     "keeps refreshing a %s entry until the round supplies its deadline",
     (status) => {
       const detail = parseSubmissionDetail({
-        submission: { retrieval_url: "", patch_reveal_at: null },
+        submission: {
+          retrieval_url: "",
+          patch_reveal_at: null,
+          patch_visibility: {
+            mode: "public_after_reveal",
+            reveal_delay_s: 172800,
+          },
+        },
         latest_state: status,
         round: { round_id: "round", status },
       });

@@ -7,6 +7,7 @@ import {
   type TierCompletionScore,
   type InputTier,
   type Campaign,
+  type PatchVisibility,
   type CampaignBench,
   type CampaignBenchCorrectness,
   type CampaignBenchModel,
@@ -220,11 +221,28 @@ function parseSignoff(value: unknown): CustomerSignoff | null {
   };
 }
 
+/** Missing/unknown policy stays private during mixed-version deployments. */
+export function parsePatchVisibility(value: unknown): PatchVisibility {
+  const policy = asRecord(value);
+  const delay = policy.reveal_delay_s;
+  if (
+    policy.mode === "public_after_reveal" &&
+    typeof delay === "number" &&
+    Number.isInteger(delay) &&
+    delay >= 0 &&
+    delay <= 2147483647
+  ) {
+    return { mode: "public_after_reveal", reveal_delay_s: delay };
+  }
+  return { mode: "private" };
+}
+
 export function parseCampaign(value: unknown): Campaign {
   const o = asRecord(value);
   return {
     campaign_id: asString(o.campaign_id),
     profile_id: asString(o.profile_id),
+    patch_visibility: parsePatchVisibility(o.patch_visibility),
     status: parseStatus(o.status),
     baseline_repo: asString(o.baseline_repo),
     baseline_commit: asString(o.baseline_commit),
@@ -314,6 +332,7 @@ function parseSubmission(value: unknown): Submission {
     patch_hash: asString(o.patch_hash),
     hotkey: asString(o.hotkey),
     baseline_commit: asString(o.baseline_commit),
+    patch_visibility: parsePatchVisibility(o.patch_visibility),
     retrieval_url: asString(o.retrieval_url),
     patch_reveal_at: asNullableString(o.patch_reveal_at),
     patch_download_url: asNullableString(o.patch_download_url),

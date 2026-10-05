@@ -196,7 +196,11 @@ export type CustomerSignoff = {
   timestamp: string;
 };
 
+export type PatchVisibility =
+  { mode: "private" } | { mode: "public_after_reveal"; reveal_delay_s: number };
+
 export type Campaign = {
+  patch_visibility: PatchVisibility;
   campaign_id: string;
   profile_id: string;
   status: CampaignStatus;
@@ -263,6 +267,8 @@ export type SubmissionsPage = {
 };
 
 export type Submission = {
+  /** Effective campaign policy returned with this submission snapshot. */
+  patch_visibility: PatchVisibility;
   id: string;
   campaign_id: string;
   patch_hash: string;
@@ -685,6 +691,7 @@ export function isTerminalState(state: string): boolean {
 /** An entry can settle before its round finalizes and supplies the deadline. */
 export function isAwaitingPatchRevealTime(detail: SubmissionDetail): boolean {
   return (
+    detail.submission.patch_visibility.mode === "public_after_reveal" &&
     !detail.submission.retrieval_url &&
     !detail.submission.patch_reveal_at &&
     (detail.round?.status === "scored" ||
