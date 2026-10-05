@@ -187,7 +187,6 @@ export type SamplingRule = {
   algo_version: number;
   request_interval_ms?: number | null;
   request_concurrency?: number | null;
-  output_tokens?: number | null;
   enable_thinking?: boolean | null;
 };
 
@@ -481,7 +480,6 @@ export type ReportWorkload = {
   algo_version: number;
   request_interval_ms: number | null;
   request_concurrency?: number | null;
-  output_tokens?: number | null;
   enable_thinking: boolean | null;
   max_model_len: number | null;
 };

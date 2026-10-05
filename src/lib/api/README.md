@@ -127,9 +127,9 @@ Deploy this frontend before activating a v5 campaign. Either code deployment can
 happen first: historical interval/median reports remain supported. No frontend
 ranking or scoring calculation changes the authoritative API score.
 
-- V5 workload parsing accepts `request_concurrency` and `output_tokens` without
-  requiring `request_interval_ms`. Campaign details distinguish the fixed timed
-  output from the natural-output qualification allowance.
+- V5 workload parsing accepts `request_concurrency` without
+  requiring `request_interval_ms`. Campaign details show natural EOS, the output
+  ceiling and the 90% baseline-token minimum.
 - Weighted reports retain every tier's weight, eligible count, baseline and
   candidate duration, raw speedup, eligible speedup and failure deduction.
   Incomplete arithmetic stays unavailable; missing fields never become zeros.

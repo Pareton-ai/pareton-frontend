@@ -498,7 +498,6 @@ export interface components {
       /** Request Concurrency */
       request_concurrency?: number | null;
       /** Output Tokens */
-      output_tokens?: number | null;
       /** Enable Thinking */
       enable_thinking?: boolean | null;
       /** Max Model Len */

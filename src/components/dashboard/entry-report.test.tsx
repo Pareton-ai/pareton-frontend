@@ -18,13 +18,13 @@ const weighted = (failed = 0) =>
   parseRoundEntryReport(mockTierReport(legacy(), failed));
 
 describe("weighted tier report rendering", () => {
-  it("renders all tier contributions, fixed work and complete-group timing", () => {
+  it("renders all tier contributions, natural outputs and complete-group timing", () => {
     const html = renderToStaticMarkup(
       <EntryReportWorkload report={weighted()} />
     );
     for (const text of [
       "C32",
-      "3,000",
+      "90% of baseline",
       "Tier completion",
       "100.000s",
       "110.000s",
@@ -110,7 +110,6 @@ describe("weighted tier report rendering", () => {
         ...MOCK_CAMPAIGN.sampling_rule,
         algo_version: 5,
         request_concurrency: 32,
-        output_tokens: 3000,
         max_tokens: 5120,
       },
     });
@@ -120,8 +119,8 @@ describe("weighted tier report rendering", () => {
         <CampaignReference campaign={campaign} />
       </>
     );
-    expect(html).toContain("3,000 timed output tokens");
-    expect(html).toContain("5,120 qualification limit");
+    expect(html).toContain("90% of baseline");
+    expect(html).toContain("5,120 max output tokens");
     expect(html).toContain("Tier weights:");
     expect(html).toContain("Failure penalty:");
   });

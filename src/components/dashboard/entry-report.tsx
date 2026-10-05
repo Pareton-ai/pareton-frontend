@@ -370,9 +370,8 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
               <PanelRow label="Tier scheduling">
                 {tierGrouping(workload.request_concurrency)}
               </PanelRow>
-              <PanelRow label="Fixed output per request">
-                {workload.output_tokens?.toLocaleString("en-US") ?? "Unknown"}{" "}
-                tokens
+              <PanelRow label="Output policy">
+                Natural EOS · Minimum 90% of baseline tokens per request
               </PanelRow>
             </>
           ) : (
@@ -393,7 +392,7 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
           ) : null}
           <p className="px-4 py-3 text-body leading-relaxed text-secondary sm:px-5">
             {workload.algo_version === 5
-              ? "The same eligible inputs and fixed output budget apply to every engine. Slots refill until the group drains and stay occupied through protocol completion. Baseline exclusions and final drain can reduce actual concurrency below the configured cap."
+              ? "The same eligible inputs and output ceilings apply to every engine. Candidates must emit at least 90% of baseline tokens per request; natural output lengths can affect tier completion time. Slots refill until the group drains and stay occupied through protocol completion. Baseline exclusions and final drain can reduce actual concurrency below the configured cap."
               : "The same inputs and output limits apply to every engine. Actual concurrency depends on response duration and engine scheduling."}
             {workload.enable_thinking
               ? " TTFT includes the start of reasoning; it is not time to the final answer."
@@ -635,9 +634,10 @@ function GenerationDiagnostics({ report }: { report: RoundEntryReport }) {
           bodyClassName=""
         >
           <p className="px-4 py-3 text-body text-secondary">
-            {isWeightedTierRule(report.scoring_rule)
-              ? "Strict fixed-output checks cover every eligible request and repetition. Stored per-prompt diagnostics are shown below; no forced-tail exemption applies. These checks detect repetition, not overall writing quality."
-              : "Each latency-median response is compared with the lowest valid opening-baseline ratio for the same prompt. Drops above the recorded limit fail; absolute checks also apply. These checks detect repetition, not overall writing quality."}
+            Each latency-median response is compared with the lowest valid
+            opening-baseline ratio for the same prompt. Drops above the recorded
+            limit fail; absolute checks also apply. These checks detect
+            repetition, not overall writing quality.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[48rem] text-left">

@@ -84,11 +84,11 @@ describe("v5 report contract", () => {
         mockTierReport({ ...legacy(), ...overrides })
       );
       expect(parsed.score_breakdown).toBeNull();
-      expect(parsed.workload?.output_tokens).toBe(3000);
+      expect(parsed.workload?.request_concurrency).toBe(32);
     }
   });
 
-  it("retains manifest weights, penalty and separate qualification and measured budgets", () => {
+  it("retains manifest weights, penalty and natural output ceiling", () => {
     const campaign = parseCampaign({
       ...MOCK_CAMPAIGN,
       scoring_rule: MOCK_TIER_RULE,
@@ -97,14 +97,12 @@ describe("v5 report contract", () => {
         algo_version: 5,
         request_concurrency: 4,
         max_tokens: 5120,
-        output_tokens: 3000,
       },
     });
     expect(campaign.scoring_rule).toEqual(MOCK_TIER_RULE);
     expect(campaign.sampling_rule).toMatchObject({
       request_concurrency: 4,
       max_tokens: 5120,
-      output_tokens: 3000,
     });
   });
 });

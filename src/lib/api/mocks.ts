@@ -1089,7 +1089,6 @@ export function mockGetCampaign(campaignId: string): Campaign {
         algo_version: 5,
         max_tokens: 5120,
         request_concurrency: 32,
-        output_tokens: 3000,
         enable_thinking: false,
       },
     };

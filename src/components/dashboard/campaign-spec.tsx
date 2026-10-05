@@ -127,10 +127,10 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       />
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
-        ·{" "}
+        · {rule.max_tokens.toLocaleString("en-US")} max output tokens
         {rule.algo_version === 5
-          ? `${rule.output_tokens?.toLocaleString("en-US") ?? "Unknown"} timed output tokens · ${rule.max_tokens.toLocaleString("en-US")} qualification limit`
-          : `${rule.max_tokens} max output tokens`}
+          ? " · Natural EOS · 90% of baseline minimum"
+          : ""}
       </p>
       {rule.algo_version === 5 ? (
         <p className="text-muted">

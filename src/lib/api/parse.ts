@@ -191,9 +191,6 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
     ...(asNullableNumber(o.request_concurrency) !== null
       ? { request_concurrency: asNullableNumber(o.request_concurrency) }
       : {}),
-    ...(asNullableNumber(o.output_tokens) !== null
-      ? { output_tokens: asNullableNumber(o.output_tokens) }
-      : {}),
     ...(typeof o.enable_thinking === "boolean"
       ? { enable_thinking: o.enable_thinking }
       : {}),
@@ -591,7 +588,6 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
   const version = asNullableNumber(o.algo_version);
   const interval = asNullableNumber(o.request_interval_ms);
   const concurrency = asNullableNumber(o.request_concurrency);
-  const output = asNullableNumber(o.output_tokens);
   if (version === null) return null;
   if (
     version === 5
@@ -614,10 +610,6 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
     ...(version === 5
       ? {
           request_concurrency: concurrency,
-          output_tokens:
-            output !== null && Number.isInteger(output) && output > 0
-              ? output
-              : null,
         }
       : {}),
     enable_thinking:
