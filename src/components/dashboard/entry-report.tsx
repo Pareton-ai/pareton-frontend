@@ -10,6 +10,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatScore, truncateDigest } from "@/lib/api/format";
 import { readSampling, readRepetitionChecks } from "@/lib/api/generation";
 import { readEngineTimings, type EngineTiming } from "@/lib/api/trace";
+import { INPUT_TIERS } from "@/lib/api/types";
+import {
+  isWeightedTierRule,
+  tierGrouping,
+  readConcurrencyObservations,
+} from "@/lib/api/scoring";
 import type { PromptScore, RoundEntryReport } from "@/lib/api/types";
 
 /** Percent for reading, e.g. `+71.94%`. The sign matters: a patch can be slower. */
@@ -252,6 +258,48 @@ export function EntryReportTrace({ report }: { report: RoundEntryReport }) {
 export function EntryReportStats({ report }: { report: RoundEntryReport }) {
   const { prompt_summary: summary } = report;
   const tolerance = toleranceLabel(report.scoring_rule);
+  if (isWeightedTierRule(report.scoring_rule)) {
+    const score = report.score_breakdown;
+    return (
+      <StatStrip
+        label="Score breakdown"
+        className="sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <StatTile
+          icon={Gauge}
+          label="Round score"
+          value={report.score === null ? "—" : formatScore(report.score)}
+          hint={
+            report.score === null
+              ? (report.reason ?? "did not score")
+              : "weighted tier speedup after failure cap and deduction"
+          }
+        />
+        <StatTile
+          icon={ListChecks}
+          label="Eligible requests"
+          value={score ? String(score.scheduled_requests) : "—"}
+          hint="trusted baseline exclusions removed"
+        />
+        <StatTile
+          icon={ShieldCheck}
+          label="Failed eligible requests"
+          value={score ? String(score.failed_requests) : "—"}
+          hint="each request counted once"
+        />
+        <StatTile
+          icon={Timer}
+          label="Raw weighted speedup"
+          value={
+            score?.weighted_speedup != null
+              ? formatPercent(score.weighted_speedup)
+              : "—"
+          }
+          hint="before failure cap and deduction"
+        />
+      </StatStrip>
+    );
+  }
 
   return (
     <StatStrip
@@ -314,10 +362,24 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
           ) : workload.temperature != null ? (
             <PanelRow label="Temperature">{workload.temperature}</PanelRow>
           ) : null}
-          <PanelRow label="Request interval">
-            {workload.request_interval_ms} ms
-            {workload.request_interval_ms === 0 ? " (burst)" : ""}
-          </PanelRow>
+          {workload.algo_version === 5 ? (
+            <>
+              <PanelRow label="Request concurrency">
+                C{workload.request_concurrency}
+              </PanelRow>
+              <PanelRow label="Tier scheduling">
+                {tierGrouping(workload.request_concurrency)}
+              </PanelRow>
+              <PanelRow label="Output policy">
+                Natural EOS · Minimum 90% of baseline tokens per request
+              </PanelRow>
+            </>
+          ) : (
+            <PanelRow label="Request interval">
+              {workload.request_interval_ms} ms
+              {workload.request_interval_ms === 0 ? " (burst)" : ""}
+            </PanelRow>
+          )}
           {workload.enable_thinking !== null ? (
             <PanelRow label="Thinking">
               {workload.enable_thinking ? "Enabled" : "Disabled"}
@@ -329,8 +391,9 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
             </PanelRow>
           ) : null}
           <p className="px-4 py-3 text-body leading-relaxed text-secondary sm:px-5">
-            The same inputs and output limits apply to every engine. Actual
-            concurrency depends on response duration and engine scheduling.
+            {workload.algo_version === 5
+              ? "The same eligible inputs and output ceilings apply to every engine. Candidates must emit at least 90% of baseline tokens per request; natural output lengths can affect tier completion time. Slots refill until the group drains and stay occupied through protocol completion. Baseline exclusions and final drain can reduce actual concurrency below the configured cap."
+              : "The same inputs and output limits apply to every engine. Actual concurrency depends on response duration and engine scheduling."}
             {workload.enable_thinking
               ? " TTFT includes the start of reasoning; it is not time to the final answer."
               : ""}
@@ -339,24 +402,126 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
       ) : null}
       {score && report.score !== null ? (
         <Panel icon={Gauge} title="Score calculation">
-          <PanelRow label="Median speedup">
-            {formatPercent(score.median_speedup)}
-          </PanelRow>
+          {score.weighted_speedup != null ? (
+            <>
+              <PanelRow label="Raw weighted speedup">
+                {formatPercent(score.weighted_speedup)}
+              </PanelRow>
+              <PanelRow label="Eligible speedup">
+                {formatPercent(score.eligible_speedup)}
+              </PanelRow>
+              <p className="px-4 py-3 text-body text-secondary sm:px-5">
+                {score.failed_requests > 0
+                  ? `Request failures cap speed credit at zero: min(${score.weighted_speedup.toFixed(6)}, 0) = ${score.eligible_speedup.toFixed(6)}. Negative speedups remain negative.`
+                  : "No request failures: eligible speedup equals raw weighted speedup."}
+              </p>
+            </>
+          ) : (
+            <PanelRow label="Median speedup">
+              {formatPercent(score.median_speedup)}
+            </PanelRow>
+          )}
           <PanelRow label="Failed requests">
             {score.failed_requests} / {score.scheduled_requests} (
             {(score.failure_rate * 100).toFixed(2)}%)
           </PanelRow>
           <PanelRow label="Deduction">
-            {score.failure_penalty} × {score.failure_rate.toFixed(4)} ={" "}
-            {score.penalty.toFixed(6)}
+            {score.failure_penalty} ×{" "}
+            {score.weighted_speedup != null
+              ? `(${score.failed_requests} / ${score.scheduled_requests})`
+              : score.failure_rate.toFixed(4)}{" "}
+            = {score.penalty.toFixed(6)}
           </PanelRow>
           <PanelRow label="Final score">
-            {score.median_speedup.toFixed(6)} - {score.penalty.toFixed(6)} ={" "}
-            {report.score.toFixed(6)}
+            {(score.eligible_speedup ?? score.median_speedup).toFixed(6)} -{" "}
+            {score.penalty.toFixed(6)} = {report.score.toFixed(6)}
           </PanelRow>
         </Panel>
       ) : null}
+      {score?.tiers ? (
+        <div className="lg:col-span-2">
+          <TierCompletionTable score={score} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function TierCompletionTable({
+  score,
+}: {
+  score: NonNullable<RoundEntryReport["score_breakdown"]>;
+}) {
+  if (!score.tiers) return null;
+  return (
+    <Panel icon={Timer} title="Tier completion" bodyClassName="">
+      <p className="px-4 py-3 text-body text-secondary sm:px-5">
+        Each duration is the median across repetitions, from the group start
+        until the tier&apos;s last request finishes. This includes client
+        queueing. Weighted speedup = sum of weight × (1 − candidate / baseline).
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[48rem] text-left font-mono text-body tabular-nums">
+          <thead>
+            <tr>
+              {[
+                "Input tier",
+                "Eligible requests",
+                "Weight",
+                "Baseline",
+                "Candidate",
+                "Speedup",
+                "Contribution",
+              ].map((label) => (
+                <th key={label} className="px-4 py-3 text-caption text-muted">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {INPUT_TIERS.map((tier) => {
+              const detail = score.tiers![tier];
+              return (
+                <tr key={tier} className="border-t border-border">
+                  <th scope="row" className="px-4 py-3">
+                    {tier}
+                  </th>
+                  <td className="px-4 py-3">{detail.scheduled_requests}</td>
+                  <td className="px-4 py-3">
+                    {(detail.weight * 100).toLocaleString("en-US")}%
+                  </td>
+                  <td className="px-4 py-3">
+                    {formatSeconds(detail.baseline_completion_s)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {formatSeconds(detail.candidate_completion_s)}
+                  </td>
+                  <td className="px-4 py-3">{formatPercent(detail.speedup)}</td>
+                  <td className="px-4 py-3">
+                    {formatPercent(detail.weight * detail.speedup)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
+export function EntryReportExplanation({
+  report,
+}: {
+  report: RoundEntryReport;
+}) {
+  return (
+    <p className="max-w-2xl text-body leading-relaxed text-secondary">
+      {isWeightedTierRule(report.scoring_rule)
+        ? "The round score uses weighted completion times for all eligible work in each tier. Per-request speedups below are diagnostics, not score contributions. Only trusted baseline exclusions are removed; candidate failures remain in the eligible count and incur the configured failure penalty."
+        : "The round score is the scoring rule applied to the prompts below. Both engines are compared at the same output token count, so a candidate that stops early cannot buy speed by answering less: a prompt under the tolerance bar scores nothing and shows its gate reason."}
+    </p>
   );
 }
 
@@ -365,7 +530,11 @@ export function EntryReportPrompts({ report }: { report: RoundEntryReport }) {
     return (
       <Panel
         icon={ListChecks}
-        title="Per-prompt breakdown"
+        title={
+          isWeightedTierRule(report.scoring_rule)
+            ? "Per-request diagnostics"
+            : "Per-prompt breakdown"
+        }
         meta={`${report.prompts.length} prompts`}
         bodyClassName=""
       >
@@ -394,6 +563,7 @@ export function EntryReportPrompts({ report }: { report: RoundEntryReport }) {
 export function EntryReportEvidence({ report }: { report: RoundEntryReport }) {
   return (
     <div className="space-y-8">
+      <EntryReportConcurrency report={report} />
       <GenerationDiagnostics report={report} />
       {report.correctness ? (
         <Panel icon={ShieldCheck} title="Correctness">
@@ -556,5 +726,66 @@ function GenerationDiagnostics({ report }: { report: RoundEntryReport }) {
         </Panel>
       ) : null}
     </>
+  );
+}
+
+export function EntryReportConcurrency({
+  report,
+}: {
+  report: RoundEntryReport;
+}) {
+  const rows = readConcurrencyObservations(report.sla);
+  if (rows.length === 0) return null;
+  return (
+    <Panel
+      icon={Activity}
+      title="Observed request concurrency"
+      bodyClassName=""
+    >
+      <p className="px-4 py-3 text-body text-secondary sm:px-5">
+        Occupied client slots include protocol completion and final drain. Mean
+        occupancy is weighted by elapsed time; it can be below the requested
+        cap.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[42rem] text-left font-mono text-body tabular-nums">
+          <thead>
+            <tr>
+              {[
+                "Repetition",
+                "Group start",
+                "Requested",
+                "Effective cap",
+                "Peak",
+                "Mean",
+              ].map((label) => (
+                <th key={label} className="px-4 py-3 text-caption text-muted">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr
+                key={`${row.rep}-${row.group_start_offset_ms}-${i}`}
+                className="border-t border-border"
+              >
+                <td className="px-4 py-3">{row.rep}</td>
+                <td className="px-4 py-3">
+                  {formatSeconds(row.group_start_offset_ms / 1000)}
+                </td>
+                <td className="px-4 py-3">C{row.requested_concurrency}</td>
+                <td className="px-4 py-3">{row.effective_concurrency}</td>
+                <td className="px-4 py-3">{row.observed_peak}</td>
+                <td className="px-4 py-3">
+                  {row.time_weighted_mean.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }

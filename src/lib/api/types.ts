@@ -164,8 +164,14 @@ export type CampaignBench = {
   baseline_engine_image_digest: string;
 };
 
+export const INPUT_TIERS = ["2k", "4k", "8k", "16k"] as const;
+export type InputTier = (typeof INPUT_TIERS)[number];
+export type TierWeights = Record<InputTier, number>;
+
 export type ScoringRule = {
   name: string;
+  tier_weights?: TierWeights;
+  failure_penalty?: number;
 };
 
 /** Campaign pin: each round draws prompts from this HuggingFace dataset. */
@@ -180,6 +186,7 @@ export type SamplingRule = {
   max_tokens: number;
   algo_version: number;
   request_interval_ms?: number | null;
+  request_concurrency?: number | null;
   enable_thinking?: boolean | null;
 };
 
@@ -444,20 +451,41 @@ export type PromptScore = {
   input_length_group?: string | null;
 };
 
+export type TierCompletionScore = {
+  weight: number;
+  baseline_completion_s: number;
+  candidate_completion_s: number;
+  speedup: number;
+  scheduled_requests: number;
+};
+
 export type ScoreBreakdown = {
-  median_speedup: number;
   scheduled_requests: number;
   failed_requests: number;
   failure_rate: number;
   failure_penalty: number;
   penalty: number;
-};
+} & (
+  | {
+      median_speedup: number;
+      weighted_speedup?: never;
+      eligible_speedup?: never;
+      tiers?: never;
+    }
+  | {
+      median_speedup?: null;
+      weighted_speedup: number;
+      eligible_speedup: number;
+      tiers: Record<InputTier, TierCompletionScore>;
+    }
+);
 
 export type ReportWorkload = {
   temperature?: number | null;
   temperature_range?: [number, number] | null;
   algo_version: number;
-  request_interval_ms: number;
+  request_interval_ms: number | null;
+  request_concurrency?: number | null;
   enable_thinking: boolean | null;
   max_model_len: number | null;
 };

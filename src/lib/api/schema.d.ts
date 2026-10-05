@@ -438,7 +438,7 @@ export interface components {
     };
     /**
      * PromptScoreModel
-     * @description One prompt's contribution to an entry's score.
+     * @description Per-prompt diagnostics (score contributions only for the median rule).
      *
      *     `speedup` is the fraction faster than baseline at the same output token
      *     count: 0.35 is 35 percent faster, and a negative value is slower. A
@@ -494,7 +494,10 @@ export interface components {
       /** Algo Version */
       algo_version: number;
       /** Request Interval Ms */
-      request_interval_ms: number;
+      request_interval_ms?: number | null;
+      /** Request Concurrency */
+      request_concurrency?: number | null;
+      /** Output Tokens */
       /** Enable Thinking */
       enable_thinking?: boolean | null;
       /** Max Model Len */
@@ -696,7 +699,15 @@ export interface components {
     /** ScoreBreakdownModel */
     ScoreBreakdownModel: {
       /** Median Speedup */
-      median_speedup: number;
+      median_speedup?: number | null;
+      /** Weighted Speedup */
+      weighted_speedup?: number | null;
+      /** Eligible Speedup */
+      eligible_speedup?: number | null;
+      /** Tiers */
+      tiers?: {
+        [key: string]: unknown;
+      } | null;
       /** Scheduled Requests */
       scheduled_requests: number;
       /** Failed Requests */

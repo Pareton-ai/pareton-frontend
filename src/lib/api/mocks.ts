@@ -4,6 +4,7 @@
  * Enabled when `PARETON_USE_MOCKS=1`. Not for production.
  */
 
+import { mockTierReport, MOCK_TIER_RULE } from "./mock-tier-report";
 import { ApiError } from "@/lib/api/errors";
 import type {
   Campaign,
@@ -1073,6 +1074,26 @@ export function mockGetCampaign(campaignId: string): Campaign {
       detail: "campaign not found",
     });
   }
+  if (process.env.PARETON_MOCK_SCORING === "v5")
+    return {
+      ...campaign,
+      scoring_rule: MOCK_TIER_RULE,
+      success_threshold:
+        "Beat weighted tier completion time after failure penalties.",
+      sampling_rule: {
+        type: "hf_rows",
+        dataset: "zai-org/LongWriter-6k",
+        revision: "0db15c0624f19d63e2efe1021595af933cc5b6cc",
+        config: "default",
+        split: "train",
+        n_rows: 6000,
+        n_prompts: 32,
+        algo_version: 5,
+        max_tokens: 5120,
+        request_concurrency: 32,
+        enable_thinking: false,
+      },
+    };
   return campaign;
 }
 
@@ -1243,7 +1264,7 @@ function mockPromptSummary(prompts: PromptScore[]): PromptSummary {
   };
 }
 
-export function mockGetRoundEntryReport(
+function mockLegacyRoundEntryReport(
   roundId: string,
   entryId: number
 ): RoundEntryReport {
@@ -1383,4 +1404,15 @@ export function mockGetScoreProgress(campaignId: string): ScoreProgressSeries {
     return { campaign_id: campaignId, points: [] };
   }
   return MOCK_SCORE_PROGRESS;
+}
+
+/** Opt-in companion preview; legacy mocks remain the default. */
+export function mockGetRoundEntryReport(
+  roundId: string,
+  entryId: number
+): RoundEntryReport {
+  const report = mockLegacyRoundEntryReport(roundId, entryId);
+  return process.env.PARETON_MOCK_SCORING === "v5"
+    ? mockTierReport(report, entryId === 2 ? 1 : 0)
+    : report;
 }

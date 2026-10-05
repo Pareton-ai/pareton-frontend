@@ -2,6 +2,10 @@
 
 import {
   isBenchPhase,
+  INPUT_TIERS,
+  type TierWeights,
+  type TierCompletionScore,
+  type InputTier,
   type Campaign,
   type PatchVisibility,
   type CampaignBench,
@@ -133,7 +137,31 @@ function parseCorrectness(value: unknown): CampaignBenchCorrectness | null {
 }
 
 function parseScoringRule(value: unknown): ScoringRule {
-  return { name: asString(asRecord(value).name) };
+  const o = asRecord(value);
+  const weights = parseTierWeights(o.tier_weights);
+  const penalty = asNullableNumber(o.failure_penalty);
+  return {
+    name: asString(o.name),
+    ...(weights ? { tier_weights: weights } : {}),
+    ...(penalty !== null && penalty >= 0 ? { failure_penalty: penalty } : {}),
+  };
+}
+
+function parseTierWeights(value: unknown): TierWeights | null {
+  const o = asRecord(value);
+  if (
+    INPUT_TIERS.some(
+      (tier) => asNullableNumber(o[tier]) === null || Number(o[tier]) < 0
+    )
+  )
+    return null;
+  const weights = Object.fromEntries(
+    INPUT_TIERS.map((tier) => [tier, o[tier]])
+  ) as TierWeights;
+  return Math.abs(Object.values(weights).reduce((sum, w) => sum + w, 0) - 1) <=
+    1e-9
+    ? weights
+    : null;
 }
 
 function parseSamplingRule(value: unknown): SamplingRule | null {
@@ -160,6 +188,9 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
     algo_version,
     ...(typeof o.request_interval_ms === "number"
       ? { request_interval_ms: asNullableNumber(o.request_interval_ms) }
+      : {}),
+    ...(asNullableNumber(o.request_concurrency) !== null
+      ? { request_concurrency: asNullableNumber(o.request_concurrency) }
       : {}),
     ...(typeof o.enable_thinking === "boolean"
       ? { enable_thinking: o.enable_thinking }
@@ -453,7 +484,7 @@ export function parseRoundDetail(value: unknown): RoundDetail {
       phase !== null
         ? progress
         : progress?.plan_version === 2
-          ? { plan_version: 2 }
+          ? { plan_version: progress.plan_version }
           : null,
     created_at: asString(o.created_at),
     started_at: asNullableString(o.started_at),
@@ -502,25 +533,87 @@ function parsePromptSummary(value: unknown): PromptSummary {
   };
 }
 
-function parseScoreBreakdown(value: unknown): ScoreBreakdown | null {
+function parseScoreBreakdown(
+  value: unknown,
+  ruleName: unknown
+): ScoreBreakdown | null {
   const o = asRecord(value);
   const keys = [
-    "median_speedup",
     "scheduled_requests",
     "failed_requests",
     "failure_rate",
     "failure_penalty",
     "penalty",
   ] as const;
-  if (keys.some((key) => asNullableNumber(o[key]) === null)) return null;
-  return Object.fromEntries(keys.map((key) => [key, o[key]])) as ScoreBreakdown;
+  if (
+    keys.some((key) => asNullableNumber(o[key]) === null || Number(o[key]) < 0)
+  )
+    return null;
+  const common = Object.fromEntries(keys.map((key) => [key, o[key]])) as Pick<
+    ScoreBreakdown,
+    (typeof keys)[number]
+  >;
+  if (ruleName === "weighted_tier_completion_speedup") {
+    const weighted = asNullableNumber(o.weighted_speedup);
+    const eligible = asNullableNumber(o.eligible_speedup);
+    if (weighted === null || eligible === null) return null;
+    const rawTiers = asRecord(o.tiers);
+    const tiers = {} as Record<InputTier, TierCompletionScore>;
+    for (const tier of INPUT_TIERS) {
+      const raw = asRecord(rawTiers[tier]);
+      const fields = [
+        "weight",
+        "baseline_completion_s",
+        "candidate_completion_s",
+        "speedup",
+        "scheduled_requests",
+      ] as const;
+      if (fields.some((key) => asNullableNumber(raw[key]) === null))
+        return null;
+      const detail = Object.fromEntries(
+        fields.map((key) => [key, raw[key]])
+      ) as TierCompletionScore;
+      if (
+        detail.weight < 0 ||
+        detail.baseline_completion_s <= 0 ||
+        detail.candidate_completion_s <= 0 ||
+        !Number.isInteger(detail.scheduled_requests) ||
+        detail.scheduled_requests <= 0
+      )
+        return null;
+      tiers[tier] = detail;
+    }
+    if (
+      !parseTierWeights(
+        Object.fromEntries(
+          INPUT_TIERS.map((tier) => [tier, tiers[tier].weight])
+        )
+      )
+    )
+      return null;
+    return {
+      ...common,
+      weighted_speedup: weighted,
+      eligible_speedup: eligible,
+      tiers,
+    };
+  }
+  const median = asNullableNumber(o.median_speedup);
+  return median === null ? null : { ...common, median_speedup: median };
 }
 
 function parseReportWorkload(value: unknown): ReportWorkload | null {
   const o = asRecord(value);
   const version = asNullableNumber(o.algo_version);
   const interval = asNullableNumber(o.request_interval_ms);
-  if (version === null || interval === null) return null;
+  const concurrency = asNullableNumber(o.request_concurrency);
+  if (version === null) return null;
+  if (
+    version === 5
+      ? concurrency === null || ![1, 2, 4, 8, 16, 32].includes(concurrency)
+      : interval === null
+  )
+    return null;
   return {
     temperature: asNullableNumber(o.temperature),
     temperature_range:
@@ -532,7 +625,12 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
         ? [o.temperature_range[0], o.temperature_range[1]]
         : null,
     algo_version: version,
-    request_interval_ms: interval,
+    request_interval_ms: version === 5 ? null : interval,
+    ...(version === 5
+      ? {
+          request_concurrency: concurrency,
+        }
+      : {}),
     enable_thinking:
       typeof o.enable_thinking === "boolean" ? o.enable_thinking : null,
     max_model_len: asNullableNumber(o.max_model_len),
@@ -557,7 +655,10 @@ export function parseRoundEntryReport(value: unknown): RoundEntryReport {
     engine_crashed: o.engine_crashed === true,
     scoring_rule: asRecord(o.scoring_rule),
     prompt_summary: parsePromptSummary(o.prompt_summary),
-    score_breakdown: parseScoreBreakdown(o.score_breakdown),
+    score_breakdown: parseScoreBreakdown(
+      o.score_breakdown,
+      asRecord(o.scoring_rule).name
+    ),
     workload: parseReportWorkload(o.workload),
     prompts: asArray(o.prompts).map(parsePromptScore),
     // Harness blobs are rendered as key/value, not modelled field by field:
