@@ -80,7 +80,7 @@ export function mockTierReport(
       tier_completion: Object.fromEntries(
         INPUT_TIERS.map((t) => [
           t,
-          { completion_s: baseline ? 100 : tiers[t].candidate_completion_s },
+          { completion_s: baseline ? 100 : tiers[t]!.candidate_completion_s },
         ])
       ),
       concurrency_observations: [1, 2, 3].map((rep) => ({

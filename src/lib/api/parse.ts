@@ -38,6 +38,7 @@ import {
   type SubmissionsPage,
   type SubmissionStateName,
 } from "@/lib/api/types";
+import { parseInputTiers, selectedTiers } from "@/lib/api/scoring";
 
 export function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object"
@@ -149,19 +150,23 @@ function parseScoringRule(value: unknown): ScoringRule {
 
 function parseTierWeights(value: unknown): TierWeights | null {
   const o = asRecord(value);
+  const present = selectedTiers(o);
   if (
-    INPUT_TIERS.some(
-      (tier) => asNullableNumber(o[tier]) === null || Number(o[tier]) < 0
+    present.length === 0 ||
+    Object.keys(o).some(
+      (key) => !(INPUT_TIERS as readonly string[]).includes(key)
     )
   )
     return null;
-  const weights = Object.fromEntries(
-    INPUT_TIERS.map((tier) => [tier, o[tier]])
-  ) as TierWeights;
-  return Math.abs(Object.values(weights).reduce((sum, w) => sum + w, 0) - 1) <=
-    1e-9
-    ? weights
-    : null;
+  const weights = {} as TierWeights;
+  let sum = 0;
+  for (const tier of present) {
+    const weight = asNullableNumber(o[tier]);
+    if (weight === null || weight < 0) return null;
+    weights[tier] = weight;
+    sum += weight;
+  }
+  return Math.abs(sum - 1) <= 1e-9 ? weights : null;
 }
 
 function parseSamplingRule(value: unknown): SamplingRule | null {
@@ -176,6 +181,7 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
   const max_tokens = asNumber(o.max_tokens, 128);
   const algo_version = asNumber(o.algo_version, 1);
   if (max_tokens < 1 || algo_version < 1) return null;
+  const tiers = parseInputTiers(o.input_tiers);
   return {
     type: "hf_rows",
     dataset,
@@ -195,6 +201,7 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
     ...(typeof o.enable_thinking === "boolean"
       ? { enable_thinking: o.enable_thinking }
       : {}),
+    ...(tiers ? { input_tiers: tiers } : {}),
   };
 }
 
@@ -558,8 +565,16 @@ function parseScoreBreakdown(
     const eligible = asNullableNumber(o.eligible_speedup);
     if (weighted === null || eligible === null) return null;
     const rawTiers = asRecord(o.tiers);
-    const tiers = {} as Record<InputTier, TierCompletionScore>;
-    for (const tier of INPUT_TIERS) {
+    const present = selectedTiers(rawTiers);
+    if (
+      present.length === 0 ||
+      Object.keys(rawTiers).some(
+        (key) => !(INPUT_TIERS as readonly string[]).includes(key)
+      )
+    )
+      return null;
+    const tiers = {} as Partial<Record<InputTier, TierCompletionScore>>;
+    for (const tier of present) {
       const raw = asRecord(rawTiers[tier]);
       const fields = [
         "weight",
@@ -585,9 +600,7 @@ function parseScoreBreakdown(
     }
     if (
       !parseTierWeights(
-        Object.fromEntries(
-          INPUT_TIERS.map((tier) => [tier, tiers[tier].weight])
-        )
+        Object.fromEntries(present.map((tier) => [tier, tiers[tier]!.weight]))
       )
     )
       return null;
@@ -607,6 +620,7 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
   const version = asNullableNumber(o.algo_version);
   const interval = asNullableNumber(o.request_interval_ms);
   const concurrency = asNullableNumber(o.request_concurrency);
+  const tiers = parseInputTiers(o.input_tiers);
   if (version === null) return null;
   if (
     version === 5
@@ -634,6 +648,7 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
     enable_thinking:
       typeof o.enable_thinking === "boolean" ? o.enable_thinking : null,
     max_model_len: asNullableNumber(o.max_model_len),
+    ...(tiers ? { input_tiers: tiers } : {}),
   };
 }
 

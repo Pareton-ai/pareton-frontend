@@ -10,11 +10,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatScore, truncateDigest } from "@/lib/api/format";
 import { readSampling, readRepetitionChecks } from "@/lib/api/generation";
 import { readEngineTimings, type EngineTiming } from "@/lib/api/trace";
-import { INPUT_TIERS } from "@/lib/api/types";
 import {
   isWeightedTierRule,
   tierGrouping,
   readConcurrencyObservations,
+  selectedTiers,
 } from "@/lib/api/scoring";
 import type { PromptScore, RoundEntryReport } from "@/lib/api/types";
 
@@ -368,7 +368,11 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
                 C{workload.request_concurrency}
               </PanelRow>
               <PanelRow label="Tier scheduling">
-                {tierGrouping(workload.request_concurrency)}
+                {tierGrouping(
+                  workload.request_concurrency,
+                  workload.input_tiers ??
+                    (score?.tiers ? selectedTiers(score.tiers) : undefined)
+                )}
               </PanelRow>
               <PanelRow label="Output policy">
                 Natural EOS · Minimum 90% of baseline tokens per request
@@ -480,8 +484,9 @@ function TierCompletionTable({
             </tr>
           </thead>
           <tbody>
-            {INPUT_TIERS.map((tier) => {
-              const detail = score.tiers![tier];
+            {selectedTiers(score.tiers).map((tier) => {
+              const detail = score.tiers[tier];
+              if (!detail) return null;
               return (
                 <tr key={tier} className="border-t border-border">
                   <th scope="row" className="px-4 py-3">
