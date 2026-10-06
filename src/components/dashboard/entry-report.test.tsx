@@ -61,6 +61,72 @@ describe("weighted tier report rendering", () => {
     expect(html).not.toContain("Prompts scored");
     expect(html).not.toContain("Zeroed total");
   });
+  it("renders batched-token timing gaps neutrally while retaining real failures", () => {
+    const report = weighted(1);
+    report.prompts = [
+      {
+        request_id: "batched",
+        speedup: 0,
+        aligned_tokens: 5000,
+        baseline_e2e_s: null,
+        candidate_e2e_s: null,
+        reason: "insufficient timing",
+        candidate_failed: false,
+      },
+      {
+        request_id: "short",
+        speedup: 0,
+        aligned_tokens: 3000,
+        baseline_e2e_s: null,
+        candidate_e2e_s: null,
+        reason: "candidate output below tolerance",
+        candidate_failed: true,
+      },
+    ];
+    const html = renderToStaticMarkup(<EntryReportPrompts report={report} />);
+    const rows = html.match(/<tr\b[^>]*>.*?<\/tr>/g)!;
+    expect(rows[1]).toContain(
+      "Per-token timing unavailable (not a request failure)"
+    );
+    expect(rows[1]).not.toContain("text-rust");
+    expect(rows[1]).not.toContain("0.00%");
+    expect(rows[2]).toContain("candidate output below tolerance");
+    expect(rows[2]).toContain("text-rust");
+    expect(html).toContain("Diagnostic / failure");
+    expect(html).toContain("Diagnostic speedup");
+
+    // An actual zero diagnostic remains a measurement, not a timing gap.
+    report.prompts = [{ ...report.prompts[0]!, reason: null }];
+    expect(
+      renderToStaticMarkup(<EntryReportPrompts report={report} />)
+    ).toContain("0.00%");
+  });
+  it("keeps median timing gates and unknown completion flags conservative", () => {
+    const report = weighted();
+    report.prompts = [
+      {
+        request_id: "missing-timing",
+        speedup: 0,
+        aligned_tokens: 5000,
+        baseline_e2e_s: null,
+        candidate_e2e_s: null,
+        reason: "insufficient timing",
+        candidate_failed: false,
+      },
+    ];
+    report.scoring_rule = { name: "median_e2e_speedup" };
+    let html = renderToStaticMarkup(<EntryReportPrompts report={report} />);
+    expect(html).toContain("insufficient timing");
+    expect(html).toContain("text-rust");
+    expect(html).not.toContain("not a request failure");
+
+    report.scoring_rule = MOCK_TIER_RULE;
+    delete report.prompts[0]!.candidate_failed;
+    html = renderToStaticMarkup(<EntryReportPrompts report={report} />);
+    expect(html).toContain("insufficient timing");
+    expect(html).toContain("text-rust");
+    expect(html).not.toContain("not a request failure");
+  });
   it.each([
     [4, "one tier at a time"],
     [8, "one tier at a time"],

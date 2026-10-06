@@ -52,8 +52,22 @@ function toleranceLabel(rule: Record<string, unknown>): string | null {
   })}%`;
 }
 
-function PromptRow({ prompt }: { prompt: PromptScore }) {
-  const gated = prompt.reason !== null;
+function PromptRow({
+  prompt,
+  weighted,
+}: {
+  prompt: PromptScore;
+  weighted: boolean;
+}) {
+  const gated =
+    weighted && typeof prompt.candidate_failed === "boolean"
+      ? prompt.candidate_failed
+      : prompt.reason !== null;
+  const unmeasured = gated || prompt.reason !== null;
+  const reason =
+    weighted && !gated && prompt.reason === "insufficient timing"
+      ? "Per-token timing unavailable (not a request failure)"
+      : prompt.reason;
   return (
     <tr className="border-t border-border/80">
       <td className="whitespace-nowrap px-4 py-3 font-mono text-body text-secondary sm:px-5">
@@ -61,12 +75,11 @@ function PromptRow({ prompt }: { prompt: PromptScore }) {
       </td>
       <td
         className={`whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums ${
-          gated ? "text-muted" : "text-foreground"
+          unmeasured ? "text-muted" : "text-foreground"
         }`}
       >
-        {/* A gated prompt measured nothing, so its 0.0 is not a result to show
-            as one. A real 0.0 means baseline speed and does print. */}
-        {gated ? "—" : formatPercent(prompt.speedup)}
+        {/* Missing diagnostics are not a measured 0%, even for a valid completion. */}
+        {unmeasured ? "—" : formatPercent(prompt.speedup)}
       </td>
       <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
         {formatSeconds(prompt.baseline_e2e_s)}
@@ -77,14 +90,22 @@ function PromptRow({ prompt }: { prompt: PromptScore }) {
       <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-body tabular-nums text-secondary">
         {prompt.aligned_tokens}
       </td>
-      <td className="px-3 py-3 pr-4 font-mono text-body text-rust sm:pr-5">
-        {prompt.reason ?? <span className="text-muted">—</span>}
+      <td
+        className={`px-3 py-3 pr-4 font-mono text-body sm:pr-5 ${gated ? "text-rust" : "text-muted"}`}
+      >
+        {reason ?? (gated ? "Candidate completion failed" : "—")}
       </td>
     </tr>
   );
 }
 
-function PromptTable({ prompts }: { prompts: readonly PromptScore[] }) {
+function PromptTable({
+  prompts,
+  weighted,
+}: {
+  prompts: readonly PromptScore[];
+  weighted: boolean;
+}) {
   return (
     /* The table is wider than a phone; it scrolls in its own box so the page
        never scrolls sideways. */
@@ -96,7 +117,7 @@ function PromptTable({ prompts }: { prompts: readonly PromptScore[] }) {
               Prompt
             </th>
             <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
-              Speedup
+              {weighted ? "Diagnostic speedup" : "Speedup"}
             </th>
             <th className="px-3 py-3 text-right font-mono text-caption uppercase tracking-caps text-muted">
               Baseline
@@ -108,13 +129,17 @@ function PromptTable({ prompts }: { prompts: readonly PromptScore[] }) {
               Aligned output
             </th>
             <th className="px-3 py-3 pr-4 font-mono text-caption uppercase tracking-caps text-muted sm:pr-5">
-              Gate
+              {weighted ? "Diagnostic / failure" : "Gate"}
             </th>
           </tr>
         </thead>
         <tbody>
           {prompts.map((prompt) => (
-            <PromptRow key={prompt.request_id} prompt={prompt} />
+            <PromptRow
+              key={prompt.request_id}
+              prompt={prompt}
+              weighted={weighted}
+            />
           ))}
         </tbody>
       </table>
@@ -543,7 +568,10 @@ export function EntryReportPrompts({ report }: { report: RoundEntryReport }) {
         meta={`${report.prompts.length} prompts`}
         bodyClassName=""
       >
-        <PromptTable prompts={report.prompts} />
+        <PromptTable
+          prompts={report.prompts}
+          weighted={isWeightedTierRule(report.scoring_rule)}
+        />
       </Panel>
     );
   }
