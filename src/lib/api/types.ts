@@ -166,7 +166,7 @@ export type CampaignBench = {
 
 export const INPUT_TIERS = ["2k", "4k", "8k", "16k"] as const;
 export type InputTier = (typeof INPUT_TIERS)[number];
-export type TierWeights = Record<InputTier, number>;
+export type TierWeights = Partial<Record<InputTier, number>>;
 
 export type ScoringRule = {
   name: string;
@@ -188,6 +188,7 @@ export type SamplingRule = {
   request_interval_ms?: number | null;
   request_concurrency?: number | null;
   enable_thinking?: boolean | null;
+  input_tiers?: InputTier[];
 };
 
 export type CustomerSignoff = {
@@ -476,7 +477,7 @@ export type ScoreBreakdown = {
       median_speedup?: null;
       weighted_speedup: number;
       eligible_speedup: number;
-      tiers: Record<InputTier, TierCompletionScore>;
+      tiers: Partial<Record<InputTier, TierCompletionScore>>;
     }
 );
 
@@ -488,6 +489,7 @@ export type ReportWorkload = {
   request_concurrency?: number | null;
   enable_thinking: boolean | null;
   max_model_len: number | null;
+  input_tiers?: InputTier[];
 };
 
 /** Counts over `prompts`, so the headline needs no client-side math. */

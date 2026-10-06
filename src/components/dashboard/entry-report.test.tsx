@@ -124,4 +124,48 @@ describe("weighted tier report rendering", () => {
     expect(html).toContain("Tier weights:");
     expect(html).toContain("Failure penalty:");
   });
+  it("renders only the selected tiers for a subset campaign", () => {
+    const input = mockTierReport(legacy());
+    const tiers = input.score_breakdown!.tiers!;
+    delete tiers["2k"];
+    delete tiers["4k"];
+    tiers["8k"]!.weight = 0.5;
+    tiers["16k"]!.weight = 0.5;
+    input.workload!.input_tiers = ["8k", "16k"];
+    const html = renderToStaticMarkup(
+      <EntryReportWorkload report={parseRoundEntryReport(input)} />
+    );
+    expect(html).toContain(">8k</th>");
+    expect(html).toContain(">16k</th>");
+    expect(html).not.toContain(">2k</th>");
+    expect(html).not.toContain(">4k</th>");
+    expect(html).toContain("8k + 16k overlap");
+  });
+  it("shows only the selected campaign tier weights", () => {
+    const campaign = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: {
+        name: "weighted_tier_completion_speedup",
+        failure_penalty: 0.1,
+        tier_weights: { "8k": 0.5, "16k": 0.5 },
+      },
+      sampling_rule: {
+        ...MOCK_CAMPAIGN.sampling_rule,
+        algo_version: 5,
+        request_concurrency: 16,
+        input_tiers: ["8k", "16k"],
+      },
+    });
+    const html = renderToStaticMarkup(
+      <>
+        <CampaignRequirements campaign={campaign} />
+        <CampaignReference campaign={campaign} />
+      </>
+    );
+    expect(html).toContain("8k: 50%");
+    expect(html).toContain("16k: 50%");
+    expect(html).not.toContain("2k:");
+    expect(html).not.toContain("4k:");
+    expect(html).toContain("8k + 16k overlap");
+  });
 });

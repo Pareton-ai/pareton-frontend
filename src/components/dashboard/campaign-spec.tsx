@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
 import { formatDuration, truncateHash, truncateMiddle } from "@/lib/api/format";
-import { tierGrouping, isWeightedTierRule } from "@/lib/api/scoring";
-import { INPUT_TIERS } from "@/lib/api/types";
+import {
+  tierGrouping,
+  isWeightedTierRule,
+  selectedTiers,
+} from "@/lib/api/scoring";
 import { cn } from "@/lib/cn";
 import type {
   Campaign,
@@ -138,7 +141,7 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
             ? `C${rule.request_concurrency} request concurrency`
             : "Concurrency unavailable"}
           {" · "}
-          {tierGrouping(rule.request_concurrency)}
+          {tierGrouping(rule.request_concurrency, rule.input_tiers)}
         </p>
       ) : rule.request_interval_ms != null ? (
         <p className="text-muted">
@@ -155,6 +158,7 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
 /** What a patch has to achieve and what it runs against. */
 export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
   const { model, correctness } = campaign.bench;
+  const tierWeights = campaign.scoring_rule.tier_weights;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
@@ -173,13 +177,15 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
           </span>
           {isWeightedTierRule(campaign.scoring_rule) ? (
             <div className="mt-2 space-y-1 text-secondary">
-              {campaign.scoring_rule.tier_weights ? (
+              {tierWeights ? (
                 <p>
                   Tier weights:{" "}
-                  {INPUT_TIERS.map(
-                    (tier) =>
-                      `${tier}: ${((campaign.scoring_rule.tier_weights?.[tier] ?? 0) * 100).toLocaleString("en-US")}%`
-                  ).join(" · ")}
+                  {selectedTiers(tierWeights)
+                    .map(
+                      (tier) =>
+                        `${tier}: ${(tierWeights[tier]! * 100).toLocaleString("en-US")}%`
+                    )
+                    .join(" · ")}
                 </p>
               ) : null}
               {campaign.scoring_rule.failure_penalty != null ? (
