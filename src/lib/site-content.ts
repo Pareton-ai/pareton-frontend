@@ -30,7 +30,8 @@ export const siteContent = {
   ],
 
   nav: [
-    { label: "Method", href: "#method" },
+    { label: "Method", href: "/#method" },
+    { label: "Blog", href: "/blog" },
     { label: "Docs", href: "/docs" },
     { label: "Dashboard", href: "/dashboard", end: true },
   ],
@@ -38,6 +39,7 @@ export const siteContent = {
   /** Agent Markdown link list. Broader than the visible nav. */
   links: [
     { label: "Docs", href: "/docs" },
+    { label: "Blog", href: "/blog" },
     { label: "Dashboard", href: "/dashboard" },
     { label: "X", href: "https://x.com/pareton_ai" },
     { label: "GitHub", href: "https://github.com/pareton-ai" },
