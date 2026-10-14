@@ -234,4 +234,22 @@ describe("weighted tier report rendering", () => {
     expect(html).not.toContain("4k:");
     expect(html).toContain("8k + 16k overlap");
   });
+  it("names where the quantization comes from when the campaign pins none", () => {
+    const precision = (quantization: string | null) =>
+      renderToStaticMarkup(
+        <CampaignRequirements
+          campaign={parseCampaign({
+            ...MOCK_CAMPAIGN,
+            bench: {
+              ...MOCK_CAMPAIGN.bench,
+              model: { ...MOCK_CAMPAIGN.bench.model, quantization },
+            },
+          })}
+        />
+      );
+    expect(precision(null)).toContain(
+      "bfloat16 · quantization from checkpoint"
+    );
+    expect(precision("fp8")).toContain("bfloat16 · fp8");
+  });
 });

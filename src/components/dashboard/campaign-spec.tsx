@@ -219,9 +219,8 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
       <Panel icon={Cpu} title="Model">
         <Row label="Precision">
           <span className="text-secondary">
-            {model.quantization
-              ? `${model.dtype} · ${model.quantization}`
-              : model.dtype}
+            {/* No pinned method means the engine reads it from the checkpoint. */}
+            {`${model.dtype} · ${model.quantization || "quantization from checkpoint"}`}
           </span>
         </Row>
         <Row label="Context window">
