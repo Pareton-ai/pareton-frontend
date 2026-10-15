@@ -61,9 +61,9 @@ export const blogPosts: readonly BlogPost[] = [
     date: "2026-10-01",
     category: "Partnership",
     title: "Engy is getting faster",
-    dek: "Pareton now tunes how Engy runs its models. Quicker replies, lower cost, and the same API for everyone building on it.",
+    dek: "Three rounds into our Kimi K3 campaign, the leading patch serves Engy's traffic about 25% faster end-to-end, on the same eight B300 GPUs.",
     author: "Pareton",
-    readingMinutes: 3,
+    readingMinutes: 4,
     cover: {
       src: "/blog/engy/cover.jpg",
       alt: "Partnership: Engy is getting faster. Pareton now tunes how Engy runs its AI models.",

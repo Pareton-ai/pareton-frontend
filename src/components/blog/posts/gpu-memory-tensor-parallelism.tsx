@@ -1,3 +1,5 @@
+import { BarChart } from "@/components/blog/chart";
+
 export function GpuMemoryTensorParallelism() {
   return (
     <>
@@ -59,16 +61,22 @@ export function GpuMemoryTensorParallelism() {
         1.9 GB. On that code path the tensor is not split across GPUs, so every
         GPU needs roughly 1.9 GB of free space on its own.
       </p>
-      <dl className="spec">
-        <div>
-          <dt className="mono">At 0.85</dt>
-          <dd>About 1.7 GB free per GPU, 1.9 GB needed. Out of memory.</dd>
-        </div>
-        <div>
-          <dt className="mono">At 0.4</dt>
-          <dd>About 19 GB free per GPU, 1.9 GB needed. It fits.</dd>
-        </div>
-      </dl>
+      <BarChart
+        title="Free memory per GPU vs. what the logits tensor needs"
+        caption="About 32 GB per GPU. The tensor needs ~1.9 GB on every GPU."
+        columns={["--mem-fraction-static", "Free memory per GPU"]}
+        max={20}
+        rows={[
+          {
+            label: "0.85 reserved",
+            value: 1.7,
+            display: "~1.7 GB",
+            tone: "muted",
+            note: "Out of memory",
+          },
+          { label: "0.4 reserved", value: 19, display: "~19 GB", note: "Fits" },
+        ]}
+      />
       <p>
         Moving from TP4 to TP8 would not have helped. More GPUs add total
         capacity, but they do not add temporary memory per GPU, and that was the

@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { BarChart, Stats } from "@/components/blog/chart";
 
+/** Output throughput gain over the pinned baseline, by concurrency. */
 const results = [
-  { load: "4 concurrent requests", gain: "+54%" },
-  { load: "8 concurrent requests", gain: "+50%" },
-  { load: "16 concurrent requests", gain: "+40%" },
-  { load: "32 concurrent requests", gain: "+23%" },
+  { load: 4, gain: 54 },
+  { load: 8, gain: 50 },
+  { load: 16, gain: 40 },
+  { load: 32, gain: 23 },
 ];
+
+/** GPU cost per token falls by 1 - 1 / (1 + gain). */
+const costCut = (gain: number) => Math.round((1 - 1 / (1 + gain / 100)) * 100);
 
 const setup = [
   { k: "Model", v: "Qwen3.8-27B" },
@@ -26,6 +31,14 @@ export function Qwen38Throughput() {
         23 to 54% higher at every load we tested.
       </p>
 
+      <Stats
+        items={[
+          { value: "+54%", label: "Peak output throughput" },
+          { value: "600 / 600", label: "Requests completed" },
+          { value: "19–35%", label: "Lower GPU cost per token" },
+        ]}
+      />
+
       <h2>The setup</h2>
       <dl className="spec">
         {setup.map((row) => (
@@ -42,14 +55,17 @@ export function Qwen38Throughput() {
       </p>
 
       <h2>The results</h2>
-      <ul className="since">
-        {results.map((row) => (
-          <li key={row.load}>
-            <span className="mono">{row.gain}</span>
-            <p>Output throughput at {row.load}</p>
-          </li>
-        ))}
-      </ul>
+      <BarChart
+        title="Output throughput vs. baseline"
+        caption="Qwen3.8-27B on SGLang, 4× RTX 5090. Same requests, paired runs."
+        columns={["Concurrent requests", "Throughput gain"]}
+        max={60}
+        rows={results.map((r) => ({
+          label: `${r.load} concurrent`,
+          value: r.gain,
+          display: `+${r.gain}%`,
+        }))}
+      />
       <p>
         The gain is largest at low concurrency and narrows as the GPUs get
         busier. A likely reason: with only a few requests in flight the GPUs
@@ -64,6 +80,17 @@ export function Qwen38Throughput() {
         output, the GPU cost behind each token falls by roughly 19 to 35%, with
         no new hardware and no change to the model.
       </p>
+      <BarChart
+        title="GPU cost per token, reduction vs. baseline"
+        caption="Derived from the throughput gains above: 1 − 1 / (1 + gain)."
+        columns={["Concurrent requests", "Cost reduction"]}
+        max={60}
+        rows={results.map((r) => ({
+          label: `${r.load} concurrent`,
+          value: costCut(r.gain),
+          display: `−${costCut(r.gain)}%`,
+        }))}
+      />
       <p>
         That is the point of running this on Subnet 10. Miners compete to make
         the software that serves a model faster, and only changes that hold up
