@@ -20,7 +20,7 @@ export type BlogPost = {
   dek: string;
   author: string;
   readingMinutes: number;
-  cover: BlogImage & { caption: string };
+  cover: BlogImage & { caption?: string };
 };
 
 export const blogPosts: readonly BlogPost[] = [
@@ -41,33 +41,67 @@ export const blogPosts: readonly BlogPost[] = [
         "Xavier Lyu presenting Compounding Inference Optimization. Montréal, September 28.",
     },
   },
+  {
+    slug: "liquid-inference",
+    date: "2026-10-14",
+    category: "Network",
+    title: "Pareton joins Liquid Inference as a verified provider",
+    dek: "Inference is turning into a market with live prices. On a market like that, cost per token is the whole game.",
+    author: "Pareton",
+    readingMinutes: 3,
+    cover: {
+      src: "/blog/liquid-inference/cover.jpg",
+      alt: "Every token, priced live. Pareton is now a verified provider on the Liquid Inference network.",
+      width: 2400,
+      height: 1350,
+    },
+  },
+  {
+    slug: "engy",
+    date: "2026-10-01",
+    category: "Partnership",
+    title: "Engy is getting faster",
+    dek: "Pareton now tunes how Engy runs its models. Quicker replies, lower cost, and the same API for everyone building on it.",
+    author: "Pareton",
+    readingMinutes: 3,
+    cover: {
+      src: "/blog/engy/cover.jpg",
+      alt: "Partnership: Engy is getting faster. Pareton now tunes how Engy runs its AI models.",
+      width: 3200,
+      height: 1800,
+    },
+  },
+  {
+    slug: "qwen3-8-throughput",
+    date: "2026-09-23",
+    category: "Results",
+    title: "Same model. Same GPUs. Up to 54% more tokens per second.",
+    dek: "We benchmarked the top miner patch for Qwen3.8-27B against the pinned baseline with NVIDIA's AIPerf. Output throughput rose 23 to 54% across every load we tested.",
+    author: "Pareton",
+    readingMinutes: 4,
+    cover: {
+      src: "/blog/qwen3-8-throughput/cover.jpg",
+      alt: "Chart: Qwen3.8-27B on SGLang and four RTX 5090s. Output throughput versus baseline: +54% at 4 concurrent requests, +50% at 8, +40% at 16, +23% at 32.",
+      width: 3200,
+      height: 1800,
+    },
+  },
+  {
+    slug: "gpu-memory-tensor-parallelism",
+    date: "2026-09-20",
+    category: "Engineering",
+    title: "More GPUs don't always mean more usable memory",
+    dek: "A workload hit an out-of-memory error. Doubling the GPUs would not have fixed it. Here is why, and what did.",
+    author: "Pareton",
+    readingMinutes: 4,
+    cover: {
+      src: "/blog/gpu-memory-tensor-parallelism/cover.jpg",
+      alt: "Diagram comparing TP=4 and TP=8: model weights and KV cache are distributed across GPUs, temporary memory per GPU stays the same.",
+      width: 1199,
+      height: 675,
+    },
+  },
 ];
-
-/**
- * Press, podcasts, and talks hosted somewhere else. Newest first.
- * TODO: swap the two profile links for the episode URLs.
- */
-export const blogElsewhere = [
-  {
-    date: "2026-10-08",
-    outlet: "Novelty Search",
-    title: "Subnet 10 on Novelty Search, with the Opentensor Foundation",
-    href: "https://x.com/opentensor",
-  },
-  {
-    date: "2026-10-07",
-    outlet: "TheStreet",
-    title:
-      "These founders are using a crypto network to chase the most boring thing in AI: paying customers",
-    href: "https://www.thestreet.com/crypto/innovation/these-founders-are-using-a-crypto-network-to-chase-the-most-boring-thing-in-ai-paying-customers",
-  },
-  {
-    date: "2026-10-07",
-    outlet: "Ventura Labs · Ep. 103",
-    title: "Xavier Lyu on target hardware, non-CUDA GPUs, and campaigns",
-    href: "https://x.com/VenturaLabs",
-  },
-] as const;
 
 export function getPost(slug: string): BlogPost | undefined {
   return blogPosts.find((post) => post.slug === slug);

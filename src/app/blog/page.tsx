@@ -2,14 +2,23 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BlogShell } from "@/components/blog/blog-shell";
-import { blogElsewhere, blogPosts, formatPostDate } from "@/lib/blog";
+import { blogPosts, formatPostDate, type BlogPost } from "@/lib/blog";
 
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Field notes, talks, and campaign write-ups from Pareton, the inference optimization subnet on Bittensor.",
+    "Field notes, results, and engineering write-ups from Pareton, the inference optimization subnet on Bittensor.",
   alternates: { canonical: "/blog" },
 };
+
+function PostMeta({ post }: { post: BlogPost }) {
+  return (
+    <p className="mono meta">
+      <span className="cat">{post.category}</span>
+      <time dateTime={post.date}>{formatPostDate(post.date)}</time>
+    </p>
+  );
+}
 
 export default function BlogIndex() {
   const [lead, ...rest] = blogPosts;
@@ -23,8 +32,8 @@ export default function BlogIndex() {
             Notes from the <em>frontier.</em>
           </h1>
           <p className="lede">
-            Talks, campaign write-ups, and what we learn making inference faster
-            and cheaper on real workloads.
+            Talks, results, and what we learn making inference faster and
+            cheaper on real workloads.
           </p>
         </div>
       </section>
@@ -43,10 +52,7 @@ export default function BlogIndex() {
               />
             </div>
             <div className="lead-copy">
-              <p className="mono meta">
-                <span className="cat">{lead.category}</span>
-                <time dateTime={lead.date}>{formatPostDate(lead.date)}</time>
-              </p>
+              <PostMeta post={lead} />
               <h2>{lead.title}</h2>
               <p className="dek">{lead.dek}</p>
               <p className="mono more">
@@ -58,38 +64,25 @@ export default function BlogIndex() {
       )}
 
       {rest.length > 0 && (
-        <section className="wrap post-list">
+        <section className="wrap post-grid">
           {rest.map((post) => (
-            <Link key={post.slug} href={`/blog/${post.slug}`} className="row">
-              <time className="mono" dateTime={post.date}>
-                {formatPostDate(post.date)}
-              </time>
-              <span className="title">{post.title}</span>
-              <span className="mono cat">{post.category}</span>
+            <Link key={post.slug} href={`/blog/${post.slug}`} className="card">
+              <div className="card-img">
+                <Image
+                  src={post.cover.src}
+                  alt={post.cover.alt}
+                  width={post.cover.width}
+                  height={post.cover.height}
+                  sizes="(min-width: 1024px) 560px, 100vw"
+                />
+              </div>
+              <PostMeta post={post} />
+              <h2>{post.title}</h2>
+              <p className="dek">{post.dek}</p>
             </Link>
           ))}
         </section>
       )}
-
-      <section className="wrap elsewhere">
-        <p className="mono kicker">Elsewhere</p>
-        <ul>
-          {blogElsewhere.map((item) => (
-            <li key={item.href + item.date}>
-              <a href={item.href} target="_blank" rel="noopener noreferrer">
-                <span className="mono outlet">{item.outlet}</span>
-                <span className="title">{item.title}</span>
-                <time className="mono" dateTime={item.date}>
-                  {formatPostDate(item.date)}
-                </time>
-                <span className="arrow" aria-hidden>
-                  ↗
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
     </BlogShell>
   );
 }
