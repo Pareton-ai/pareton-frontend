@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { blogPosts } from "@/lib/blog";
 
 const baseUrl = (
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pareton.ai"
@@ -21,5 +22,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/blog`,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...blogPosts.map((post) => ({
+      url: `${baseUrl}/blog/${post.slug}`,
+      lastModified: post.date,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
   ];
 }

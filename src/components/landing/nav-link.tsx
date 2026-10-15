@@ -4,10 +4,12 @@ import Link from "next/link";
 export function NavLink({
   href,
   className,
+  current,
   children,
 }: {
   href: string;
   className?: string;
+  current?: boolean;
   children: ReactNode;
 }) {
   const external = href.startsWith("http") || href.startsWith("mailto:");
@@ -25,7 +27,11 @@ export function NavLink({
     );
   }
   return (
-    <Link href={href} className={className}>
+    <Link
+      href={href}
+      className={className}
+      aria-current={current ? "page" : undefined}
+    >
       {children}
     </Link>
   );

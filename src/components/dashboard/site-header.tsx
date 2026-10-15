@@ -5,6 +5,7 @@ import { monoLinkClassName } from "@/components/ui/mono-link";
 const nav = [
   { label: "Dashboard", href: "/dashboard", key: "dashboard" },
   { label: "Docs", href: "/docs", key: "docs" },
+  { label: "Blog", href: "/blog", key: null },
   { label: "Home", href: "/", key: "home" },
   { label: "GitHub", href: "https://github.com/pareton-ai", key: null },
 ] as const;
