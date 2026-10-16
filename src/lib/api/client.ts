@@ -14,7 +14,29 @@ export type ApiFetchOptions = {
   timeoutMs?: number;
   /** Extra query string params (undefined/null values omitted). */
   searchParams?: Record<string, string | number | boolean | null | undefined>;
+  /** Extra attempts after a transient failure. Defaults to `DEFAULT_RETRIES`. */
+  retries?: number;
 };
+
+/**
+ * A momentary 503 (DB pool busy, a dropped Neon socket) used to replace a whole
+ * dashboard section until the next revalidate. One quick retry rides it out.
+ */
+export const DEFAULT_RETRIES = 1;
+const RETRY_DELAY_MS = 300;
+
+/**
+ * Fast failures only: bad gateway or unreachable, unavailable, gateway timeout.
+ * Not our own 408: a request that already waited out its timeout would double
+ * the page's worst case. Never 4xx or a plain 500.
+ */
+const TRANSIENT_STATUSES = new Set([502, 503, 504]);
+
+export function isTransientApiError(error: unknown): boolean {
+  return error instanceof ApiError && TRANSIENT_STATUSES.has(error.status);
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function joinUrl(base: string, path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
@@ -79,7 +101,7 @@ async function readDetail(response: Response): Promise<unknown> {
  * download that stalls mid-stream. Reading it after `cleanup()` would leave
  * the timeout guarding only the response headers.
  */
-async function request<T>(
+async function requestOnce<T>(
   path: string,
   accept: "json" | "text",
   options: ApiFetchOptions
@@ -132,6 +154,28 @@ async function request<T>(
     });
   } finally {
     cleanup();
+  }
+}
+
+async function request<T>(
+  path: string,
+  accept: "json" | "text",
+  options: ApiFetchOptions
+): Promise<T> {
+  const retries = options.retries ?? DEFAULT_RETRIES;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await requestOnce<T>(path, accept, options);
+    } catch (error) {
+      if (
+        attempt >= retries ||
+        !isTransientApiError(error) ||
+        options.signal?.aborted
+      ) {
+        throw error;
+      }
+      await sleep(RETRY_DELAY_MS * (attempt + 1));
+    }
   }
 }
 

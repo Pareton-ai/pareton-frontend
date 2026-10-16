@@ -180,26 +180,26 @@ function CampaignListView({ campaigns }: { campaigns: Campaign[] }) {
 
 const statuses = ["open", "closed", "archived"] as const;
 
+/**
+ * One request per status, settled independently: a hiccup on the archived list
+ * should not blank the open campaigns people came for.
+ */
 export async function CampaignList() {
-  let campaigns: Campaign[] | null = null;
-  let error: unknown = null;
-  try {
-    const groups = await Promise.all(
-      statuses.map(async (status) => ({
-        status,
-        campaigns: await getCampaigns({ status }),
-      }))
-    );
-    campaigns = groups.flatMap((group) => group.campaigns);
-  } catch (err) {
-    error = err;
-  }
+  const results = await Promise.allSettled(
+    statuses.map((status) => getCampaigns({ status }))
+  );
+  const campaigns = results.flatMap((r) =>
+    r.status === "fulfilled" ? r.value : []
+  );
+  const failed = results.flatMap((r, i) =>
+    r.status === "rejected" ? [{ status: statuses[i], error: r.reason }] : []
+  );
 
-  if (error || !campaigns) {
+  if (failed.length === statuses.length) {
     return (
       <SectionUnavailable
         message={
-          isUnavailable(error)
+          failed.some((f) => isUnavailable(f.error))
             ? "Campaign list is temporarily unavailable (API/DB)."
             : "Could not load campaigns."
         }
@@ -207,5 +207,18 @@ export async function CampaignList() {
     );
   }
 
-  return <CampaignListView campaigns={campaigns} />;
+  if (failed.length === 0) return <CampaignListView campaigns={campaigns} />;
+
+  const missing = GROUPS.filter((g) =>
+    failed.some((f) => f.status === g.status)
+  ).map((g) => g.title.toLowerCase());
+
+  return (
+    <div className="space-y-8">
+      <SectionUnavailable
+        message={`Could not load ${missing.join(" and ")} campaigns right now. Refresh to try again.`}
+      />
+      {campaigns.length > 0 && <CampaignListView campaigns={campaigns} />}
+    </div>
+  );
 }
