@@ -19,8 +19,10 @@ export type ApiFetchOptions = {
 };
 
 /**
- * A momentary 503 (DB pool busy, a dropped Neon socket) used to replace a whole
- * dashboard section until the next revalidate. One quick retry rides it out.
+ * One quick retry for failures that clear on their own, mainly a pooled Neon
+ * socket the server dropped, which fails instantly and then gets replaced. The
+ * API already queues for a busy DB pool, so a pool 503 means it stayed full for
+ * seconds; the retry is not aimed at that case.
  */
 export const DEFAULT_RETRIES = 1;
 const RETRY_DELAY_MS = 300;
@@ -175,6 +177,7 @@ async function request<T>(
         throw error;
       }
       await sleep(RETRY_DELAY_MS * (attempt + 1));
+      if (options.signal?.aborted) throw error;
     }
   }
 }

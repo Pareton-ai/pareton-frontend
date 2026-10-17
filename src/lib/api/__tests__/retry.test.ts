@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getCampaigns } from "../endpoints";
+import { apiFetch } from "../client";
+import { getCampaigns, getSubmissionPatchAvailability } from "../endpoints";
 import { ApiError } from "../errors";
 
 vi.mock("server-only", () => ({}));
@@ -52,6 +53,29 @@ describe("transient API errors", () => {
     const fetchMock = stubFetch(status, 200);
     const result = getCampaigns({ status: "open" });
     const assertion = expect(result).rejects.toBeInstanceOf(ApiError);
+    await vi.runAllTimersAsync();
+
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry patch availability, which polls on its own", async () => {
+    const fetchMock = stubFetch(503, 200);
+    const result = getSubmissionPatchAvailability("campaign", "sha256:patch");
+    const assertion = expect(result).rejects.toMatchObject({ status: 503 });
+    await vi.runAllTimersAsync();
+
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the retry when the caller aborts during the pause", async () => {
+    const fetchMock = stubFetch(503, 200);
+    const controller = new AbortController();
+    const result = apiFetch("/v1/campaigns", { signal: controller.signal });
+    const assertion = expect(result).rejects.toMatchObject({ status: 503 });
+    await vi.advanceTimersByTimeAsync(100);
+    controller.abort();
     await vi.runAllTimersAsync();
 
     await assertion;

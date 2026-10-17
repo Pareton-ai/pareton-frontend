@@ -216,7 +216,7 @@ export async function CampaignList() {
   return (
     <div className="space-y-8">
       <SectionUnavailable
-        message={`Could not load ${missing.join(" and ")} campaigns right now. Refresh to try again.`}
+        message={`Could not load ${missing.join(" and ")} campaigns right now. They will be back within a minute.`}
       />
       {campaigns.length > 0 && <CampaignListView campaigns={campaigns} />}
     </div>
