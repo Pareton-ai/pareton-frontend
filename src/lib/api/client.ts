@@ -1,7 +1,7 @@
 import "server-only";
 
 import { DEFAULT_TIMEOUT_MS, getApiBaseUrl } from "@/lib/api/config";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError, isTransient } from "@/lib/api/errors";
 
 export type ApiFetchOptions = {
   /** Next.js Data Cache revalidate window in seconds. */
@@ -26,17 +26,6 @@ export type ApiFetchOptions = {
  */
 export const DEFAULT_RETRIES = 1;
 const RETRY_DELAY_MS = 300;
-
-/**
- * Fast failures only: bad gateway or unreachable, unavailable, gateway timeout.
- * Not our own 408: a request that already waited out its timeout would double
- * the page's worst case. Never 4xx or a plain 500.
- */
-const TRANSIENT_STATUSES = new Set([502, 503, 504]);
-
-export function isTransientApiError(error: unknown): boolean {
-  return error instanceof ApiError && TRANSIENT_STATUSES.has(error.status);
-}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -171,12 +160,12 @@ async function request<T>(
     } catch (error) {
       if (
         attempt >= retries ||
-        !isTransientApiError(error) ||
+        !isTransient(error) ||
         options.signal?.aborted
       ) {
         throw error;
       }
-      await sleep(RETRY_DELAY_MS * (attempt + 1));
+      await sleep(RETRY_DELAY_MS);
       if (options.signal?.aborted) throw error;
     }
   }

@@ -5,6 +5,7 @@ import {
   CircleDot,
   Hash,
 } from "lucide-react";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark, shortSku } from "@/components/dashboard/gpu";
@@ -181,6 +182,20 @@ function CampaignListView({ campaigns }: { campaigns: Campaign[] }) {
 const statuses = ["open", "closed", "archived"] as const;
 
 /**
+ * `/dashboard` is prerendered at build, so a production server only ever
+ * regenerates it over a cached copy, and Next keeps serving that copy when the
+ * regeneration throws. Rendering an error instead would cache it for every
+ * visitor until the next revalidate. The build itself still renders the error
+ * state, so an API outage cannot fail a deploy; dev renders it too.
+ */
+function keepsLastGoodPage(): boolean {
+  return (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD
+  );
+}
+
+/**
  * One request per status, settled independently: a hiccup on the archived list
  * should not blank the open campaigns people came for.
  */
@@ -194,6 +209,13 @@ export async function CampaignList() {
   const failed = results.flatMap((r, i) =>
     r.status === "rejected" ? [{ status: statuses[i], error: r.reason }] : []
   );
+
+  if (failed.length > 0 && keepsLastGoodPage()) {
+    throw new Error(
+      `Campaign list: ${failed.map((f) => f.status).join(", ")} failed; keeping the last good page`,
+      { cause: failed[0].error }
+    );
+  }
 
   if (failed.length === statuses.length) {
     return (
@@ -216,7 +238,7 @@ export async function CampaignList() {
   return (
     <div className="space-y-8">
       <SectionUnavailable
-        message={`Could not load ${missing.join(" and ")} campaigns right now. They will be back within a minute.`}
+        message={`Could not load ${missing.join(" and ")} campaigns right now.`}
       />
       {campaigns.length > 0 && <CampaignListView campaigns={campaigns} />}
     </div>
