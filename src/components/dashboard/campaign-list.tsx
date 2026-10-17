@@ -5,6 +5,7 @@ import {
   CircleDot,
   Hash,
 } from "lucide-react";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import Link from "next/link";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { GpuMark, shortSku } from "@/components/dashboard/gpu";
@@ -180,26 +181,47 @@ function CampaignListView({ campaigns }: { campaigns: Campaign[] }) {
 
 const statuses = ["open", "closed", "archived"] as const;
 
+/**
+ * `/dashboard` is prerendered at build, so a production server only ever
+ * regenerates it over a cached copy, and Next keeps serving that copy when the
+ * regeneration throws. Rendering an error instead would cache it for every
+ * visitor until the next revalidate. The build itself still renders the error
+ * state, so an API outage cannot fail a deploy; dev renders it too.
+ */
+function keepsLastGoodPage(): boolean {
+  return (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD
+  );
+}
+
+/**
+ * One request per status, settled independently: a hiccup on the archived list
+ * should not blank the open campaigns people came for.
+ */
 export async function CampaignList() {
-  let campaigns: Campaign[] | null = null;
-  let error: unknown = null;
-  try {
-    const groups = await Promise.all(
-      statuses.map(async (status) => ({
-        status,
-        campaigns: await getCampaigns({ status }),
-      }))
+  const results = await Promise.allSettled(
+    statuses.map((status) => getCampaigns({ status }))
+  );
+  const campaigns = results.flatMap((r) =>
+    r.status === "fulfilled" ? r.value : []
+  );
+  const failed = results.flatMap((r, i) =>
+    r.status === "rejected" ? [{ status: statuses[i], error: r.reason }] : []
+  );
+
+  if (failed.length > 0 && keepsLastGoodPage()) {
+    throw new Error(
+      `Campaign list: ${failed.map((f) => f.status).join(", ")} failed; keeping the last good page`,
+      { cause: failed[0].error }
     );
-    campaigns = groups.flatMap((group) => group.campaigns);
-  } catch (err) {
-    error = err;
   }
 
-  if (error || !campaigns) {
+  if (failed.length === statuses.length) {
     return (
       <SectionUnavailable
         message={
-          isUnavailable(error)
+          failed.some((f) => isUnavailable(f.error))
             ? "Campaign list is temporarily unavailable (API/DB)."
             : "Could not load campaigns."
         }
@@ -207,5 +229,18 @@ export async function CampaignList() {
     );
   }
 
-  return <CampaignListView campaigns={campaigns} />;
+  if (failed.length === 0) return <CampaignListView campaigns={campaigns} />;
+
+  const missing = GROUPS.filter((g) =>
+    failed.some((f) => f.status === g.status)
+  ).map((g) => g.title.toLowerCase());
+
+  return (
+    <div className="space-y-8">
+      <SectionUnavailable
+        message={`Could not load ${missing.join(" and ")} campaigns right now.`}
+      />
+      {campaigns.length > 0 && <CampaignListView campaigns={campaigns} />}
+    </div>
+  );
 }

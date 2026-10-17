@@ -141,7 +141,9 @@ export async function getSubmissionPatchAvailability(
 
   const data = await apiFetch<unknown>(
     `/v1/campaigns/${encodeURIComponent(campaignId)}/submissions/${encodeURIComponent(patchHash)}/patch-availability`,
-    { revalidate: LIVE_REVALIDATE, timeoutMs: 60_000 }
+    // No retry: this can run for a minute of S3 work, and the patch control
+    // already polls every 15 s after an error.
+    { revalidate: LIVE_REVALIDATE, timeoutMs: 60_000, retries: 0 }
   );
   return parseSubmissionDetail(data).submission;
 }

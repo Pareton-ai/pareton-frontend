@@ -1,7 +1,7 @@
 import "server-only";
 
 import { DEFAULT_TIMEOUT_MS, getApiBaseUrl } from "@/lib/api/config";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError, isTransient } from "@/lib/api/errors";
 
 export type ApiFetchOptions = {
   /** Next.js Data Cache revalidate window in seconds. */
@@ -14,7 +14,20 @@ export type ApiFetchOptions = {
   timeoutMs?: number;
   /** Extra query string params (undefined/null values omitted). */
   searchParams?: Record<string, string | number | boolean | null | undefined>;
+  /** Extra attempts after a transient failure. Defaults to `DEFAULT_RETRIES`. */
+  retries?: number;
 };
+
+/**
+ * One quick retry for failures that clear on their own, mainly a pooled Neon
+ * socket the server dropped, which fails instantly and then gets replaced. The
+ * API already queues for a busy DB pool, so a pool 503 means it stayed full for
+ * seconds; the retry is not aimed at that case.
+ */
+export const DEFAULT_RETRIES = 1;
+const RETRY_DELAY_MS = 300;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function joinUrl(base: string, path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
@@ -79,7 +92,7 @@ async function readDetail(response: Response): Promise<unknown> {
  * download that stalls mid-stream. Reading it after `cleanup()` would leave
  * the timeout guarding only the response headers.
  */
-async function request<T>(
+async function requestOnce<T>(
   path: string,
   accept: "json" | "text",
   options: ApiFetchOptions
@@ -132,6 +145,29 @@ async function request<T>(
     });
   } finally {
     cleanup();
+  }
+}
+
+async function request<T>(
+  path: string,
+  accept: "json" | "text",
+  options: ApiFetchOptions
+): Promise<T> {
+  const retries = options.retries ?? DEFAULT_RETRIES;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await requestOnce<T>(path, accept, options);
+    } catch (error) {
+      if (
+        attempt >= retries ||
+        !isTransient(error) ||
+        options.signal?.aborted
+      ) {
+        throw error;
+      }
+      await sleep(RETRY_DELAY_MS);
+      if (options.signal?.aborted) throw error;
+    }
   }
 }
 
