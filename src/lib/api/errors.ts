@@ -52,3 +52,14 @@ export function isLeaderVacant(error: unknown): boolean {
 export function isUnavailable(error: unknown): boolean {
   return error instanceof ApiError && error.status === 503;
 }
+
+/**
+ * Fast failures worth one retry: bad gateway or unreachable, unavailable,
+ * gateway timeout. Not our own 408: a request that already waited out its
+ * timeout would double the page's worst case. Never 4xx or a plain 500.
+ */
+const TRANSIENT_STATUSES = new Set([502, 503, 504]);
+
+export function isTransient(error: unknown): boolean {
+  return error instanceof ApiError && TRANSIENT_STATUSES.has(error.status);
+}
