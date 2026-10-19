@@ -1,6 +1,6 @@
 /** Synthetic v5 evidence for local UI review and regression tests. */
 import {
-  INPUT_TIERS,
+  DEFAULT_INPUT_TIERS,
   type RoundEntryReport,
   type ScoreBreakdown,
 } from "./types";
@@ -18,7 +18,7 @@ export function mockTierReport(
   const baseline = base.role === "baseline";
   const scored = !baseline && base.status === "scored";
   const tiers = Object.fromEntries(
-    INPUT_TIERS.map((tier, i) => [
+    DEFAULT_INPUT_TIERS.map((tier, i) => [
       tier,
       {
         weight: 0.25,
@@ -33,7 +33,7 @@ export function mockTierReport(
   const eligible = failed ? 0 : 0.15;
   const prompts = Array.from({ length: 32 }, (_, i) => ({
     request_id: `v5-${i}`,
-    input_length_group: INPUT_TIERS[Math.floor(i / 8)],
+    input_length_group: DEFAULT_INPUT_TIERS[Math.floor(i / 8)],
     input_tokens: [2048, 4096, 8192, 16384][Math.floor(i / 8)],
     max_tokens: 5120,
     aligned_tokens: i < failed ? 2699 : 3000,
@@ -78,7 +78,7 @@ export function mockTierReport(
       : null,
     sla: {
       tier_completion: Object.fromEntries(
-        INPUT_TIERS.map((t) => [
+        DEFAULT_INPUT_TIERS.map((t) => [
           t,
           { completion_s: baseline ? 100 : tiers[t]!.candidate_completion_s },
         ])

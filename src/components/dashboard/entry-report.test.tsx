@@ -234,6 +234,31 @@ describe("weighted tier report rendering", () => {
     expect(html).not.toContain("4k:");
     expect(html).toContain("8k + 16k overlap");
   });
+  it("describes a v6 campaign as a concurrent tier workload", () => {
+    const campaign = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: {
+        name: "weighted_tier_completion_speedup",
+        failure_penalty: 0.1,
+        tier_weights: { "8k": 0.25, "16k": 0.25, "32k": 0.25, "64k": 0.25 },
+      },
+      sampling_rule: {
+        ...MOCK_CAMPAIGN.sampling_rule,
+        algo_version: 6,
+        request_concurrency: 32,
+        input_tiers: ["8k", "16k", "32k", "64k"],
+      },
+    });
+    const html = renderToStaticMarkup(
+      <>
+        <CampaignRequirements campaign={campaign} />
+        <CampaignReference campaign={campaign} />
+      </>
+    );
+    expect(html).toContain("C32 request concurrency");
+    expect(html).toContain("All four tiers overlap");
+    expect(html).toContain("64k: 25%");
+  });
   it("names where the quantization comes from when the campaign pins none", () => {
     const precision = (quantization: string | null) =>
       renderToStaticMarkup(

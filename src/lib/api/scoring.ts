@@ -1,4 +1,8 @@
-import { INPUT_TIERS, type InputTier } from "@/lib/api/types";
+import {
+  DEFAULT_INPUT_TIERS,
+  INPUT_TIERS,
+  type InputTier,
+} from "@/lib/api/types";
 
 /** Tiers present on a record, in canonical input order. */
 export function selectedTiers(
@@ -22,10 +26,15 @@ export function parseInputTiers(value: unknown): InputTier[] | null {
     : null;
 }
 
-/** Scheduling descriptions apply only to the pinned v5 contract. */
+/** Sampler versions that replay tiers at a fixed request concurrency. */
+export function isConcurrentTierVersion(version: number | null | undefined) {
+  return version === 5 || version === 6;
+}
+
+/** Scheduling descriptions apply only to the pinned concurrent contracts. */
 export function tierGrouping(
   concurrency: number | null | undefined,
-  tiers: readonly InputTier[] = INPUT_TIERS
+  tiers: readonly InputTier[] = DEFAULT_INPUT_TIERS
 ): string {
   if (concurrency == null || ![1, 2, 4, 8, 16, 32].includes(concurrency)) {
     return "Grouping unavailable";

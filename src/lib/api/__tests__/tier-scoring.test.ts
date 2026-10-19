@@ -3,7 +3,7 @@ import { parseCampaign, parseRoundEntryReport } from "../parse";
 import { MOCK_CAMPAIGN, mockGetRoundEntryReport } from "../mocks";
 import { mockTierReport, MOCK_TIER_RULE } from "../mock-tier-report";
 import { tierGrouping } from "../scoring";
-import { INPUT_TIERS, type InputTier } from "../types";
+import { DEFAULT_INPUT_TIERS, type InputTier } from "../types";
 
 const legacy = () =>
   mockGetRoundEntryReport("33333333-3333-3333-3333-333333333333", 2);
@@ -41,7 +41,7 @@ describe("v5 report contract", () => {
   it("retains nonuniform and zero weights and negative speedups", () => {
     const input = wire();
     const tiers = input.score_breakdown!.tiers!;
-    INPUT_TIERS.forEach((t, i) => {
+    DEFAULT_INPUT_TIERS.forEach((t, i) => {
       tiers[t]!.weight = [0, 0.1, 0.2, 0.7][i];
     });
     expect(parseRoundEntryReport(input).score_breakdown?.tiers).toEqual(tiers);
@@ -151,7 +151,7 @@ describe("selected input tiers", () => {
   it("rejects a report tier set with an unknown key", () => {
     const input = wire();
     const tiers = input.score_breakdown!.tiers! as Record<string, unknown>;
-    tiers["32k"] = tiers["16k"];
+    (tiers as Record<string, unknown>)["256k"] = tiers["16k"];
     expect(parseRoundEntryReport(input).score_breakdown).toBeNull();
   });
 
@@ -169,13 +169,13 @@ describe("selected input tiers", () => {
       ...MOCK_CAMPAIGN,
       scoring_rule: {
         ...subsetRule,
-        tier_weights: { "8k": 0.5, "16k": 0.4, "32k": 0.1 },
+        tier_weights: { "8k": 0.5, "16k": 0.4, "256k": 0.1 },
       },
     });
     expect(campaign.scoring_rule.tier_weights).toBeUndefined();
   });
 
-  it.each([[["16k", "8k"]], [["32k"]], [[]], [["8k", "8k"]]])(
+  it.each([[["16k", "8k"]], [["256k"]], [[]], [["8k", "8k"]]])(
     "omits invalid input_tiers %j",
     (input_tiers) => {
       const campaign = subsetCampaign({ input_tiers });
@@ -199,7 +199,52 @@ describe("selected input tiers", () => {
     [16, ["8k", "16k"], "8k + 16k overlap"],
     [32, ["8k", "16k"], "8k + 16k overlap"],
     [3, undefined, "Grouping unavailable"],
+    [32, ["8k", "16k", "32k", "64k"], "All four tiers overlap"],
   ] as const)("describes C%s over %j", (concurrency, tiers, expected) => {
     expect(tierGrouping(concurrency, tiers)).toBe(expected);
+  });
+});
+
+describe("v6 long-context contract", () => {
+  const tiers = ["8k", "16k", "32k", "64k"] as const;
+  const rule = {
+    name: "weighted_tier_completion_speedup",
+    failure_penalty: 0.1,
+    tier_weights: Object.fromEntries(tiers.map((t) => [t, 0.25])),
+  };
+
+  it("keeps 32k and 64k tiers on the campaign and the report", () => {
+    const campaign = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: rule,
+      sampling_rule: {
+        ...MOCK_CAMPAIGN.sampling_rule,
+        algo_version: 6,
+        request_concurrency: 32,
+        input_tiers: [...tiers],
+      },
+    });
+    expect(campaign.scoring_rule.tier_weights).toEqual(rule.tier_weights);
+    expect(campaign.sampling_rule?.input_tiers).toEqual([...tiers]);
+
+    const input = wire();
+    const score = input.score_breakdown!.tiers!;
+    const source = { ...score["16k"]! };
+    delete score["2k"];
+    delete score["4k"];
+    score["32k"] = { ...source };
+    score["64k"] = { ...source };
+    input.workload = {
+      ...input.workload!,
+      algo_version: 6,
+      input_tiers: [...tiers],
+    };
+    const parsed = parseRoundEntryReport(input);
+    expect(parsed.workload?.algo_version).toBe(6);
+    expect(parsed.workload?.request_concurrency).toBe(32);
+    expect(parsed.workload?.input_tiers).toEqual([...tiers]);
+    expect(Object.keys(parsed.score_breakdown?.tiers ?? {})).toEqual([
+      ...tiers,
+    ]);
   });
 });

@@ -4,6 +4,7 @@ import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
 import { formatDuration, truncateHash, truncateMiddle } from "@/lib/api/format";
 import {
+  isConcurrentTierVersion,
   tierGrouping,
   isWeightedTierRule,
   selectedTiers,
@@ -131,11 +132,11 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
         · {rule.max_tokens.toLocaleString("en-US")} max output tokens
-        {rule.algo_version === 5
+        {isConcurrentTierVersion(rule.algo_version)
           ? " · Natural EOS · 90% of baseline minimum"
           : ""}
       </p>
-      {rule.algo_version === 5 ? (
+      {isConcurrentTierVersion(rule.algo_version) ? (
         <p className="text-muted">
           {rule.request_concurrency != null
             ? `C${rule.request_concurrency} request concurrency`
