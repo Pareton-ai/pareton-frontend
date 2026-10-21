@@ -11,6 +11,7 @@ import { formatScore, truncateDigest } from "@/lib/api/format";
 import { readSampling, readRepetitionChecks } from "@/lib/api/generation";
 import { readEngineTimings, type EngineTiming } from "@/lib/api/trace";
 import {
+  isConcurrentTierVersion,
   isWeightedTierRule,
   tierGrouping,
   readConcurrencyObservations,
@@ -387,7 +388,7 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
           ) : workload.temperature != null ? (
             <PanelRow label="Temperature">{workload.temperature}</PanelRow>
           ) : null}
-          {workload.algo_version === 5 ? (
+          {isConcurrentTierVersion(workload.algo_version) ? (
             <>
               <PanelRow label="Request concurrency">
                 C{workload.request_concurrency}
@@ -420,7 +421,7 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
             </PanelRow>
           ) : null}
           <p className="px-4 py-3 text-body leading-relaxed text-secondary sm:px-5">
-            {workload.algo_version === 5
+            {isConcurrentTierVersion(workload.algo_version)
               ? "The same eligible inputs and output ceilings apply to every engine. Candidates must emit at least 90% of baseline tokens per request; natural output lengths can affect tier completion time. Slots refill until the group drains and stay occupied through protocol completion. Baseline exclusions and final drain can reduce actual concurrency below the configured cap."
               : "The same inputs and output limits apply to every engine. Actual concurrency depends on response duration and engine scheduling."}
             {workload.enable_thinking

@@ -164,8 +164,21 @@ export type CampaignBench = {
   baseline_engine_image_digest: string;
 };
 
-export const INPUT_TIERS = ["2k", "4k", "8k", "16k"] as const;
+export const INPUT_TIERS = [
+  "2k",
+  "4k",
+  "8k",
+  "16k",
+  "32k",
+  "64k",
+  "128k",
+] as const;
 export type InputTier = (typeof INPUT_TIERS)[number];
+/** Tiers of a rule that predates explicit `input_tiers`. */
+export const DEFAULT_INPUT_TIERS: readonly InputTier[] = INPUT_TIERS.slice(
+  0,
+  4
+);
 export type TierWeights = Partial<Record<InputTier, number>>;
 
 export type ScoringRule = {

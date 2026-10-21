@@ -38,7 +38,11 @@ import {
   type SubmissionsPage,
   type SubmissionStateName,
 } from "@/lib/api/types";
-import { parseInputTiers, selectedTiers } from "@/lib/api/scoring";
+import {
+  isConcurrentTierVersion,
+  parseInputTiers,
+  selectedTiers,
+} from "@/lib/api/scoring";
 
 export function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object"
@@ -623,7 +627,7 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
   const tiers = parseInputTiers(o.input_tiers);
   if (version === null) return null;
   if (
-    version === 5
+    isConcurrentTierVersion(version)
       ? concurrency === null || ![1, 2, 4, 8, 16, 32].includes(concurrency)
       : interval === null
   )
@@ -639,8 +643,8 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
         ? [o.temperature_range[0], o.temperature_range[1]]
         : null,
     algo_version: version,
-    request_interval_ms: version === 5 ? null : interval,
-    ...(version === 5
+    request_interval_ms: isConcurrentTierVersion(version) ? null : interval,
+    ...(isConcurrentTierVersion(version)
       ? {
           request_concurrency: concurrency,
         }
