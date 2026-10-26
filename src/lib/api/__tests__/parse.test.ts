@@ -796,6 +796,7 @@ describe("parseCampaign correctness thresholds", () => {
             max_patch_bytes: 737280,
             max_added_line_chars: 400,
             reject_renames: true,
+            reject_mode_changes: true,
           },
         },
       }).bench.patch_limits
@@ -803,10 +804,17 @@ describe("parseCampaign correctness thresholds", () => {
       max_patch_bytes: 737280,
       max_added_line_chars: 400,
       reject_renames: true,
+      reject_mode_changes: true,
     });
     expect(
       parseCampaign({
-        bench: { patch_limits: { max_patch_bytes: "720", reject_renames: 1 } },
+        bench: {
+          patch_limits: {
+            max_patch_bytes: "720",
+            reject_renames: 1,
+            reject_mode_changes: "yes",
+          },
+        },
       }).bench
     ).not.toHaveProperty("patch_limits");
     expect(parseCampaign({ bench: {} }).bench).not.toHaveProperty(

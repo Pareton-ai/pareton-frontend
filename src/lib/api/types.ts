@@ -161,6 +161,7 @@ export type PatchLimits = {
   max_patch_bytes?: number;
   max_added_line_chars?: number;
   reject_renames?: boolean;
+  reject_mode_changes?: boolean;
 };
 
 export type CampaignBench = {

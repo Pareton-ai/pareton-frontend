@@ -218,6 +218,7 @@ function parsePatchLimits(value: unknown): PatchLimits | null {
     ...(bytes !== null && bytes > 0 ? { max_patch_bytes: bytes } : {}),
     ...(chars !== null && chars > 0 ? { max_added_line_chars: chars } : {}),
     ...(o.reject_renames === true ? { reject_renames: true } : {}),
+    ...(o.reject_mode_changes === true ? { reject_mode_changes: true } : {}),
   };
   return Object.keys(limits).length > 0 ? limits : null;
 }
