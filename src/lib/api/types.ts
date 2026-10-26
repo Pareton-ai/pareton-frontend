@@ -156,12 +156,20 @@ export type CampaignBenchCorrectness = {
   thresholds: CampaignBenchCorrectnessThresholds;
 };
 
+/** Optional surface-gate limits. Absent means the campaign sets none. */
+export type PatchLimits = {
+  max_patch_bytes?: number;
+  max_added_line_chars?: number;
+  reject_renames?: boolean;
+};
+
 export type CampaignBench = {
   model: CampaignBenchModel;
   gpu_count: number;
   serve_args: string[] | null;
   correctness: CampaignBenchCorrectness | null;
   baseline_engine_image_digest: string;
+  patch_limits?: PatchLimits;
 };
 
 export const INPUT_TIERS = [

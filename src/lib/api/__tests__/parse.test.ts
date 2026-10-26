@@ -788,6 +788,32 @@ describe("parseCampaign correctness thresholds", () => {
     expect(String(thresholds.min_coverage_ratio)).toBe("0.51");
   });
 
+  it("keeps only valid patch limits and omits an empty set", () => {
+    expect(
+      parseCampaign({
+        bench: {
+          patch_limits: {
+            max_patch_bytes: 737280,
+            max_added_line_chars: 400,
+            reject_renames: true,
+          },
+        },
+      }).bench.patch_limits
+    ).toEqual({
+      max_patch_bytes: 737280,
+      max_added_line_chars: 400,
+      reject_renames: true,
+    });
+    expect(
+      parseCampaign({
+        bench: { patch_limits: { max_patch_bytes: "720", reject_renames: 1 } },
+      }).bench
+    ).not.toHaveProperty("patch_limits");
+    expect(parseCampaign({ bench: {} }).bench).not.toHaveProperty(
+      "patch_limits"
+    );
+  });
+
   it("falls back to null when correctness is missing", () => {
     expect(parseCampaign({ bench: {} }).bench.correctness).toBeNull();
     expect(

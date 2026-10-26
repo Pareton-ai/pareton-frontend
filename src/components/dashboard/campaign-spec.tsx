@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import type {
   Campaign,
   CampaignBenchCorrectnessThresholds,
+  PatchLimits,
   SamplingRule,
 } from "@/lib/api/types";
 
@@ -154,6 +155,18 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       ) : null}
     </div>
   );
+}
+
+function patchLimitLines(limits: PatchLimits): string[] {
+  return [
+    limits.max_patch_bytes != null
+      ? `At most ${limits.max_patch_bytes.toLocaleString("en-US")} bytes`
+      : null,
+    limits.max_added_line_chars != null
+      ? `No added line over ${limits.max_added_line_chars.toLocaleString("en-US")} characters`
+      : null,
+    limits.reject_renames ? "No file renames" : null,
+  ].filter((line): line is string => line !== null);
 }
 
 /** What a patch has to achieve and what it runs against. */
@@ -323,6 +336,15 @@ export function CampaignReference({ campaign }: { campaign: Campaign }) {
         <GridRow label="Denied paths">
           <Tags values={campaign.denied_paths} tone="rust" />
         </GridRow>
+        {campaign.bench.patch_limits ? (
+          <GridRow label="Patch limits">
+            <ul className="space-y-1 text-secondary tabular-nums">
+              {patchLimitLines(campaign.bench.patch_limits).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </GridRow>
+        ) : null}
       </Panel>
     </div>
   );
