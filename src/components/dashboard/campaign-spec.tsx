@@ -166,6 +166,7 @@ function patchLimitLines(limits: PatchLimits): string[] {
       ? `No added line over ${limits.max_added_line_chars.toLocaleString("en-US")} characters`
       : null,
     limits.reject_renames ? "No file renames" : null,
+    limits.reject_mode_changes ? "No file mode changes" : null,
   ].filter((line): line is string => line !== null);
 }
 
