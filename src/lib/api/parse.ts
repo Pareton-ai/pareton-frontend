@@ -8,6 +8,7 @@ import {
   type InputTier,
   type Campaign,
   type PatchVisibility,
+  type PatchLimits,
   type CampaignBench,
   type CampaignBenchCorrectness,
   type CampaignBenchModel,
@@ -209,8 +210,21 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
   };
 }
 
+function parsePatchLimits(value: unknown): PatchLimits | null {
+  const o = asRecord(value);
+  const bytes = asNullableNumber(o.max_patch_bytes);
+  const chars = asNullableNumber(o.max_added_line_chars);
+  const limits: PatchLimits = {
+    ...(bytes !== null && bytes > 0 ? { max_patch_bytes: bytes } : {}),
+    ...(chars !== null && chars > 0 ? { max_added_line_chars: chars } : {}),
+    ...(o.reject_renames === true ? { reject_renames: true } : {}),
+  };
+  return Object.keys(limits).length > 0 ? limits : null;
+}
+
 function parseBench(value: unknown): CampaignBench {
   const o = asRecord(value);
+  const patchLimits = parsePatchLimits(o.patch_limits);
   return {
     model: parseBenchModel(o.model),
     gpu_count: asNumber(o.gpu_count, 1),
@@ -219,6 +233,7 @@ function parseBench(value: unknown): CampaignBench {
       : null,
     correctness: parseCorrectness(o.correctness),
     baseline_engine_image_digest: asString(o.baseline_engine_image_digest),
+    ...(patchLimits ? { patch_limits: patchLimits } : {}),
   };
 }
 
