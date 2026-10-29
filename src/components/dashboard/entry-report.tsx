@@ -445,10 +445,8 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
               {score.ttft ? (
                 <PanelRow label="TTFT vs baseline">
                   {score.ttft.ratio != null
-                    ? `${score.ttft.ratio.toFixed(2)}×`
-                    : "—"}{" "}
-                  ({score.ttft.capped ? "over the" : "within the"}{" "}
-                  {score.ttft.max_ratio}× cap)
+                    ? `${score.ttft.ratio.toFixed(2)}× (${score.ttft.capped ? "over the" : "within the"} ${score.ttft.max_ratio}× cap)`
+                    : `— (not measured; cap ${score.ttft.max_ratio}×)`}
                 </PanelRow>
               ) : null}
               <p className="px-4 py-3 text-body text-secondary sm:px-5">

@@ -188,6 +188,19 @@ describe("weighted tier report rendering", () => {
     expect(html).toContain("Fixed length");
     expect(html).not.toContain("Natural EOS");
   });
+  it("does not call an unmeasured TTFT ratio within the cap", () => {
+    const input = mockTierReport(legacy());
+    Object.assign(input.score_breakdown!, {
+      ttft_ratio: null,
+      max_ttft_ratio: 2,
+      ttft_capped: false,
+    });
+    const html = renderToStaticMarkup(
+      <EntryReportWorkload report={parseRoundEntryReport(input)} />
+    );
+    expect(html).toContain("not measured; cap 2×");
+    expect(html).not.toContain("within the 2× cap");
+  });
   it("shows a TTFT cap and fixed-length outputs on the campaign spec", () => {
     const campaign = parseCampaign({
       ...MOCK_CAMPAIGN,
