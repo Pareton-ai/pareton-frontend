@@ -182,6 +182,7 @@ describe("weighted tier report rendering", () => {
       <EntryReportWorkload report={parseRoundEntryReport(input)} />
     );
     expect(html).toContain("2.50×");
+    expect(html).toContain("over the 2× cap");
     expect(html).toContain("over 2× the baseline");
     expect(html).toContain("min(0.150000, 0) = 0.000000");
     expect(html).toContain("Fixed length");

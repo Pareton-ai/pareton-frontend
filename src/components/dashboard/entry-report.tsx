@@ -447,7 +447,8 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
                   {score.ttft.ratio != null
                     ? `${score.ttft.ratio.toFixed(2)}×`
                     : "—"}{" "}
-                  (cap {score.ttft.max_ratio}×)
+                  ({score.ttft.capped ? "over the" : "within the"}{" "}
+                  {score.ttft.max_ratio}× cap)
                 </PanelRow>
               ) : null}
               <p className="px-4 py-3 text-body text-secondary sm:px-5">
