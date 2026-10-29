@@ -133,9 +133,11 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
         · {rule.max_tokens.toLocaleString("en-US")} max output tokens
-        {isConcurrentTierVersion(rule.algo_version)
-          ? " · Natural EOS · 90% of baseline minimum"
-          : ""}
+        {rule.ignore_eos
+          ? " · Fixed length: every request returns exactly this many tokens"
+          : isConcurrentTierVersion(rule.algo_version)
+            ? " · Natural EOS · 90% of baseline minimum"
+            : ""}
       </p>
       {isConcurrentTierVersion(rule.algo_version) ? (
         <p className="text-muted">
@@ -209,10 +211,13 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
                   failed eligible fraction
                 </p>
               ) : null}
-              <p>
-                Any scored request failure caps speed credit at zero before the
-                deduction.
-              </p>
+              {campaign.scoring_rule.max_ttft_ratio != null ? (
+                <p>
+                  TTFT cap: a candidate whose median TTFT is over{" "}
+                  {campaign.scoring_rule.max_ttft_ratio}× the baseline&apos;s
+                  earns no speed credit. Slowdowns still count.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </Row>

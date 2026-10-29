@@ -194,6 +194,8 @@ export type ScoringRule = {
   name: string;
   tier_weights?: TierWeights;
   failure_penalty?: number;
+  /** Candidate median TTFT above this multiple of the baseline's earns no speed credit. */
+  max_ttft_ratio?: number;
 };
 
 /** Campaign pin: each round draws prompts from this HuggingFace dataset. */
@@ -211,6 +213,8 @@ export type SamplingRule = {
   request_concurrency?: number | null;
   enable_thinking?: boolean | null;
   input_tiers?: InputTier[];
+  /** Every request is forced to exactly `max_tokens` output tokens. */
+  ignore_eos?: boolean;
 };
 
 export type CustomerSignoff = {
@@ -482,6 +486,13 @@ export type TierCompletionScore = {
   scheduled_requests: number;
 };
 
+/** Candidate median TTFT over the baseline's, against the rule's cap. */
+export type TtftCap = {
+  ratio: number | null;
+  max_ratio: number;
+  capped: boolean;
+};
+
 export type ScoreBreakdown = {
   scheduled_requests: number;
   failed_requests: number;
@@ -494,12 +505,15 @@ export type ScoreBreakdown = {
       weighted_speedup?: never;
       eligible_speedup?: never;
       tiers?: never;
+      ttft?: never;
     }
   | {
       median_speedup?: null;
       weighted_speedup: number;
       eligible_speedup: number;
       tiers: Partial<Record<InputTier, TierCompletionScore>>;
+      /** Present only when the scoring rule sets `max_ttft_ratio`. */
+      ttft?: TtftCap;
     }
 );
 
@@ -512,6 +526,7 @@ export type ReportWorkload = {
   enable_thinking: boolean | null;
   max_model_len: number | null;
   input_tiers?: InputTier[];
+  ignore_eos?: boolean;
 };
 
 /** Counts over `prompts`, so the headline needs no client-side math. */
