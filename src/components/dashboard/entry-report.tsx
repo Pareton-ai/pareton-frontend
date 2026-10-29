@@ -298,7 +298,7 @@ export function EntryReportStats({ report }: { report: RoundEntryReport }) {
           hint={
             report.score === null
               ? (report.reason ?? "did not score")
-              : "weighted tier speedup after failure cap and deduction"
+              : "weighted tier speedup after speed-credit cap and deduction"
           }
         />
         <StatTile
@@ -321,7 +321,7 @@ export function EntryReportStats({ report }: { report: RoundEntryReport }) {
               ? formatPercent(score.weighted_speedup)
               : "—"
           }
-          hint="before failure cap and deduction"
+          hint="before speed-credit cap and deduction"
         />
       </StatStrip>
     );
