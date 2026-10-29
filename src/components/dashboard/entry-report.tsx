@@ -401,7 +401,9 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
                 )}
               </PanelRow>
               <PanelRow label="Output policy">
-                Natural EOS · Minimum 90% of baseline tokens per request
+                {workload.ignore_eos
+                  ? "Fixed length · Every request runs to its output limit"
+                  : "Natural EOS · Minimum 90% of baseline tokens per request"}
               </PanelRow>
             </>
           ) : (
@@ -422,7 +424,7 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
           ) : null}
           <p className="px-4 py-3 text-body leading-relaxed text-secondary sm:px-5">
             {isConcurrentTierVersion(workload.algo_version)
-              ? "The same eligible inputs and output ceilings apply to every engine. Candidates must emit at least 90% of baseline tokens per request; natural output lengths can affect tier completion time. Slots refill until the group drains and stay occupied through protocol completion. Baseline exclusions and final drain can reduce actual concurrency below the configured cap."
+              ? `The same eligible inputs and output ceilings apply to every engine. Candidates must emit at least 90% of baseline tokens per request; ${workload.ignore_eos ? "every request is forced to its full output length, so output length does not vary between engines" : "natural output lengths can affect tier completion time"}. Slots refill until the group drains and stay occupied through protocol completion. Baseline exclusions and final drain can reduce actual concurrency below the configured cap.`
               : "The same inputs and output limits apply to every engine. Actual concurrency depends on response duration and engine scheduling."}
             {workload.enable_thinking
               ? " TTFT includes the start of reasoning; it is not time to the final answer."
@@ -440,10 +442,16 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
               <PanelRow label="Eligible speedup">
                 {formatPercent(score.eligible_speedup)}
               </PanelRow>
+              {score.ttft ? (
+                <PanelRow label="TTFT vs baseline">
+                  {score.ttft.ratio != null
+                    ? `${score.ttft.ratio.toFixed(2)}×`
+                    : "—"}{" "}
+                  (cap {score.ttft.max_ratio}×)
+                </PanelRow>
+              ) : null}
               <p className="px-4 py-3 text-body text-secondary sm:px-5">
-                {score.failed_requests > 0
-                  ? `Request failures cap speed credit at zero: min(${score.weighted_speedup.toFixed(6)}, 0) = ${score.eligible_speedup.toFixed(6)}. Negative speedups remain negative.`
-                  : "No request failures: eligible speedup equals raw weighted speedup."}
+                {eligibleExplanation(score)}
               </p>
             </>
           ) : (
@@ -475,6 +483,20 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
       ) : null}
     </div>
   );
+}
+
+function eligibleExplanation(
+  score: NonNullable<RoundEntryReport["score_breakdown"]>
+): string {
+  const raw = score.weighted_speedup!;
+  const eligible = score.eligible_speedup!;
+  const clamp = `min(${raw.toFixed(6)}, 0) = ${eligible.toFixed(6)}. Negative speedups remain negative.`;
+  if (score.ttft?.capped)
+    return `Median TTFT is over ${score.ttft.max_ratio}× the baseline's, so speed credit is capped at zero: ${clamp}`;
+  if (eligible !== raw)
+    // Older reports capped speed credit on any request failure.
+    return `Request failures cap speed credit at zero: ${clamp}`;
+  return "Eligible speedup equals raw weighted speedup.";
 }
 
 function TierCompletionTable({

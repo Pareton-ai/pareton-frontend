@@ -5,6 +5,7 @@ import {
   INPUT_TIERS,
   type TierWeights,
   type TierCompletionScore,
+  type TtftCap,
   type InputTier,
   type Campaign,
   type PatchVisibility,
@@ -146,10 +147,12 @@ function parseScoringRule(value: unknown): ScoringRule {
   const o = asRecord(value);
   const weights = parseTierWeights(o.tier_weights);
   const penalty = asNullableNumber(o.failure_penalty);
+  const ttftCap = asNullableNumber(o.max_ttft_ratio);
   return {
     name: asString(o.name),
     ...(weights ? { tier_weights: weights } : {}),
     ...(penalty !== null && penalty >= 0 ? { failure_penalty: penalty } : {}),
+    ...(ttftCap !== null && ttftCap >= 1 ? { max_ttft_ratio: ttftCap } : {}),
   };
 }
 
@@ -207,6 +210,7 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
       ? { enable_thinking: o.enable_thinking }
       : {}),
     ...(tiers ? { input_tiers: tiers } : {}),
+    ...(o.ignore_eos === true ? { ignore_eos: true } : {}),
   };
 }
 
@@ -624,15 +628,28 @@ function parseScoreBreakdown(
       )
     )
       return null;
+    const ttft = parseTtftCap(o);
     return {
       ...common,
       weighted_speedup: weighted,
       eligible_speedup: eligible,
       tiers,
+      ...(ttft ? { ttft } : {}),
     };
   }
   const median = asNullableNumber(o.median_speedup);
   return median === null ? null : { ...common, median_speedup: median };
+}
+
+function parseTtftCap(o: Record<string, unknown>): TtftCap | null {
+  const max_ratio = asNullableNumber(o.max_ttft_ratio);
+  if (max_ratio === null || max_ratio < 1) return null;
+  const ratio = asNullableNumber(o.ttft_ratio);
+  return {
+    ratio: ratio !== null && ratio > 0 ? ratio : null,
+    max_ratio,
+    capped: o.ttft_capped === true,
+  };
 }
 
 function parseReportWorkload(value: unknown): ReportWorkload | null {
@@ -669,6 +686,7 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
       typeof o.enable_thinking === "boolean" ? o.enable_thinking : null,
     max_model_len: asNullableNumber(o.max_model_len),
     ...(tiers ? { input_tiers: tiers } : {}),
+    ...(o.ignore_eos === true ? { ignore_eos: true } : {}),
   };
 }
 
