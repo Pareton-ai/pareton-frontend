@@ -6,6 +6,7 @@ import {
   type TierWeights,
   type TierCompletionScore,
   type TtftCap,
+  type GpuMemoryUse,
   type InputTier,
   type Campaign,
   type PatchVisibility,
@@ -148,11 +149,15 @@ function parseScoringRule(value: unknown): ScoringRule {
   const weights = parseTierWeights(o.tier_weights);
   const penalty = asNullableNumber(o.failure_penalty);
   const ttftCap = asNullableNumber(o.max_ttft_ratio);
+  const memoryCap = asNullableNumber(o.max_extra_gpu_memory_mib);
   return {
     name: asString(o.name),
     ...(weights ? { tier_weights: weights } : {}),
     ...(penalty !== null && penalty >= 0 ? { failure_penalty: penalty } : {}),
     ...(ttftCap !== null && ttftCap >= 1 ? { max_ttft_ratio: ttftCap } : {}),
+    ...(memoryCap !== null && memoryCap >= 0
+      ? { max_extra_gpu_memory_mib: memoryCap }
+      : {}),
   };
 }
 
@@ -177,6 +182,14 @@ function parseTierWeights(value: unknown): TierWeights | null {
   return Math.abs(sum - 1) <= 1e-9 ? weights : null;
 }
 
+/** A forced output-length range: two increasing positive integers. */
+function parseOutputTokensRange(value: unknown): [number, number] | null {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [low, high] = value;
+  if (!Number.isInteger(low) || !Number.isInteger(high)) return null;
+  return low >= 1 && low < high ? [low, high] : null;
+}
+
 function parseSamplingRule(value: unknown): SamplingRule | null {
   if (value == null) return null;
   const o = asRecord(value);
@@ -190,6 +203,11 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
   const algo_version = asNumber(o.algo_version, 1);
   if (max_tokens < 1 || algo_version < 1) return null;
   const tiers = parseInputTiers(o.input_tiers);
+  // Lengths are only drawn for forced-length rules.
+  const outputRange =
+    o.ignore_eos === true
+      ? parseOutputTokensRange(o.output_tokens_range)
+      : null;
   return {
     type: "hf_rows",
     dataset,
@@ -211,6 +229,7 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
       : {}),
     ...(tiers ? { input_tiers: tiers } : {}),
     ...(o.ignore_eos === true ? { ignore_eos: true } : {}),
+    ...(outputRange ? { output_tokens_range: outputRange } : {}),
   };
 }
 
@@ -652,12 +671,32 @@ function parseTtftCap(o: Record<string, unknown>): TtftCap | null {
   };
 }
 
+function parseGpuMemoryUse(value: unknown): GpuMemoryUse | null {
+  const o = asRecord(value);
+  const extra_mib = asNullableNumber(o.extra_mib);
+  const max_extra_mib = asNullableNumber(o.max_extra_gpu_memory_mib);
+  // The verdict is the harness's; recomputing it here could disagree with
+  // the entry's status, so a measurement without one is dropped.
+  if (
+    extra_mib === null ||
+    max_extra_mib === null ||
+    max_extra_mib < 0 ||
+    typeof o.over_cap !== "boolean"
+  )
+    return null;
+  return { extra_mib, max_extra_mib, over_cap: o.over_cap };
+}
+
 function parseReportWorkload(value: unknown): ReportWorkload | null {
   const o = asRecord(value);
   const version = asNullableNumber(o.algo_version);
   const interval = asNullableNumber(o.request_interval_ms);
   const concurrency = asNullableNumber(o.request_concurrency);
   const tiers = parseInputTiers(o.input_tiers);
+  const outputRange =
+    o.ignore_eos === true
+      ? parseOutputTokensRange(o.output_tokens_range)
+      : null;
   if (version === null) return null;
   if (
     isConcurrentTierVersion(version)
@@ -687,11 +726,13 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
     max_model_len: asNullableNumber(o.max_model_len),
     ...(tiers ? { input_tiers: tiers } : {}),
     ...(o.ignore_eos === true ? { ignore_eos: true } : {}),
+    ...(outputRange ? { output_tokens_range: outputRange } : {}),
   };
 }
 
 export function parseRoundEntryReport(value: unknown): RoundEntryReport {
   const o = asRecord(value);
+  const gpuMemory = parseGpuMemoryUse(o.gpu_memory);
   return {
     round_id: asString(o.round_id),
     round_ordinal: asNumber(o.round_ordinal),
@@ -706,6 +747,7 @@ export function parseRoundEntryReport(value: unknown): RoundEntryReport {
     score: parseScore(o.score),
     reason: asNullableString(o.reason),
     engine_crashed: o.engine_crashed === true,
+    ...(gpuMemory ? { gpu_memory: gpuMemory } : {}),
     scoring_rule: asRecord(o.scoring_rule),
     prompt_summary: parsePromptSummary(o.prompt_summary),
     score_breakdown: parseScoreBreakdown(

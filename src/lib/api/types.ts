@@ -196,6 +196,8 @@ export type ScoringRule = {
   failure_penalty?: number;
   /** Candidate median TTFT above this multiple of the baseline's earns no speed credit. */
   max_ttft_ratio?: number;
+  /** A candidate whose peak memory on any GPU is more than this many MiB above the baseline's is disqualified. */
+  max_extra_gpu_memory_mib?: number;
 };
 
 /** Campaign pin: each round draws prompts from this HuggingFace dataset. */
@@ -215,6 +217,11 @@ export type SamplingRule = {
   input_tiers?: InputTier[];
   /** Every request is forced to exactly `max_tokens` output tokens. */
   ignore_eos?: boolean;
+  /**
+   * With `ignore_eos`: each round draws a forced length in this inclusive
+   * range for every request, instead of `max_tokens` for all of them.
+   */
+  output_tokens_range?: [number, number];
 };
 
 export type CustomerSignoff = {
@@ -493,6 +500,14 @@ export type TtftCap = {
   capped: boolean;
 };
 
+/** Peak GPU memory over the baseline's, against the rule's cap. */
+export type GpuMemoryUse = {
+  /** Largest per-GPU excess over the baseline's peak; negative when below it everywhere. */
+  extra_mib: number;
+  max_extra_mib: number;
+  over_cap: boolean;
+};
+
 export type ScoreBreakdown = {
   scheduled_requests: number;
   failed_requests: number;
@@ -527,6 +542,7 @@ export type ReportWorkload = {
   max_model_len: number | null;
   input_tiers?: InputTier[];
   ignore_eos?: boolean;
+  output_tokens_range?: [number, number];
 };
 
 /** Counts over `prompts`, so the headline needs no client-side math. */
@@ -559,6 +575,8 @@ export type RoundEntryReport = {
   score: number | null;
   reason: string | null;
   engine_crashed: boolean;
+  /** Present only when the scoring rule sets `max_extra_gpu_memory_mib`. */
+  gpu_memory?: GpuMemoryUse;
   scoring_rule: Record<string, unknown>;
   prompt_summary: PromptSummary;
   score_breakdown: ScoreBreakdown | null;

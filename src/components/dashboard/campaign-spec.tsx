@@ -2,7 +2,12 @@ import { Cpu, ExternalLink, FolderTree, GitBranch, Target } from "lucide-react";
 import type { ReactNode } from "react";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
-import { formatDuration, truncateHash, truncateMiddle } from "@/lib/api/format";
+import {
+  formatDuration,
+  formatMib,
+  truncateHash,
+  truncateMiddle,
+} from "@/lib/api/format";
 import {
   isConcurrentTierVersion,
   tierGrouping,
@@ -133,11 +138,13 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
         · {rule.max_tokens.toLocaleString("en-US")} max output tokens
-        {rule.ignore_eos
-          ? " · Fixed length: every request returns exactly this many tokens"
-          : isConcurrentTierVersion(rule.algo_version)
-            ? " · Natural EOS · 90% of baseline minimum"
-            : ""}
+        {rule.output_tokens_range
+          ? ` · Forced length: each round draws ${rule.output_tokens_range[0].toLocaleString("en-US")} to ${rule.output_tokens_range[1].toLocaleString("en-US")} tokens for every request`
+          : rule.ignore_eos
+            ? " · Fixed length: every request returns exactly this many tokens"
+            : isConcurrentTierVersion(rule.algo_version)
+              ? " · Natural EOS · 90% of baseline minimum"
+              : ""}
       </p>
       {isConcurrentTierVersion(rule.algo_version) ? (
         <p className="text-muted">
@@ -219,6 +226,14 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
                 </p>
               ) : null}
             </div>
+          ) : null}
+          {/* The harness enforces this cap under any rule, not just the weighted one. */}
+          {campaign.scoring_rule.max_extra_gpu_memory_mib != null ? (
+            <p className="mt-1 text-secondary">
+              GPU memory cap: a candidate whose peak memory on any GPU is more
+              than {formatMib(campaign.scoring_rule.max_extra_gpu_memory_mib)}{" "}
+              above the baseline&apos;s is disqualified.
+            </p>
           ) : null}
         </Row>
         <Row label="Correctness">

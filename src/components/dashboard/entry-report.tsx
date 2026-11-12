@@ -7,7 +7,7 @@ import {
 } from "@/components/dashboard/panel";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatScore, truncateDigest } from "@/lib/api/format";
+import { formatMib, formatScore, truncateDigest } from "@/lib/api/format";
 import { readSampling, readRepetitionChecks } from "@/lib/api/generation";
 import { readEngineTimings, type EngineTiming } from "@/lib/api/trace";
 import {
@@ -401,9 +401,11 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
                 )}
               </PanelRow>
               <PanelRow label="Output policy">
-                {workload.ignore_eos
-                  ? "Fixed length · Every request runs to its output limit"
-                  : "Natural EOS · Minimum 90% of baseline tokens per request"}
+                {workload.output_tokens_range
+                  ? `Forced length · Every request runs to its own output limit, drawn for this round from ${workload.output_tokens_range[0].toLocaleString("en-US")} to ${workload.output_tokens_range[1].toLocaleString("en-US")} tokens`
+                  : workload.ignore_eos
+                    ? "Fixed length · Every request runs to its output limit"
+                    : "Natural EOS · Minimum 90% of baseline tokens per request"}
               </PanelRow>
             </>
           ) : (
@@ -420,6 +422,14 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
           {workload.max_model_len !== null ? (
             <PanelRow label="Context limit">
               {workload.max_model_len.toLocaleString("en-US")} tokens
+            </PanelRow>
+          ) : null}
+          {report.gpu_memory ? (
+            <PanelRow label="GPU memory vs baseline">
+              {report.gpu_memory.extra_mib > 0 ? "+" : ""}
+              {formatMib(report.gpu_memory.extra_mib)} on the fullest GPU (
+              {report.gpu_memory.over_cap ? "over the" : "within the"}{" "}
+              {formatMib(report.gpu_memory.max_extra_mib)} cap)
             </PanelRow>
           ) : null}
           <p className="px-4 py-3 text-body leading-relaxed text-secondary sm:px-5">
