@@ -661,11 +661,16 @@ function parseGpuMemoryUse(value: unknown): GpuMemoryUse | null {
   const o = asRecord(value);
   const extra_mib = asNullableNumber(o.extra_mib);
   const max_extra_mib = asNullableNumber(o.max_extra_gpu_memory_mib);
-  if (extra_mib === null || max_extra_mib === null || max_extra_mib < 0)
-    return null;
   // The verdict is the harness's; recomputing it here could disagree with
-  // the entry's status.
-  return { extra_mib, max_extra_mib, over_cap: o.over_cap === true };
+  // the entry's status, so a measurement without one is dropped.
+  if (
+    extra_mib === null ||
+    max_extra_mib === null ||
+    max_extra_mib < 0 ||
+    typeof o.over_cap !== "boolean"
+  )
+    return null;
+  return { extra_mib, max_extra_mib, over_cap: o.over_cap };
 }
 
 function parseReportWorkload(value: unknown): ReportWorkload | null {

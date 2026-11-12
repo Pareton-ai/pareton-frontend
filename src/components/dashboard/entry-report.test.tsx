@@ -243,6 +243,17 @@ describe("weighted tier report rendering", () => {
     expect(
       renderToStaticMarkup(<CampaignRequirements campaign={plain} />)
     ).not.toContain("GPU memory cap");
+    // The harness applies the cap under every rule, so every rule shows it.
+    const median = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: {
+        name: "median_e2e_speedup",
+        max_extra_gpu_memory_mib: 2048,
+      },
+    });
+    expect(
+      renderToStaticMarkup(<CampaignRequirements campaign={median} />)
+    ).toContain("more than 2 GiB above the baseline");
   });
   it("shows an entry's GPU memory against the cap", () => {
     const memory = {
@@ -290,6 +301,13 @@ describe("weighted tier report rendering", () => {
       gpu_memory: { extra_mib: "lots" },
     });
     expect(none.gpu_memory).toBeUndefined();
+    // No verdict from the harness: dropped, never shown as within the cap.
+    expect(
+      parseRoundEntryReport({
+        ...mockTierReport(legacy()),
+        gpu_memory: { ...memory, extra_mib: 3000, over_cap: null },
+      }).gpu_memory
+    ).toBeUndefined();
     expect(
       renderToStaticMarkup(<EntryReportWorkload report={weighted()} />)
     ).not.toContain("GPU memory vs baseline");
