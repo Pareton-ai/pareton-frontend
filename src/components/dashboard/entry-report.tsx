@@ -401,9 +401,11 @@ export function EntryReportWorkload({ report }: { report: RoundEntryReport }) {
                 )}
               </PanelRow>
               <PanelRow label="Output policy">
-                {workload.ignore_eos
-                  ? "Fixed length · Every request runs to its output limit"
-                  : "Natural EOS · Minimum 90% of baseline tokens per request"}
+                {workload.output_tokens_range
+                  ? `Forced length · Every request runs to its own output limit, drawn for this round from ${workload.output_tokens_range[0].toLocaleString("en-US")} to ${workload.output_tokens_range[1].toLocaleString("en-US")} tokens`
+                  : workload.ignore_eos
+                    ? "Fixed length · Every request runs to its output limit"
+                    : "Natural EOS · Minimum 90% of baseline tokens per request"}
               </PanelRow>
             </>
           ) : (

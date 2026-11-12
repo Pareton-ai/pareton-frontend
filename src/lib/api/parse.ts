@@ -182,6 +182,14 @@ function parseTierWeights(value: unknown): TierWeights | null {
   return Math.abs(sum - 1) <= 1e-9 ? weights : null;
 }
 
+/** A forced output-length range: two increasing positive integers. */
+function parseOutputTokensRange(value: unknown): [number, number] | null {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [low, high] = value;
+  if (!Number.isInteger(low) || !Number.isInteger(high)) return null;
+  return low >= 1 && low < high ? [low, high] : null;
+}
+
 function parseSamplingRule(value: unknown): SamplingRule | null {
   if (value == null) return null;
   const o = asRecord(value);
@@ -195,6 +203,11 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
   const algo_version = asNumber(o.algo_version, 1);
   if (max_tokens < 1 || algo_version < 1) return null;
   const tiers = parseInputTiers(o.input_tiers);
+  // Lengths are only drawn for forced-length rules.
+  const outputRange =
+    o.ignore_eos === true
+      ? parseOutputTokensRange(o.output_tokens_range)
+      : null;
   return {
     type: "hf_rows",
     dataset,
@@ -216,6 +229,7 @@ function parseSamplingRule(value: unknown): SamplingRule | null {
       : {}),
     ...(tiers ? { input_tiers: tiers } : {}),
     ...(o.ignore_eos === true ? { ignore_eos: true } : {}),
+    ...(outputRange ? { output_tokens_range: outputRange } : {}),
   };
 }
 
@@ -679,6 +693,10 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
   const interval = asNullableNumber(o.request_interval_ms);
   const concurrency = asNullableNumber(o.request_concurrency);
   const tiers = parseInputTiers(o.input_tiers);
+  const outputRange =
+    o.ignore_eos === true
+      ? parseOutputTokensRange(o.output_tokens_range)
+      : null;
   if (version === null) return null;
   if (
     isConcurrentTierVersion(version)
@@ -708,6 +726,7 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
     max_model_len: asNullableNumber(o.max_model_len),
     ...(tiers ? { input_tiers: tiers } : {}),
     ...(o.ignore_eos === true ? { ignore_eos: true } : {}),
+    ...(outputRange ? { output_tokens_range: outputRange } : {}),
   };
 }
 

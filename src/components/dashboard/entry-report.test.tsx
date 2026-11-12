@@ -224,6 +224,47 @@ describe("weighted tier report rendering", () => {
     expect(html).toContain("returns exactly this many tokens");
     expect(html).not.toContain("Natural EOS");
   });
+  it("shows a drawn output-length range instead of one fixed length", () => {
+    const sampling = {
+      ...MOCK_CAMPAIGN.sampling_rule,
+      algo_version: 6,
+      request_concurrency: 16,
+      max_tokens: 5120,
+      ignore_eos: true,
+      output_tokens_range: [220, 5120],
+    };
+    const campaign = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: MOCK_TIER_RULE,
+      sampling_rule: sampling,
+    });
+    expect(campaign.sampling_rule?.output_tokens_range).toEqual([220, 5120]);
+    const spec = renderToStaticMarkup(
+      <CampaignReference campaign={campaign} />
+    );
+    expect(spec).toContain("each round draws 220 to 5,120 tokens");
+    expect(spec).not.toContain("returns exactly this many tokens");
+    const input = mockTierReport(legacy());
+    Object.assign(input.workload!, {
+      ignore_eos: true,
+      output_tokens_range: [220, 5120],
+    });
+    const report = renderToStaticMarkup(
+      <EntryReportWorkload report={parseRoundEntryReport(input)} />
+    );
+    expect(report).toContain("drawn for this round from 220 to 5,120 tokens");
+    expect(report).not.toContain("Fixed length");
+    // A range only means something on a forced-length rule, and must be sane.
+    for (const bad of [
+      { ...sampling, ignore_eos: false },
+      { ...sampling, output_tokens_range: [5120, 220] },
+      { ...sampling, output_tokens_range: [220.5, 5120] },
+      { ...sampling, output_tokens_range: "220-5120" },
+    ]) {
+      const parsed = parseCampaign({ ...MOCK_CAMPAIGN, sampling_rule: bad });
+      expect(parsed.sampling_rule?.output_tokens_range).toBeUndefined();
+    }
+  });
   it("shows the GPU memory cap on the campaign spec", () => {
     const campaign = parseCampaign({
       ...MOCK_CAMPAIGN,

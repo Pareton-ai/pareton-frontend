@@ -138,11 +138,13 @@ function WorkloadPin({ rule }: { rule: SamplingRule }) {
       <p className="text-muted">
         {rule.config}/{rule.split} · {rule.n_rows.toLocaleString("en-US")} rows
         · {rule.max_tokens.toLocaleString("en-US")} max output tokens
-        {rule.ignore_eos
-          ? " · Fixed length: every request returns exactly this many tokens"
-          : isConcurrentTierVersion(rule.algo_version)
-            ? " · Natural EOS · 90% of baseline minimum"
-            : ""}
+        {rule.output_tokens_range
+          ? ` · Forced length: each round draws ${rule.output_tokens_range[0].toLocaleString("en-US")} to ${rule.output_tokens_range[1].toLocaleString("en-US")} tokens for every request`
+          : rule.ignore_eos
+            ? " · Fixed length: every request returns exactly this many tokens"
+            : isConcurrentTierVersion(rule.algo_version)
+              ? " · Natural EOS · 90% of baseline minimum"
+              : ""}
       </p>
       {isConcurrentTierVersion(rule.algo_version) ? (
         <p className="text-muted">

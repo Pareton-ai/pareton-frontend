@@ -217,6 +217,11 @@ export type SamplingRule = {
   input_tiers?: InputTier[];
   /** Every request is forced to exactly `max_tokens` output tokens. */
   ignore_eos?: boolean;
+  /**
+   * With `ignore_eos`: each round draws a forced length in this inclusive
+   * range for every request, instead of `max_tokens` for all of them.
+   */
+  output_tokens_range?: [number, number];
 };
 
 export type CustomerSignoff = {
@@ -537,6 +542,7 @@ export type ReportWorkload = {
   max_model_len: number | null;
   input_tiers?: InputTier[];
   ignore_eos?: boolean;
+  output_tokens_range?: [number, number];
 };
 
 /** Counts over `prompts`, so the headline needs no client-side math. */
