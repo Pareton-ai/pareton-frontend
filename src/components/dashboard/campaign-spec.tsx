@@ -2,7 +2,12 @@ import { Cpu, ExternalLink, FolderTree, GitBranch, Target } from "lucide-react";
 import type { ReactNode } from "react";
 import { CopyableMono } from "@/components/dashboard/copyable-mono";
 import { Panel } from "@/components/dashboard/panel";
-import { formatDuration, truncateHash, truncateMiddle } from "@/lib/api/format";
+import {
+  formatDuration,
+  formatMib,
+  truncateHash,
+  truncateMiddle,
+} from "@/lib/api/format";
 import {
   isConcurrentTierVersion,
   tierGrouping,
@@ -216,6 +221,14 @@ export function CampaignRequirements({ campaign }: { campaign: Campaign }) {
                   TTFT cap: a candidate whose median TTFT is over{" "}
                   {campaign.scoring_rule.max_ttft_ratio}× the baseline&apos;s
                   earns no speed credit. Slowdowns still count.
+                </p>
+              ) : null}
+              {campaign.scoring_rule.max_extra_gpu_memory_mib != null ? (
+                <p>
+                  GPU memory cap: a candidate whose peak memory on any GPU is
+                  more than{" "}
+                  {formatMib(campaign.scoring_rule.max_extra_gpu_memory_mib)}{" "}
+                  above the baseline&apos;s is disqualified.
                 </p>
               ) : null}
             </div>

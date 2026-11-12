@@ -6,6 +6,7 @@ import {
   type TierWeights,
   type TierCompletionScore,
   type TtftCap,
+  type GpuMemoryUse,
   type InputTier,
   type Campaign,
   type PatchVisibility,
@@ -148,11 +149,15 @@ function parseScoringRule(value: unknown): ScoringRule {
   const weights = parseTierWeights(o.tier_weights);
   const penalty = asNullableNumber(o.failure_penalty);
   const ttftCap = asNullableNumber(o.max_ttft_ratio);
+  const memoryCap = asNullableNumber(o.max_extra_gpu_memory_mib);
   return {
     name: asString(o.name),
     ...(weights ? { tier_weights: weights } : {}),
     ...(penalty !== null && penalty >= 0 ? { failure_penalty: penalty } : {}),
     ...(ttftCap !== null && ttftCap >= 1 ? { max_ttft_ratio: ttftCap } : {}),
+    ...(memoryCap !== null && memoryCap >= 0
+      ? { max_extra_gpu_memory_mib: memoryCap }
+      : {}),
   };
 }
 
@@ -652,6 +657,17 @@ function parseTtftCap(o: Record<string, unknown>): TtftCap | null {
   };
 }
 
+function parseGpuMemoryUse(value: unknown): GpuMemoryUse | null {
+  const o = asRecord(value);
+  const extra_mib = asNullableNumber(o.extra_mib);
+  const max_extra_mib = asNullableNumber(o.max_extra_gpu_memory_mib);
+  if (extra_mib === null || max_extra_mib === null || max_extra_mib < 0)
+    return null;
+  // The verdict is the harness's; recomputing it here could disagree with
+  // the entry's status.
+  return { extra_mib, max_extra_mib, over_cap: o.over_cap === true };
+}
+
 function parseReportWorkload(value: unknown): ReportWorkload | null {
   const o = asRecord(value);
   const version = asNullableNumber(o.algo_version);
@@ -692,6 +708,7 @@ function parseReportWorkload(value: unknown): ReportWorkload | null {
 
 export function parseRoundEntryReport(value: unknown): RoundEntryReport {
   const o = asRecord(value);
+  const gpuMemory = parseGpuMemoryUse(o.gpu_memory);
   return {
     round_id: asString(o.round_id),
     round_ordinal: asNumber(o.round_ordinal),
@@ -706,6 +723,7 @@ export function parseRoundEntryReport(value: unknown): RoundEntryReport {
     score: parseScore(o.score),
     reason: asNullableString(o.reason),
     engine_crashed: o.engine_crashed === true,
+    ...(gpuMemory ? { gpu_memory: gpuMemory } : {}),
     scoring_rule: asRecord(o.scoring_rule),
     prompt_summary: parsePromptSummary(o.prompt_summary),
     score_breakdown: parseScoreBreakdown(

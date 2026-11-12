@@ -89,6 +89,13 @@ export function formatScore(value: number): string {
   return formatted === "-0" ? "0" : formatted;
 }
 
+/** GPU memory as the harness measures it: whole MiB, or GiB when it divides evenly. */
+export function formatMib(mib: number): string {
+  const rounded = Math.round(mib);
+  if (rounded !== 0 && rounded % 1024 === 0) return `${rounded / 1024} GiB`;
+  return `${rounded.toLocaleString("en-US")} MiB`;
+}
+
 /** Compact elapsed span, e.g. `2.8s`, `4m 12s`, `1h 31m`. */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "—";

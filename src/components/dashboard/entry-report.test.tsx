@@ -224,6 +224,76 @@ describe("weighted tier report rendering", () => {
     expect(html).toContain("returns exactly this many tokens");
     expect(html).not.toContain("Natural EOS");
   });
+  it("shows the GPU memory cap on the campaign spec", () => {
+    const campaign = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: { ...MOCK_TIER_RULE, max_extra_gpu_memory_mib: 2048 },
+    });
+    expect(campaign.scoring_rule.max_extra_gpu_memory_mib).toBe(2048);
+    const html = renderToStaticMarkup(
+      <CampaignRequirements campaign={campaign} />
+    );
+    expect(html).toContain("GPU memory cap");
+    expect(html).toContain("more than 2 GiB above the baseline");
+    const plain = parseCampaign({
+      ...MOCK_CAMPAIGN,
+      scoring_rule: { ...MOCK_TIER_RULE, max_extra_gpu_memory_mib: -1 },
+    });
+    expect(plain.scoring_rule.max_extra_gpu_memory_mib).toBeUndefined();
+    expect(
+      renderToStaticMarkup(<CampaignRequirements campaign={plain} />)
+    ).not.toContain("GPU memory cap");
+  });
+  it("shows an entry's GPU memory against the cap", () => {
+    const memory = {
+      baseline_peak_mib: [120000, 120100],
+      candidate_peak_mib: [121234.4, 120000],
+      extra_mib: 1234.4,
+      max_extra_gpu_memory_mib: 2048,
+      over_cap: false,
+    };
+    const within = parseRoundEntryReport({
+      ...mockTierReport(legacy()),
+      gpu_memory: memory,
+    });
+    expect(within.gpu_memory).toEqual({
+      extra_mib: 1234.4,
+      max_extra_mib: 2048,
+      over_cap: false,
+    });
+    const html = renderToStaticMarkup(<EntryReportWorkload report={within} />);
+    expect(html).toContain("GPU memory vs baseline");
+    expect(html).toContain("+1,234 MiB on the fullest GPU");
+    expect(html).toContain("within the");
+    expect(html).toContain("2 GiB");
+    // A candidate disqualified over the cap has no score but keeps the row.
+    const over = parseRoundEntryReport({
+      ...mockTierReport({ ...legacy(), status: "disqualified", score: null }),
+      gpu_memory: { ...memory, extra_mib: 3000, over_cap: true },
+    });
+    const overHtml = renderToStaticMarkup(
+      <EntryReportWorkload report={over} />
+    );
+    expect(overHtml).toContain("+3,000 MiB");
+    expect(overHtml).toContain("over the");
+    expect(overHtml).not.toContain("Score calculation");
+    // Below the baseline everywhere, and reports without the field.
+    const below = parseRoundEntryReport({
+      ...mockTierReport(legacy()),
+      gpu_memory: { ...memory, extra_mib: -40 },
+    });
+    expect(
+      renderToStaticMarkup(<EntryReportWorkload report={below} />)
+    ).toContain("-40 MiB on the fullest GPU");
+    const none = parseRoundEntryReport({
+      ...mockTierReport(legacy()),
+      gpu_memory: { extra_mib: "lots" },
+    });
+    expect(none.gpu_memory).toBeUndefined();
+    expect(
+      renderToStaticMarkup(<EntryReportWorkload report={weighted()} />)
+    ).not.toContain("GPU memory vs baseline");
+  });
   it("shows campaign weights, failure penalty and natural output ceiling", () => {
     const campaign = parseCampaign({
       ...MOCK_CAMPAIGN,
