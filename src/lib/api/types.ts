@@ -808,16 +808,30 @@ export function reachedBuild(states: readonly string[]): boolean {
 }
 
 /**
- * First event recorded per state.
+ * First event recorded per state, within the latest gates run.
  *
  * A state can repeat (a retried fetch, say); the first occurrence is when the
- * stage was actually reached, so later ones are dropped.
+ * stage was actually reached, so later ones are dropped. An operator can
+ * requeue a rejected submission, which starts a new run at `picked_up`; the
+ * earlier run's events (its rejection included) no longer describe the
+ * submission, so events between the first and the last `picked_up` are
+ * skipped.
  */
 export function firstEventByState(
   events: readonly SubmissionEvent[]
 ): Map<string, SubmissionEvent> {
   const byState = new Map<string, SubmissionEvent>();
-  for (const event of events) {
+  // Events before the first `picked_up` (`committed`) belong to every run.
+  const firstRun = events.findIndex((event) => event.state === "picked_up");
+  let lastRun = firstRun;
+  events.forEach((event, index) => {
+    if (event.state === "picked_up") lastRun = index;
+  });
+  const current =
+    firstRun === -1
+      ? events
+      : [...events.slice(0, firstRun), ...events.slice(lastRun)];
+  for (const event of current) {
     if (!byState.has(event.state)) byState.set(event.state, event);
   }
   return byState;
