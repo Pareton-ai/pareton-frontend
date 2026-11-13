@@ -17,8 +17,16 @@ import {
 import { RoundEntries } from "@/components/dashboard/round-entries";
 import { RoundPlan } from "@/components/dashboard/round-plan";
 import { SectionUnavailable } from "@/components/dashboard/section-unavailable";
-import { getCampaign, getRoundByOrdinal } from "@/lib/api/endpoints";
+import {
+  getAllCampaignSubmissions,
+  getCampaign,
+  getRoundByOrdinal,
+} from "@/lib/api/endpoints";
 import { isNotFound, isUnavailable } from "@/lib/api/errors";
+import {
+  disqualifiedAfterRound,
+  hasScoredSubmission,
+} from "@/lib/api/later-disqualified";
 import { campaignHref, parseRoundOrdinal } from "@/lib/routes";
 import {
   getRoundActivity,
@@ -69,6 +77,26 @@ async function loadCampaignOrNull(
     return await getCampaign(campaignId);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Submissions this round scored that were disqualified afterwards.
+ *
+ * The round's entries never change, so the later verdict has to come from the
+ * submissions themselves. Decoration like the campaign: a failed lookup marks
+ * nothing rather than break the page.
+ */
+async function loadDisqualifiedLater(
+  campaignId: string,
+  round: RoundDetail
+): Promise<ReadonlySet<string>> {
+  if (!hasScoredSubmission(round.entries)) return new Set();
+  try {
+    const { rows } = await getAllCampaignSubmissions(campaignId);
+    return disqualifiedAfterRound(round.entries, rows);
+  } catch {
+    return new Set();
   }
 }
 
@@ -136,7 +164,10 @@ async function RoundSections({
   }
 
   const { round } = result;
-  const campaign = await loadCampaignOrNull(campaignId);
+  const [campaign, disqualifiedLater] = await Promise.all([
+    loadCampaignOrNull(campaignId),
+    loadDisqualifiedLater(campaignId, round),
+  ]);
   const now = new Date().toISOString();
   const activity = getRoundActivity(round, now);
 
@@ -150,7 +181,11 @@ async function RoundSections({
 
       {round.status === "void" ? <RoundVoidNotice round={round} /> : null}
 
-      <RoundStats round={round} now={now} />
+      <RoundStats
+        round={round}
+        now={now}
+        disqualifiedLater={disqualifiedLater}
+      />
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start">
         <div className="min-w-0">
@@ -159,6 +194,7 @@ async function RoundSections({
             ordinal={round.ordinal}
             entries={round.entries}
             nowIso={now}
+            disqualifiedLater={disqualifiedLater}
           />
           <div className="mt-8">
             <RoundPlan round={round} now={now} />
@@ -166,7 +202,11 @@ async function RoundSections({
           {activity ? <LiveActivityLine activity={activity} now={now} /> : null}
         </div>
 
-        <RoundMetadata campaignId={campaignId} round={round} />
+        <RoundMetadata
+          campaignId={campaignId}
+          round={round}
+          disqualifiedLater={disqualifiedLater}
+        />
       </div>
     </div>
   );

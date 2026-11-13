@@ -9,6 +9,7 @@ import {
   truncateDigest,
   truncateMiddle,
 } from "@/lib/api/format";
+import { DISQUALIFIED_LATER_NOTE } from "@/lib/api/later-disqualified";
 import { roundEntryReportHref, submissionHref } from "@/lib/routes";
 import type { RoundEntry } from "@/lib/api/types";
 
@@ -32,11 +33,14 @@ function EntryRow({
   ordinal,
   entry,
   nowIso,
+  disqualifiedLater,
 }: {
   campaignId: string;
   ordinal: number;
   entry: RoundEntry;
   nowIso: string;
+  /** The submission was disqualified after this round scored it. */
+  disqualifiedLater: boolean;
 }) {
   return (
     // Same stretched-link row as RoundRow, including its Safari note: WebKit
@@ -103,6 +107,14 @@ function EntryRow({
             >
               {entry.disqualify_reason.replaceAll("_", " ")}
             </span>
+          ) : disqualifiedLater ? (
+            // The chip stays the round's verdict; this is the later one.
+            <span
+              className="min-w-0 truncate font-mono text-caption text-rust"
+              title={DISQUALIFIED_LATER_NOTE}
+            >
+              disqualified later
+            </span>
           ) : null}
         </span>
       </td>
@@ -119,6 +131,13 @@ function EntryRow({
               baseline speed, which is a real result. */}
           {entry.score === null ? (
             <span className="text-muted">—</span>
+          ) : disqualifiedLater ? (
+            <span
+              className="tabular-nums text-muted line-through"
+              title={DISQUALIFIED_LATER_NOTE}
+            >
+              {formatScore(entry.score)}
+            </span>
           ) : (
             <span className="tabular-nums">{formatScore(entry.score)}</span>
           )}
@@ -149,11 +168,14 @@ export function RoundEntries({
   ordinal,
   entries,
   nowIso,
+  disqualifiedLater,
 }: {
   campaignId: string;
   ordinal: number;
   entries: readonly RoundEntry[];
   nowIso: string;
+  /** Submission ids from `disqualifiedAfterRound`; omitted marks nothing. */
+  disqualifiedLater?: ReadonlySet<string>;
 }) {
   return (
     <section aria-label="Round entries" className="border border-border">
@@ -197,6 +219,10 @@ export function RoundEntries({
                   ordinal={ordinal}
                   entry={entry}
                   nowIso={nowIso}
+                  disqualifiedLater={
+                    entry.submission_id !== null &&
+                    (disqualifiedLater?.has(entry.submission_id) ?? false)
+                  }
                 />
               ))}
             </tbody>

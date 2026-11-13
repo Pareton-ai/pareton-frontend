@@ -28,6 +28,7 @@ import {
   truncateHash,
   truncateMiddle,
 } from "@/lib/api/format";
+import { DISQUALIFIED_LATER_NOTE } from "@/lib/api/later-disqualified";
 import { campaignHref, submissionHref, blockExplorerHref } from "@/lib/routes";
 import {
   isLiveRound,
@@ -138,8 +139,18 @@ function durationLabel(round: RoundDetail): string {
   return isLiveRound(round.status) ? "Running for" : "Settled in";
 }
 
-function OutcomeTile({ round }: { round: RoundDetail }) {
+function OutcomeTile({
+  round,
+  disqualifiedLater,
+}: {
+  round: RoundDetail;
+  disqualifiedLater?: ReadonlySet<string>;
+}) {
   const winnerPatch = patchHashFor(round.entries, round.winner_submission_id);
+  // The round's outcome is history; say so when its winner was later removed.
+  const winnerRemoved =
+    round.winner_submission_id !== null &&
+    (disqualifiedLater?.has(round.winner_submission_id) ?? false);
 
   if (round.leader_changed === null) {
     return (
@@ -158,11 +169,12 @@ function OutcomeTile({ round }: { round: RoundDetail }) {
       label="Leader"
       value={round.leader_changed ? "Changed" : "Held"}
       hint={
-        round.leader_changed
+        (round.leader_changed
           ? winnerPatch
             ? `won by ${truncateDigest(winnerPatch, 8, 6)}`
             : "a challenger took the lead"
-          : "incumbent kept the lead"
+          : "incumbent kept the lead") +
+        (winnerRemoved ? ", disqualified later" : "")
       }
     />
   );
@@ -175,10 +187,13 @@ function OutcomeTile({ round }: { round: RoundDetail }) {
 export function RoundStats({
   round,
   now,
+  disqualifiedLater,
 }: {
   round: RoundDetail;
   /** Server render time, so the first paint and the tests agree. */
   now: string;
+  /** Submission ids from `disqualifiedAfterRound`; omitted marks nothing. */
+  disqualifiedLater?: ReadonlySet<string>;
 }) {
   const scored = round.entries.filter(
     (entry) => entry.status === "scored"
@@ -230,7 +245,7 @@ export function RoundStats({
         hint={top === null ? "no scored challenger" : "0 is baseline speed"}
       />
 
-      <OutcomeTile round={round} />
+      <OutcomeTile round={round} disqualifiedLater={disqualifiedLater} />
     </StatStrip>
   );
 }
@@ -299,9 +314,12 @@ function scoringRuleLabel(rule: Record<string, unknown>): string {
 export function RoundMetadata({
   campaignId,
   round,
+  disqualifiedLater,
 }: {
   campaignId: string;
   round: RoundDetail;
+  /** Submission ids from `disqualifiedAfterRound`; omitted marks nothing. */
+  disqualifiedLater?: ReadonlySet<string>;
 }) {
   return (
     <aside className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
@@ -390,6 +408,15 @@ export function RoundMetadata({
             entries={round.entries}
             submissionId={round.winner_submission_id}
           />
+          {round.winner_submission_id !== null &&
+          disqualifiedLater?.has(round.winner_submission_id) ? (
+            <span
+              className="block text-caption text-rust"
+              title={DISQUALIFIED_LATER_NOTE}
+            >
+              disqualified later
+            </span>
+          ) : null}
         </PanelRow>
         <PanelRow label="Completed">
           {round.completed_at === null ? (
